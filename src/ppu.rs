@@ -7,10 +7,10 @@ use std::{cell::RefCell, mem, rc::Rc};
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK: usize = 207 * 4;
-pub const OAM: usize = 83 * 4;
-pub const PIXEL: usize = 175 * 4;
-pub const VBLANK: usize = 4560 * 4;
+pub const HBLANK: usize = 207 * 2;
+pub const OAM: usize = 83 * 2;
+pub const PIXEL: usize = 175 * 2;
+pub const VBLANK: usize = 4560 * 2;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -88,13 +88,13 @@ impl Ppu {
         self.cycles += cycles;
         match self.mode {
             Mode::OAM => {
-                if self.cycles > OAM {
+                if self.cycles >= OAM {
                     self.mode = Mode::Pixel;
                     self.cycles %= OAM;
                 }
             }
             Mode::Pixel => {
-                if self.cycles > PIXEL {
+                if self.cycles >= PIXEL {
                     self.mode = Mode::HBlank;
                     self.cycles %= PIXEL;
                     self.render_line();
@@ -104,14 +104,14 @@ impl Ppu {
                 }
             }
             Mode::HBlank => {
-                if self.cycles > HBLANK {
+                if self.cycles >= HBLANK {
                     self.cycles %= HBLANK;
                     self.ly += 1;
                     if self.ly == 144 {
                         self.mode = Mode::VBlank;
-                        if self.stat & 0x10 != 0 {
-                            self.int.borrow_mut().set(Flag::VBlank);
-                        }
+                        //if self.stat & 0x10 != 0 {
+                        self.int.borrow_mut().set(Flag::VBlank);
+                    //}
                     } else {
                         self.mode = Mode::OAM;
                         if self.stat & 0x20 != 0 {
@@ -121,7 +121,7 @@ impl Ppu {
                 }
             }
             Mode::VBlank => {
-                if self.cycles > VBLANK {
+                if self.cycles >= VBLANK {
                     self.mode = Mode::OAM;
                     self.cycles %= VBLANK;
                     self.ly = 0;
@@ -138,23 +138,16 @@ impl Ppu {
     }
 
     fn render_line(&mut self) {
-        let line = self.ly as usize;
-        if line >= 144 {
-            return;
-        }
-
         #[repr(u8)]
         enum TileMap {
             X9c00 = 0x8,
             X9800 = 0,
         }
-
         #[repr(u8)]
         enum TileData {
             X8000 = 0x10,
             X8800 = 0,
         }
-
         let bgp = self.bgp;
         let bg_display = self.lcdc & 0x1 != 0;
         let obj_display = self.lcdc & 0x2 != 0;
@@ -169,44 +162,87 @@ impl Ppu {
         } else {
             TileData::X8800
         };
-
+        let pal = [
+            Color::White,
+            Color::LightGray,
+            Color::DarkGray,
+            Color::Black,
+        ];
         for pix in 0..160 {
             let y = self.scy.wrapping_add(self.ly) as u16;
             let x = self.scx.wrapping_add(pix as u8) as u16;
-
-            self.buffer[160 * line + pix] = Color::White;
-
-            let tile_map_idx = 32u16 * (y / 8) + (x / 8);
-            let tile_idx = match bg_tile_map {
-                TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
-                TileMap::X9800 => self.read(0x9800 + tile_map_idx),
-            };
-            let mut tile = [0u8; 16];
-            match bg_win_tile_data {
-                TileData::X8000 => {
-                    self.read_slice(0x8000 + 16 * u16::from(tile_idx), &mut tile[..])
+            if bg_display {
+                let tile_map_idx = 32u16 * (y / 8) + (x / 8);
+                let tile = match bg_tile_map {
+                    TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
+                    TileMap::X9800 => self.read(0x9800 + tile_map_idx),
+                };
+                let mut tile_data = [0u8; 16];
+                match bg_win_tile_data {
+                    TileData::X8000 => {
+                        self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..])
+                    }
+                    TileData::X8800 => {
+                        let tile: i8 = unsafe { mem::transmute(tile) };
+                        let tile = (tile as i16 + 128) as u16;
+                        self.read_slice(0x8800 + 16 * tile, &mut tile_data[..])
+                    }
                 }
-                TileData::X8800 => {
-                    let tile_idx: i8 = unsafe { mem::transmute(tile_idx) };
-                    let tile_idx = (tile_idx as i16 + 128) as u16;
-                    self.read_slice(0x8800 + 16 * tile_idx, &mut tile[..])
+                let column = 7 - (x & 0x7) as u8;
+                let line = y & 0x7;
+                let lo = tile_data[line as usize * 2] >> column & 0x1;
+                let hi = tile_data[line as usize * 2 + 1] >> column & 0x1;
+                let pal_idx = (hi << 1) | lo;
+                let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
+                self.buffer[160 * self.ly as usize + pix] = pal[col_idx as usize];
+            }
+        }
+        if obj_display {
+            for oam in (&self.oam[..]).chunks(4) {
+                let y = oam[0] as i16;
+                let x = oam[1] as i16;
+                let ly = self.ly as i16;
+                if ly < y - 15 || ly > y - 7 {
+                    // TODO 16 pixel sprites
+                    continue;
+                }
+                let tile = oam[2];
+                let flag = oam[3];
+                let x_flip = flag & 0x20 != 0;
+                let y_flip = flag & 0x40 != 0;
+                let spr_pal = if flag & 0x10 != 0 {
+                    self.obp1
+                } else {
+                    self.obp0
+                };
+                let mut tile_data = [0; 16];
+                self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..]);
+                for sy in y - 16..(y - 8) {
+                    for sx in x - 8..x {
+                        if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
+                            let mut row = (sy - (y - 16)) as u8;
+                            let mut col = 7 - (sx - (x - 8)) as u8;
+                            if x_flip {
+                                col = 7 - col;
+                            }
+                            if y_flip {
+                                row = 7 - row;
+                            }
+                            assert!(row <= 7);
+                            assert!(col <= 7);
+                            let lo = tile_data[row as usize * 2] >> col & 0x1;
+                            let hi = tile_data[row as usize * 2 + 1] >> col & 0x1;
+                            let pal_idx = (hi << 1) | lo;
+                            let col_idx = (spr_pal >> (2 * pal_idx)) & 0x3;
+                            let p = (160 * sy + sx) as usize;
+                            match pal[col_idx as usize] {
+                                Color::White => {}
+                                c => self.buffer[p] = c,
+                            }
+                        }
+                    }
                 }
             }
-
-            let column = 7 - (x & 0x7) as u8;
-            let line = y & 0x7;
-            let lo = tile[line as usize * 2] >> column & 0x1;
-            let hi = tile[line as usize * 2 + 1] >> column & 0x1;
-
-            let pal = [
-                Color::White,
-                Color::LightGray,
-                Color::DarkGray,
-                Color::Black,
-            ];
-            let pal_idx = (hi << 1) | lo;
-            let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
-            self.buffer[160 * self.ly as usize + pix] = pal[col_idx as usize];
         }
     }
 
@@ -240,17 +276,14 @@ impl Device for Ppu {
             0x8000..=0x9fff => self.vram[addr as usize - 0x8000] = data,
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00] = data,
             0xff40 => {
-                //eprintln!("lcdc = {:08b}", data);
                 self.lcdc = data;
-                // turn off LCD
                 if self.lcdc & 0x1 == 0 {
+                    self.mode = Mode::OAM;
+                    self.ly = 0;
                     mem::replace(&mut self.buffer, [Color::White; 160 * 144]);
                 }
             }
-            0xff41 => {
-                //eprintln!("stat = {:08b}", data);
-                self.stat = data
-            }
+            0xff41 => self.stat = data,
             0xff42 => self.scy = data,
             0xff43 => self.scx = data,
             0xff44 => {
@@ -259,8 +292,6 @@ impl Device for Ppu {
                 // value between 0 through 153. The values between 144 and 153
                 // indicate the V-Blank period. Writing will reset the counter.
                 self.ly = 0;
-                self.mode = Mode::OAM;
-                self.cycles = 0;
             }
             0xff45 => self.lyc = data,
             0xff4a => self.wy = data,

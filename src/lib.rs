@@ -36,6 +36,7 @@ impl Dmg {
 
     pub fn emulate_frame(&mut self) {
         let frame_ticks = (OAM + PIXEL + HBLANK) * 153;
+        //let frame_ticks = 70224;
         let mut cycles = 0;
         while cycles < frame_ticks {
             let cpu_cycles = self.cpu.step(&mut self.mmu);

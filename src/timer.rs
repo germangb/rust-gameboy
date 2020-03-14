@@ -36,13 +36,8 @@ impl Timer {
     }
 
     pub fn step(&mut self, cycles: usize) {
-        if self.tac & 0x3 == 0 {
-            return;
-        }
-        self.div_cycles += cycles as u64;
-        self.tima_cycles += cycles as u64;
-
         // DIV counter
+        self.div_cycles += cycles as u64;
         let cycles_per_tick = SPEED / 16_384;
 
         if self.div_cycles > cycles_per_tick {
@@ -50,7 +45,12 @@ impl Timer {
             self.div = self.div.wrapping_add(1);
         }
 
+        if self.tac & 0x3 == 0 {
+            return;
+        }
+
         // TIMA counter
+        self.tima_cycles += cycles as u64;
         let cycles_per_tick = SPEED / self.clock();
 
         if self.tima_cycles > cycles_per_tick {
@@ -88,21 +88,12 @@ impl Device for Timer {
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
             0xff04 => {
-                eprintln!("div");
-                self.div = 0;
+                self.div_cycles = 0;
+                self.div = 0
             }
-            0xff05 => {
-                eprintln!("tima = {:x}", data);
-                self.tima = data
-            }
-            0xff06 => {
-                eprintln!("tma = {:x}", data);
-                self.tma = data
-            }
-            0xff07 => {
-                eprintln!("tac = {:x}", data);
-                self.tac = data & 0x7
-            }
+            0xff05 => self.tima = data,
+            0xff06 => self.tma = data,
+            0xff07 => self.tac = data,
             _ => panic!(),
         }
     }

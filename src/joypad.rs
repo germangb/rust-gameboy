@@ -6,14 +6,16 @@ use std::{cell::RefCell, rc::Rc};
 
 const BTN: u8 = 0x10;
 const DIR: u8 = 0x20;
-const NONE_PRESSED: u8 = 0xf;
+const NONE: u8 = 0xf;
 
+#[derive(Debug, Clone, Copy)]
 pub enum Key {
     Btn(Btn),
     Dir(Dir),
 }
 
 #[repr(u8)]
+#[derive(Debug, Clone, Copy)]
 pub enum Btn {
     Start = 0x8,
     Select = 0x4,
@@ -22,6 +24,7 @@ pub enum Btn {
 }
 
 #[repr(u8)]
+#[derive(Debug, Clone, Copy)]
 pub enum Dir {
     Down = 0x8,
     Up = 0x4,
@@ -41,15 +44,15 @@ impl Joypad {
         Self {
             int,
             joyp: 0x00,
-            btn: NONE_PRESSED,
-            dir: NONE_PRESSED,
+            btn: NONE,
+            dir: NONE,
         }
     }
 
-    pub fn press(&mut self, key: Key) {
+    pub fn press(&mut self, key: &Key) {
         let (btn, dir) = match key {
-            Key::Btn(btn) => (self.btn & !(btn as u8), self.dir),
-            Key::Dir(dir) => (self.btn, self.dir & !(dir as u8)),
+            Key::Btn(btn) => (self.btn & !(*btn as u8), self.dir),
+            Key::Dir(dir) => (self.btn, self.dir & !(*dir as u8)),
         };
 
         // Joypad interrupt is requested when any of the above Input lines changes from
@@ -57,19 +60,29 @@ impl Joypad {
         // (provided that the button/direction key is enabled by above Bit4/5), however,
         // because of switch bounce, one or more High to Low transitions are usually
         // produced both when pressing or releasing a key.
-        if btn != self.btn && (self.joyp & 0x30 == BTN)
-            || (dir != self.dir && (self.joyp & 0x30) == DIR)
-        {
+
+        // if btn != self.btn && (self.joyp & 0x30 == BTN)
+        //     || (dir != self.dir && (self.joyp & 0x30) == DIR)
+        // {
+        //     panic!();
+        //     self.int.borrow_mut().set(Flag::Joypad);
+        // }
+        if self.btn != btn || self.dir != dir {
+            //panic!();
             self.int.borrow_mut().set(Flag::Joypad);
         }
+
         self.btn = btn;
         self.dir = dir;
+
+        //eprintln!("btn={:08b}", self.btn);
+        //eprintln!("dir={:08b}", self.dir);
     }
 
-    pub fn release(&mut self, key: Key) {
+    pub fn release(&mut self, key: &Key) {
         match key {
-            Key::Btn(btn) => self.btn |= btn as u8,
-            Key::Dir(dir) => self.dir |= dir as u8,
+            Key::Btn(btn) => self.btn |= *btn as u8,
+            Key::Dir(dir) => self.dir |= *dir as u8,
         }
     }
 
@@ -100,8 +113,8 @@ impl Device for Joypad {
         match self.joyp & 0x30 {
             BTN => BTN | self.btn(),
             DIR => DIR | self.dir(),
-            0x0 => 0xf,   // self.btn() & self.dir(), // both selected (?)
-            0x30 => 0x30, // none selected (?)
+            0x30 => 0x3f,
+            0x0 => 0xf,
             _ => unreachable!(),
         }
     }
@@ -132,14 +145,14 @@ mod tests {
 
         assert_ne!(0, joypad.read(0xff00));
 
-        joypad.press(Key::Dir(Down));
-        joypad.press(Key::Dir(Up));
-        joypad.press(Key::Dir(Left));
-        joypad.press(Key::Dir(Right));
-        joypad.press(Key::Btn(Select));
-        joypad.press(Key::Btn(Start));
-        joypad.press(Key::Btn(A));
-        joypad.press(Key::Btn(B));
+        joypad.press(&Key::Dir(Down));
+        joypad.press(&Key::Dir(Up));
+        joypad.press(&Key::Dir(Left));
+        joypad.press(&Key::Dir(Right));
+        joypad.press(&Key::Btn(Select));
+        joypad.press(&Key::Btn(Start));
+        joypad.press(&Key::Btn(A));
+        joypad.press(&Key::Btn(B));
 
         joypad.write(0xff00, DIR);
         assert_ne!(0, joypad.read(0xff00));
@@ -156,16 +169,16 @@ mod tests {
         let int = Rc::new(RefCell::new(Interrupts::default()));
         let mut joypad = Joypad::new(int);
 
-        joypad.press(Key::Btn(Select));
-        joypad.press(Key::Btn(Start));
+        joypad.press(&Key::Btn(Select));
+        joypad.press(&Key::Btn(Start));
 
         joypad.write(0xff00, DIR);
         assert_eq!(DIR | 0xf, joypad.read(0xff00));
-        joypad.press(Key::Dir(Down));
+        joypad.press(&Key::Dir(Down));
         assert_eq!(DIR | 0b0111, joypad.read(0xff00));
-        joypad.press(Key::Dir(Up));
+        joypad.press(&Key::Dir(Up));
         assert_eq!(DIR | 0b0011, joypad.read(0xff00));
-        joypad.press(Key::Dir(Left));
+        joypad.press(&Key::Dir(Left));
         assert_eq!(DIR | 0b0001, joypad.read(0xff00));
 
         joypad.write(0xff00, BTN);
@@ -173,14 +186,14 @@ mod tests {
 
         joypad.write(0xff00, DIR);
         assert_eq!(DIR | 0b0001, joypad.read(0xff00));
-        joypad.press(Key::Dir(Right));
+        joypad.press(&Key::Dir(Right));
         assert_eq!(DIR | 0b0000, joypad.read(0xff00));
 
         joypad.write(0xff00, BTN);
         assert_eq!(BTN | 0b0011, joypad.read(0xff00));
-        joypad.press(Key::Btn(A));
+        joypad.press(&Key::Btn(A));
         assert_eq!(BTN | 0b0001, joypad.read(0xff00));
-        joypad.press(Key::Btn(B));
+        joypad.press(&Key::Btn(B));
         assert_eq!(BTN | 0b0000, joypad.read(0xff00));
     }
 
@@ -191,11 +204,11 @@ mod tests {
 
         joypad.write(0xff00, DIR);
         assert!(!int.borrow().is_active(Flag::Joypad));
-        joypad.press(Key::Dir(Left));
+        joypad.press(&Key::Dir(Left));
         assert!(int.borrow().is_active(Flag::Joypad));
         int.borrow_mut().reset(Flag::Joypad);
 
-        joypad.press(Key::Btn(A));
+        joypad.press(&Key::Btn(A));
         assert!(!int.borrow().is_active(Flag::Joypad));
     }
 
@@ -206,16 +219,11 @@ mod tests {
 
         joypad.write(0xff00, BTN);
         assert!(!int.borrow().is_active(Flag::Joypad));
-        joypad.press(Key::Btn(A));
+        joypad.press(&Key::Btn(A));
         assert!(int.borrow().is_active(Flag::Joypad));
         int.borrow_mut().reset(Flag::Joypad);
 
-        joypad.press(Key::Dir(Left));
+        joypad.press(&Key::Dir(Left));
         assert!(!int.borrow().is_active(Flag::Joypad));
-    }
-
-    #[test]
-    fn double_release() {
-        panic!();
     }
 }

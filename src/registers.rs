@@ -6,27 +6,33 @@ pub enum Flag {
     C = 0x10,
 }
 
-#[rustfmt::skip]
 #[derive(Debug)]
 pub struct Registers {
-    pub a: u8, pub f: u8,
-    pub b: u8, pub c: u8,
-    pub d: u8, pub e: u8,
-    pub h: u8, pub l: u8,
+    pub a: u8,
+    pub f: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
+    pub h: u8,
+    pub l: u8,
     pub pc: u16,
     pub sp: u16,
 }
 
 impl Default for Registers {
-    #[rustfmt::skip]
     fn default() -> Self {
         Self {
-            a: 0, f: 0,
-            b: 0, c: 0,
-            d: 0, e: 0,
-            h: 0, l: 0,
+            a: 0,
+            f: 0,
+            b: 0,
+            c: 0,
+            d: 0,
+            e: 0,
+            h: 0,
+            l: 0,
             pc: 0,
-            sp: 0
+            sp: 0,
         }
     }
 }
@@ -110,7 +116,7 @@ mod test {
 
         reg.set_af(0x0123);
         assert_eq!(0x01, reg.a);
-        assert_eq!(0x23, reg.f);
+        assert_eq!(0x20, reg.f);
     }
 
     #[test]

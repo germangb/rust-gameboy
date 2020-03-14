@@ -4,25 +4,27 @@ use crate::{
     registers::{Flag::*, Registers},
 };
 
-#[rustfmt::skip]
 //  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f
 static CYCLES: [usize; 256] = [
-    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 2, // 0
-    1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 2, // 1
-    0, 3, 2, 2, 1, 1, 2, 1, 0, 2, 2, 2, 1, 1, 2, 2, // 2
-    0, 3, 2, 2, 3, 3, 3, 1, 0, 2, 2, 2, 1, 1, 2, 2, // 3
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 4
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 5
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 6
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 7
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 8
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 9
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // a
-    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // b
-    0, 3, 0, 4, 0, 4, 2, 4, 0, 4, 0, 1, 0, 6, 2, 4, // c
-    0, 3, 0, 0, 0, 4, 2, 4, 0, 4, 0, 0, 0, 0, 2, 4, // d
-    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, // e
-    3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // f
+    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
+    2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 2, 2, 2, 2, 2, 0, 2, 1, 1, 1, 1, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4, 2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4,
+    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, 3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
+];
+
+static CB_CYCLES: [usize; 256] = [
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+    2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
 ];
 
 #[derive(Debug)]
@@ -423,37 +425,38 @@ impl Cpu {
 
 impl Cpu {
     pub fn step(&mut self, mmu: &mut Mmu) -> usize {
-        if self.ime {
-            let int = self.int(mmu);
-            if int != 0 {
-                return int;
-            }
-        }
-        let c = if !self.halt {
-            self.exec(mmu)
+        let int = self.int(mmu);
+        let c = if int != 0 {
+            int
         } else {
-            return CYCLES[0x0];
+            if !self.halt {
+                self.exec(mmu)
+            } else {
+                CYCLES[0x0]
+            }
         };
-        c
+        c * 4
     }
 
     fn int(&mut self, mmu: &mut Mmu) -> usize {
         let ie = mmu.read(0xffff);
         let if_ = mmu.read(0xff0f);
         let tr = (ie & if_).trailing_zeros() as u8;
-        if tr <= 4 {
+        if self.ime && tr <= 4 {
             self.ime = false;
             self.halt = false;
             mmu.write(0xff0f, if_ & !(1 << tr));
             self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
-            16
+            4
         } else {
             0
         }
     }
 
     fn int_v(&mut self, v: u16, mmu: &mut Mmu) -> usize {
-        eprintln!("interrupt vec={:x} tac={:08b}", v, mmu.read(0xff07));
+        if v == 0x60 {
+            eprintln!("JOYPAD");
+        }
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = v;
         16
@@ -952,13 +955,9 @@ impl Cpu {
             // Misc/control instructions
             0x00 => {}                                                 // NOP
             0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
-            0x76 => self.halt = true,
+            0x76 => self.halt = false,
             0xf3 => self.ime = false,
-            0xfb => {
-                eprintln!("EI -  pc={:x}", self.reg.pc - 1);
-                //self.ime = true;
-                self.ime = true;
-            }
+            0xfb => self.ime = true,
             0xcb => {
                 let cb = self.fetch(mmu);
                 match cb {
@@ -1357,10 +1356,7 @@ impl Cpu {
                     _ => unimplemented!("{:x}", cb),
                 }
 
-                return match cb & 0x0f {
-                    0x06 | 0x0e => 16,
-                    _ => 8,
-                };
+                return CB_CYCLES[cb as usize];
             }
 
             0xd3 | 0xdb | 0xdd | 0xe3 | 0xe4 | 0xeb..=0xed | 0xf4 | 0xfc | 0xfd => {
@@ -1371,35 +1367,34 @@ impl Cpu {
         let cycles = match opcode {
             0x20 | 0x30 | 0x28 | 0x38 => {
                 if branch {
-                    12
+                    3
                 } else {
-                    4
+                    1
                 }
             }
             0xc0 | 0xd0 | 0xc8 | 0xd8 => {
                 if branch {
-                    20
+                    5
                 } else {
-                    8
+                    2
                 }
             }
             0xc2 | 0xd2 | 0xca | 0xda => {
                 if branch {
-                    16
+                    4
                 } else {
-                    12
+                    3
                 }
             }
             0xc4 | 0xd4 | 0xcc | 0xdc => {
                 if branch {
-                    24
+                    6
                 } else {
-                    12
+                    3
                 }
             }
-            _ => CYCLES[opcode as usize] * 4,
+            _ => CYCLES[opcode as usize],
         };
-        assert_ne!(0, cycles, "{:x}", opcode);
         cycles
     }
 }
