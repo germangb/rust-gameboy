@@ -213,4 +213,9 @@ mod tests {
         joypad.press(Key::Dir(Left));
         assert!(!int.borrow().is_active(Flag::Joypad));
     }
+
+    #[test]
+    fn double_release() {
+        panic!();
+    }
 }

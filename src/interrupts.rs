@@ -9,6 +9,7 @@ pub enum Flag {
     Joypad = 0x10,
 }
 
+#[derive(Debug)]
 pub struct Interrupts {
     flags: u8,
     enable: u8,

@@ -19,6 +19,13 @@ pub trait Device {
         self.write(addr, lo as u8);
         self.write(addr + 1, hi as u8);
     }
+
+    fn read_slice(&self, addr: u16, slice: &mut [u8]) {
+        for i in 0..slice.len() {
+            let addr = addr.wrapping_add(i as u16);
+            slice[i] = self.read(addr);
+        }
+    }
 }
 
 #[cfg(test)]

@@ -4,21 +4,45 @@ use crate::{
     registers::{Flag::*, Registers},
 };
 
+#[rustfmt::skip]
+//  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f
+static CYCLES: [usize; 256] = [
+    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 2, // 0
+    1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 2, // 1
+    0, 3, 2, 2, 1, 1, 2, 1, 0, 2, 2, 2, 1, 1, 2, 2, // 2
+    0, 3, 2, 2, 3, 3, 3, 1, 0, 2, 2, 2, 1, 1, 2, 2, // 3
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 4
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 5
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 6
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 7
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 8
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // 9
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // a
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, // b
+    0, 3, 0, 4, 0, 4, 2, 4, 0, 4, 0, 1, 0, 6, 2, 4, // c
+    0, 3, 0, 0, 0, 4, 2, 4, 0, 4, 0, 0, 0, 0, 2, 4, // d
+    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, // e
+    3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4, // f
+];
+
+#[derive(Debug)]
 pub struct Cpu {
     reg: Registers,
     ime: bool,
     halt: bool,
 }
 
-impl Cpu {
-    pub fn new() -> Self {
+impl Default for Cpu {
+    fn default() -> Self {
         Self {
-            reg: Registers::new(),
+            reg: Registers::default(),
             ime: false,
             halt: false,
         }
     }
+}
 
+impl Cpu {
     pub fn reg(&self) -> &Registers {
         &self.reg
     }
@@ -30,9 +54,10 @@ impl Cpu {
     }
 
     fn fetch_word(&mut self, mmu: &Mmu) -> u16 {
-        let w = mmu.read_word(self.reg.pc);
+        let lo = mmu.read(self.reg.pc) as u16;
+        let hi = mmu.read(self.reg.pc + 1) as u16;
         self.reg.pc += 2;
-        w
+        (hi << 8) | lo
     }
 
     fn fetch_signed(&mut self, mmu: &Mmu) -> i8 {
@@ -43,18 +68,16 @@ impl Cpu {
     // Pushes word into the stack
     // Decrements SP by 2
     fn stack_push(&mut self, nn: u16, mmu: &mut Mmu) {
-        self.reg.sp -= 1;
+        self.reg.sp -= 2;
         mmu.write_word(self.reg.sp, nn);
-        self.reg.sp -= 1;
     }
 
     // Pops word from the stack
     // Increments SP by 2
     fn stack_pop(&mut self, mmu: &Mmu) -> u16 {
-        self.reg.sp += 1;
-        let nn = mmu.read_word(self.reg.sp);
-        self.reg.sp += 1;
-        nn
+        let r = mmu.read_word(self.reg.sp);
+        self.reg.sp += 2;
+        r
     }
 
     // Add n to A.
@@ -76,12 +99,13 @@ impl Cpu {
     // Z 0 H C
     fn alu_adc_n(&mut self, n: u8) {
         let mut res = u16::from(self.reg.a) + u16::from(n);
-        if self.reg.is_flag(C) {
-            res += 1;
-        }
+        let carry = if self.reg.is_flag(C) { 1 } else { 0 };
+        res += u16::from(carry);
+
         self.reg.set_flag(Z, res.trailing_zeros() >= 8);
         self.reg.set_flag(N, false);
-        self.reg.set_flag(H, (self.reg.a & 0xf) + (n & 0xf) > 0xf);
+        self.reg
+            .set_flag(H, (self.reg.a & 0xf) + (n & 0xf) + carry > 0xf);
         self.reg.set_flag(C, res > 0xff);
         self.reg.a = (res & 0xff) as u8;
     }
@@ -94,7 +118,6 @@ impl Cpu {
         let res = self.reg.a.wrapping_sub(n);
         self.reg.set_flag(Z, res == 0);
         self.reg.set_flag(N, true);
-        // reference: https://github.com/CTurt/Cinoop/blob/master/source/cpu.c#L589
         self.reg.set_flag(H, n & 0xf > self.reg.a & 0xf);
         self.reg.set_flag(C, n > self.reg.a);
         self.reg.a = res;
@@ -108,7 +131,6 @@ impl Cpu {
         let res = self.reg.a.wrapping_sub(n).wrapping_sub(c);
         self.reg.set_flag(Z, res == 0);
         self.reg.set_flag(N, true);
-        // ref: https://github.com/CTurt/Cinoop/blob/master/source/cpu.c#L572
         self.reg.set_flag(H, (n & 0xf) + c > self.reg.a & 0xf);
         self.reg
             .set_flag(C, u16::from(n) + u16::from(c) > u16::from(self.reg.a));
@@ -193,8 +215,10 @@ impl Cpu {
     fn alu_add_hl_nn(&mut self, nn: u16) {
         let res = u32::from(self.reg.hl()) + u32::from(nn);
         self.reg.set_flag(N, false);
-        self.reg.set_flag(H, unimplemented!());
-        self.reg.set_flag(C, unimplemented!());
+        self.reg
+            .set_flag(H, (self.reg.hl() & 0xfff) + (nn & 0xfff) > 0xfff);
+        self.reg
+            .set_flag(C, u32::from(self.reg.hl()) + u32::from(nn) > 0xffff);
         self.reg.set_hl((res & 0xffff) as u16);
     }
 
@@ -222,7 +246,10 @@ impl Cpu {
     // Flags:
     // Z 0 0 C
     fn alu_rlc_n(&mut self, n: u8) -> u8 {
-        let res = n << 1;
+        let mut res = n << 1;
+        if n & 0x80 != 0 {
+            res |= 1;
+        }
         self.reg.set_flag(Z, res == 0);
         self.reg.set_flag(N, false);
         self.reg.set_flag(H, false);
@@ -249,7 +276,10 @@ impl Cpu {
     // Flags:
     // Z 0 0 C
     fn alu_rrc_n(&mut self, n: u8) -> u8 {
-        let res = n >> 1;
+        let mut res = n >> 1;
+        if n & 0x01 != 0 {
+            res = 0x80 | res;
+        }
         self.reg.set_flag(Z, res == 0);
         self.reg.set_flag(N, false);
         self.reg.set_flag(H, false);
@@ -278,10 +308,64 @@ impl Cpu {
     // Flags:
     // Z 0 1 -
     fn alu_bit_b_n(&mut self, b: u8, n: u8) {
-        assert!(b >= 0 && b <= 7);
-        self.reg.set_flag(Z, n & (1 << b) != 0);
+        assert!(b <= 7);
+        self.reg.set_flag(Z, n & (1 << b) == 0);
         self.reg.set_flag(N, false);
         self.reg.set_flag(H, true);
+    }
+
+    fn alu_swap_n(&mut self, n: u8) -> u8 {
+        let res = (n << 4) | (n >> 4);
+        self.reg.set_flag(Z, res == 0);
+        self.reg.set_flag(N, false);
+        self.reg.set_flag(H, false);
+        self.reg.set_flag(C, false);
+        res
+    }
+
+    fn alu_set_b_n(&mut self, b: u8, n: u8) -> u8 {
+        n | (1 << b)
+    }
+
+    fn alu_res_b_n(&mut self, b: u8, n: u8) -> u8 {
+        n & !(1 << b)
+    }
+
+    // Shift n right into Carry. MSB set to 0.
+    // n = A,B,C,D,E,H,L,(HL)
+    // Flags
+    // Z 0 0 C
+    fn alu_srl_n(&mut self, n: u8) -> u8 {
+        let res = n >> 1;
+        self.reg.set_flag(Z, res == 0);
+        self.reg.set_flag(N, false);
+        self.reg.set_flag(H, false);
+        self.reg.set_flag(C, n & 0x1 != 0);
+        res
+    }
+
+    // Shift n right into Carry. MSB set to 0.
+    // n = A,B,C,D,E,H,L,(HL)
+    // Flags
+    // Z 0 0 C
+    fn alu_sra_n(&mut self, n: u8) -> u8 {
+        let mut res = n >> 1;
+        res |= n & 0x80;
+        self.reg.set_flag(Z, res == 0);
+        self.reg.set_flag(N, false);
+        self.reg.set_flag(H, false);
+        self.reg.set_flag(C, n & 0x1 != 0);
+        res
+    }
+
+    // Shift n left into Carry. LSB of n set to 0
+    fn alu_sla_n(&mut self, n: u8) -> u8 {
+        let res = n << 1;
+        self.reg.set_flag(Z, res == 0);
+        self.reg.set_flag(N, false);
+        self.reg.set_flag(H, false);
+        self.reg.set_flag(C, n & 0x80 != 0);
+        res
     }
 
     // Pushes present address onto stack.
@@ -297,12 +381,13 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn call_c_n(&mut self, c: bool, mmu: &mut Mmu) {
+    fn call_c_n(&mut self, c: bool, mmu: &mut Mmu) -> bool {
         let n = self.fetch_word(mmu);
         if c {
             self.stack_push(self.reg.pc, mmu);
             self.reg.pc = n;
         }
+        c
     }
 
     // Push address of next instruction onto the stack and then jump to address n.
@@ -317,30 +402,69 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn jp_c_n(&mut self, c: bool, mmu: &mut Mmu) {
+    fn jp_c_n(&mut self, c: bool, mmu: &mut Mmu) -> bool {
         let n = self.fetch_word(mmu);
         if c {
             self.reg.pc = n;
         }
+        c
     }
 
     // Add n to current address and jump tp it.
-    fn jr_c(&mut self, c: bool, mmu: &mut Mmu) {
+    fn jr_c(&mut self, c: bool, mmu: &mut Mmu) -> bool {
         let n = self.fetch_signed(mmu);
         if c {
             let pc = i32::from(self.reg.pc) + i32::from(n);
             self.reg.pc = (pc & 0xffff) as u16;
         }
+        c
     }
 }
 
 impl Cpu {
     pub fn step(&mut self, mmu: &mut Mmu) -> usize {
-        self.exec(mmu)
+        if self.ime {
+            let int = self.int(mmu);
+            if int != 0 {
+                return int;
+            }
+        }
+        let c = if !self.halt {
+            self.exec(mmu)
+        } else {
+            return CYCLES[0x0];
+        };
+        c
+    }
+
+    fn int(&mut self, mmu: &mut Mmu) -> usize {
+        let ie = mmu.read(0xffff);
+        let if_ = mmu.read(0xff0f);
+        let tr = (ie & if_).trailing_zeros() as u8;
+        if tr <= 4 {
+            self.ime = false;
+            self.halt = false;
+            mmu.write(0xff0f, if_ & !(1 << tr));
+            self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
+            16
+        } else {
+            0
+        }
+    }
+
+    fn int_v(&mut self, v: u16, mmu: &mut Mmu) -> usize {
+        eprintln!("interrupt vec={:x} tac={:08b}", v, mmu.read(0xff07));
+        self.stack_push(self.reg.pc, mmu);
+        self.reg.pc = v;
+        16
     }
 
     fn exec(&mut self, mmu: &mut Mmu) -> usize {
         let opcode = self.fetch(mmu);
+        let mut branch = false;
+
+        //eprintln!("pc={:x} op={:x}", self.reg.pc - 1, opcode);
+
         match opcode {
             // ADD A,n
             0x80 => self.alu_add_n(self.reg.b),
@@ -506,7 +630,16 @@ impl Cpu {
             0x29 => self.alu_add_hl_nn(self.reg.hl()),
             0x39 => self.alu_add_hl_nn(self.reg.sp),
 
-            0xe8 => unimplemented!("ADD SP,r8"),
+            // ADD SP,r8
+            0xe8 => {
+                let a = self.reg.sp;
+                let b = i16::from(self.fetch_signed(mmu)) as u16;
+                self.reg.set_flag(C, (a & 0xff) + (b & 0xff) > 0xff);
+                self.reg.set_flag(H, (a & 0xf) + (b & 0xf) > 0xf);
+                self.reg.set_flag(N, false);
+                self.reg.set_flag(Z, false);
+                self.reg.sp = a.wrapping_add(b);
+            }
 
             // SCF
             0x37 => {
@@ -521,27 +654,56 @@ impl Cpu {
                 self.reg.set_flag(C, !self.reg.is_flag(C));
             }
             0x27 => {
-                self.reg.set_flag(Z, unimplemented!());
+                let mut a = self.reg.a;
+                let mut adjust = if self.reg.is_flag(C) { 0x60 } else { 0x00 };
+                if self.reg.is_flag(H) {
+                    adjust |= 0x06;
+                };
+                if !self.reg.is_flag(N) {
+                    if a & 0x0f > 0x09 {
+                        adjust |= 0x06;
+                    };
+                    if a > 0x99 {
+                        adjust |= 0x60;
+                    };
+                    a = a.wrapping_add(adjust);
+                } else {
+                    a = a.wrapping_sub(adjust);
+                }
+                self.reg.set_flag(C, adjust >= 0x60);
                 self.reg.set_flag(H, false);
-                self.reg.set_flag(C, unimplemented!());
-
-                unimplemented!("Implement 0x27 DAA")
+                self.reg.set_flag(Z, a == 0x00);
+                self.reg.a = a;
             }
             // CPL
             0x2f => {
                 self.reg.a = !self.reg.a;
-                self.reg.set_flag(N, false);
-                self.reg.set_flag(H, false);
+                self.reg.set_flag(N, true);
+                self.reg.set_flag(H, true);
             }
 
             // FIXME CONFLICT
             // according to https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
             // Z is reset, but according to http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
             // Z depends on the result
-            0x07 => self.reg.a = self.alu_rlc_n(self.reg.a), // unimplemented!("RLCA"),
-            0x17 => self.reg.a = self.alu_rl_n(self.reg.a),  // unimplemented!("RLA"),
-            0x0f => self.reg.a = self.alu_rrc_n(self.reg.a), // unimplemented!("RRCA"),
-            0x1f => self.reg.a = self.alu_rr_n(self.reg.a),  // unimplemented!("RRA"),
+            //
+            // UPDATE: the opcode table is right!!
+            0x07 => {
+                self.reg.a = self.alu_rlc_n(self.reg.a);
+                self.reg.set_flag(Z, false); // 09-op r,r.gb
+            }
+            0x17 => {
+                self.reg.a = self.alu_rl_n(self.reg.a);
+                self.reg.set_flag(Z, false);
+            }
+            0x0f => {
+                self.reg.a = self.alu_rrc_n(self.reg.a);
+                self.reg.set_flag(Z, false);
+            }
+            0x1f => {
+                self.reg.a = self.alu_rr_n(self.reg.a);
+                self.reg.set_flag(Z, false);
+            }
 
             // LD B,n
             0x40 => self.reg.b = self.reg.b,
@@ -624,9 +786,10 @@ impl Cpu {
             0x7f => self.reg.a = self.reg.a,
             // LD (a16),SP
             0x08 => {
-                unimplemented!("verify that this is correct (endianness)");
-                // let a16 = self.fetch_word(mmu);
-                // mmu.write_word(a16, self.reg.sp);
+                let a16 = self.fetch_word(mmu);
+                let sp = self.reg.sp;
+                mmu.write(a16, (sp & 0xff) as u8);
+                mmu.write(a16 + 1, ((sp >> 8) & 0xff) as u8);
             }
             // LD nn,d16
             0x01 => {
@@ -643,7 +806,15 @@ impl Cpu {
             }
             0x31 => self.reg.sp = self.fetch_word(mmu),
             // LD HL,SP+r8
-            0xf8 => unimplemented!("LD HL,SP+r8"),
+            0xf8 => {
+                let a = self.reg.sp;
+                let b = i16::from(self.fetch_signed(mmu)) as u16;
+                self.reg.set_flag(C, (a & 0x00ff) + (b & 0x00ff) > 0x00ff);
+                self.reg.set_flag(H, (a & 0x000f) + (b & 0x000f) > 0x000f);
+                self.reg.set_flag(N, false);
+                self.reg.set_flag(Z, false);
+                self.reg.set_hl(a.wrapping_add(b));
+            }
             // LD SP,HL
             0xf9 => self.reg.sp = self.reg.hl(),
             // LD (nn),A
@@ -692,19 +863,22 @@ impl Cpu {
             }
 
             0xea => mmu.write(self.fetch_word(mmu), self.reg.a),
-            0xfa => unimplemented!("LD A,(a16)"),
+            0xfa => {
+                let a16 = self.fetch_word(mmu);
+                self.reg.a = mmu.read(a16);
+            }
 
             // POP nn
-            0xc1 | 0xd1 | 0xe1 => {
+            0xc1 | 0xd1 | 0xe1 | 0xf1 => {
                 let r = self.stack_pop(mmu);
                 match opcode {
                     0xc1 => self.reg.set_bc(r),
                     0xd1 => self.reg.set_de(r),
                     0xe1 => self.reg.set_hl(r),
+                    0xf1 => self.reg.set_af(r & 0xfff0),
                     _ => panic!(),
                 }
             }
-            0xf1 => unimplemented!("POP AF => F set to 0x0 afterwards?"),
             // PUSH nn
             0xc5 => self.stack_push(self.reg.bc(), mmu),
             0xd5 => self.stack_push(self.reg.de(), mmu),
@@ -736,8 +910,8 @@ impl Cpu {
             0xc9 => self.reg.pc = self.stack_pop(mmu),
             // RETI
             0xd9 => {
+                self.ime = true;
                 self.reg.pc = self.stack_pop(mmu);
-                self.ime = true
             }
 
             0xc7 => self.rst_n(0x00, mmu),
@@ -749,42 +923,444 @@ impl Cpu {
             0xef => self.rst_n(0x28, mmu),
             0xff => self.rst_n(0x38, mmu),
 
-            0xc4 => self.call_c_n(!self.reg.is_flag(Z), mmu),
-            0xd4 => self.call_c_n(!self.reg.is_flag(C), mmu),
-            0xcc => self.call_c_n(self.reg.is_flag(Z), mmu),
-            0xdc => self.call_c_n(self.reg.is_flag(C), mmu),
+            0xc4 => branch = self.call_c_n(!self.reg.is_flag(Z), mmu),
+            0xd4 => branch = self.call_c_n(!self.reg.is_flag(C), mmu),
+            0xcc => branch = self.call_c_n(self.reg.is_flag(Z), mmu),
+            0xdc => branch = self.call_c_n(self.reg.is_flag(C), mmu),
             0xcd => self.call_n(mmu),
 
-            0xc2 => self.jp_c_n(!self.reg.is_flag(Z), mmu),
-            0xd2 => self.jp_c_n(!self.reg.is_flag(C), mmu),
-            0xca => self.jp_c_n(self.reg.is_flag(Z), mmu),
-            0xda => self.jp_c_n(self.reg.is_flag(C), mmu),
+            0xc2 => branch = self.jp_c_n(!self.reg.is_flag(Z), mmu),
+            0xd2 => branch = self.jp_c_n(!self.reg.is_flag(C), mmu),
+            0xca => branch = self.jp_c_n(self.reg.is_flag(Z), mmu),
+            0xda => branch = self.jp_c_n(self.reg.is_flag(C), mmu),
             0xc3 => self.reg.pc = self.fetch_word(mmu),
             0xe9 => {
-                panic!("PDF says: Jump to address contained in HL. Is it the register, or the pointed memory?");
-                self.reg.pc = mmu.read_word(self.reg.hl())
+                // The pdf was ambiguous. Verified with other emulators:
+                // - https://github.com/taisel/GameBoy-Online/blob/master/js/GameBoyCore.js#L2086
+                // - https://github.com/HFO4/gameboy.live/blob/master/gb/opcodes.go#L2103
+                self.reg.pc = self.reg.hl()
             }
 
-            0x20 => self.jr_c(!self.reg.is_flag(Z), mmu), // unimplemented!("JR NZ,r8"),
-            0x30 => self.jr_c(!self.reg.is_flag(C), mmu), // unimplemented!("JR NC,r8"),
-            0x28 => self.jr_c(self.reg.is_flag(Z), mmu),  // unimplemented!("JR Z,r8"),
-            0x38 => self.jr_c(self.reg.is_flag(C), mmu),  // unimplemented!("JR C,r8"),
-            0x18 => self.jr_c(true, mmu),                 // unimplemented!("JR r8"),
+            0x20 => branch = self.jr_c(!self.reg.is_flag(Z), mmu),
+            0x30 => branch = self.jr_c(!self.reg.is_flag(C), mmu),
+            0x28 => branch = self.jr_c(self.reg.is_flag(Z), mmu),
+            0x38 => branch = self.jr_c(self.reg.is_flag(C), mmu),
+            0x18 => {
+                self.jr_c(true, mmu);
+            }
 
             // Misc/control instructions
             0x00 => {}                                                 // NOP
             0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
             0x76 => self.halt = true,
             0xf3 => self.ime = false,
-            0xfb => self.ime = true,
+            0xfb => {
+                eprintln!("EI -  pc={:x}", self.reg.pc - 1);
+                //self.ime = true;
+                self.ime = true;
+            }
             0xcb => {
                 let cb = self.fetch(mmu);
                 match cb {
-                    0x7c => self.alu_bit_b_n(7, self.reg.h),
+                    // RLC n
+                    0x00 => self.reg.b = self.alu_rlc_n(self.reg.b),
+                    0x01 => self.reg.c = self.alu_rlc_n(self.reg.c),
+                    0x02 => self.reg.d = self.alu_rlc_n(self.reg.d),
+                    0x03 => self.reg.e = self.alu_rlc_n(self.reg.e),
+                    0x04 => self.reg.h = self.alu_rlc_n(self.reg.h),
+                    0x05 => self.reg.l = self.alu_rlc_n(self.reg.l),
+                    0x06 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_rlc_n(mmu.read(hl)))
+                    }
+                    0x07 => self.reg.a = self.alu_rlc_n(self.reg.a),
+
+                    // RRC n
+                    0x08 => self.reg.b = self.alu_rrc_n(self.reg.b),
+                    0x09 => self.reg.c = self.alu_rrc_n(self.reg.c),
+                    0x0a => self.reg.d = self.alu_rrc_n(self.reg.d),
+                    0x0b => self.reg.e = self.alu_rrc_n(self.reg.e),
+                    0x0c => self.reg.h = self.alu_rrc_n(self.reg.h),
+                    0x0d => self.reg.l = self.alu_rrc_n(self.reg.l),
+                    0x0e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_rrc_n(mmu.read(hl)))
+                    }
+                    0x0f => self.reg.a = self.alu_rrc_n(self.reg.a),
+
+                    // RL n
+                    0x10 => self.reg.b = self.alu_rl_n(self.reg.b),
                     0x11 => self.reg.c = self.alu_rl_n(self.reg.c),
-                    _ => unimplemented!("{:x}", self.reg.pc - 2),
+                    0x12 => self.reg.d = self.alu_rl_n(self.reg.d),
+                    0x13 => self.reg.e = self.alu_rl_n(self.reg.e),
+                    0x14 => self.reg.h = self.alu_rl_n(self.reg.h),
+                    0x15 => self.reg.l = self.alu_rl_n(self.reg.l),
+                    0x16 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_rl_n(mmu.read(hl)))
+                    }
+                    0x17 => self.reg.a = self.alu_rl_n(self.reg.a),
+
+                    // RR n
+                    0x18 => self.reg.b = self.alu_rr_n(self.reg.b),
+                    0x19 => self.reg.c = self.alu_rr_n(self.reg.c),
+                    0x1a => self.reg.d = self.alu_rr_n(self.reg.d),
+                    0x1b => self.reg.e = self.alu_rr_n(self.reg.e),
+                    0x1c => self.reg.h = self.alu_rr_n(self.reg.h),
+                    0x1d => self.reg.l = self.alu_rr_n(self.reg.l),
+                    0x1e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_rr_n(mmu.read(hl)))
+                    }
+                    0x1f => self.reg.a = self.alu_rr_n(self.reg.a),
+
+                    // SWAP n
+                    0x30 => self.reg.b = self.alu_swap_n(self.reg.b),
+                    0x31 => self.reg.c = self.alu_swap_n(self.reg.c),
+                    0x32 => self.reg.d = self.alu_swap_n(self.reg.d),
+                    0x33 => self.reg.e = self.alu_swap_n(self.reg.e),
+                    0x34 => self.reg.h = self.alu_swap_n(self.reg.h),
+                    0x35 => self.reg.l = self.alu_swap_n(self.reg.l),
+                    0x36 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_swap_n(mmu.read(hl)))
+                    }
+                    0x37 => self.reg.a = self.alu_swap_n(self.reg.a),
+
+                    // BIT 0,n
+                    0x40 => self.alu_bit_b_n(0, self.reg.b),
+                    0x41 => self.alu_bit_b_n(0, self.reg.c),
+                    0x42 => self.alu_bit_b_n(0, self.reg.d),
+                    0x43 => self.alu_bit_b_n(0, self.reg.e),
+                    0x44 => self.alu_bit_b_n(0, self.reg.h),
+                    0x45 => self.alu_bit_b_n(0, self.reg.l),
+                    0x46 => self.alu_bit_b_n(0, mmu.read(self.reg.hl())),
+                    0x47 => self.alu_bit_b_n(0, self.reg.a),
+
+                    // BIT 1,n
+                    0x48 => self.alu_bit_b_n(1, self.reg.b),
+                    0x49 => self.alu_bit_b_n(1, self.reg.c),
+                    0x4a => self.alu_bit_b_n(1, self.reg.d),
+                    0x4b => self.alu_bit_b_n(1, self.reg.e),
+                    0x4c => self.alu_bit_b_n(1, self.reg.h),
+                    0x4d => self.alu_bit_b_n(1, self.reg.l),
+                    0x4e => self.alu_bit_b_n(1, mmu.read(self.reg.hl())),
+                    0x4f => self.alu_bit_b_n(1, self.reg.a),
+
+                    // BIT 2,n
+                    0x50 => self.alu_bit_b_n(2, self.reg.b),
+                    0x51 => self.alu_bit_b_n(2, self.reg.c),
+                    0x52 => self.alu_bit_b_n(2, self.reg.d),
+                    0x53 => self.alu_bit_b_n(2, self.reg.e),
+                    0x54 => self.alu_bit_b_n(2, self.reg.h),
+                    0x55 => self.alu_bit_b_n(2, self.reg.l),
+                    0x56 => self.alu_bit_b_n(2, mmu.read(self.reg.hl())),
+                    0x57 => self.alu_bit_b_n(2, self.reg.a),
+
+                    // BIT 3,n
+                    0x58 => self.alu_bit_b_n(3, self.reg.b),
+                    0x59 => self.alu_bit_b_n(3, self.reg.c),
+                    0x5a => self.alu_bit_b_n(3, self.reg.d),
+                    0x5b => self.alu_bit_b_n(3, self.reg.e),
+                    0x5c => self.alu_bit_b_n(3, self.reg.h),
+                    0x5d => self.alu_bit_b_n(3, self.reg.l),
+                    0x5e => self.alu_bit_b_n(3, mmu.read(self.reg.hl())),
+                    0x5f => self.alu_bit_b_n(3, self.reg.a),
+
+                    // BIT 4,n
+                    0x60 => self.alu_bit_b_n(4, self.reg.b),
+                    0x61 => self.alu_bit_b_n(4, self.reg.c),
+                    0x62 => self.alu_bit_b_n(4, self.reg.d),
+                    0x63 => self.alu_bit_b_n(4, self.reg.e),
+                    0x64 => self.alu_bit_b_n(4, self.reg.h),
+                    0x65 => self.alu_bit_b_n(4, self.reg.l),
+                    0x66 => self.alu_bit_b_n(4, mmu.read(self.reg.hl())),
+                    0x67 => self.alu_bit_b_n(4, self.reg.a),
+
+                    // BIT 5,n
+                    0x68 => self.alu_bit_b_n(5, self.reg.b),
+                    0x69 => self.alu_bit_b_n(5, self.reg.c),
+                    0x6a => self.alu_bit_b_n(5, self.reg.d),
+                    0x6b => self.alu_bit_b_n(5, self.reg.e),
+                    0x6c => self.alu_bit_b_n(5, self.reg.h),
+                    0x6d => self.alu_bit_b_n(5, self.reg.l),
+                    0x6e => self.alu_bit_b_n(5, mmu.read(self.reg.hl())),
+                    0x6f => self.alu_bit_b_n(5, self.reg.a),
+
+                    // BIT 6,n
+                    0x70 => self.alu_bit_b_n(6, self.reg.b),
+                    0x71 => self.alu_bit_b_n(6, self.reg.c),
+                    0x72 => self.alu_bit_b_n(6, self.reg.d),
+                    0x73 => self.alu_bit_b_n(6, self.reg.e),
+                    0x74 => self.alu_bit_b_n(6, self.reg.h),
+                    0x75 => self.alu_bit_b_n(6, self.reg.l),
+                    0x76 => self.alu_bit_b_n(6, mmu.read(self.reg.hl())),
+                    0x77 => self.alu_bit_b_n(6, self.reg.a),
+
+                    // BIT 7,n
+                    0x78 => self.alu_bit_b_n(7, self.reg.b),
+                    0x79 => self.alu_bit_b_n(7, self.reg.c),
+                    0x7a => self.alu_bit_b_n(7, self.reg.d),
+                    0x7b => self.alu_bit_b_n(7, self.reg.e),
+                    0x7c => self.alu_bit_b_n(7, self.reg.h),
+                    0x7d => self.alu_bit_b_n(7, self.reg.l),
+                    0x7e => self.alu_bit_b_n(7, mmu.read(self.reg.hl())),
+                    0x7f => self.alu_bit_b_n(7, self.reg.a),
+
+                    // RES 0,n
+                    0x80 => self.reg.b = self.alu_res_b_n(0, self.reg.b),
+                    0x81 => self.reg.c = self.alu_res_b_n(0, self.reg.c),
+                    0x82 => self.reg.d = self.alu_res_b_n(0, self.reg.d),
+                    0x83 => self.reg.e = self.alu_res_b_n(0, self.reg.e),
+                    0x84 => self.reg.h = self.alu_res_b_n(0, self.reg.h),
+                    0x85 => self.reg.l = self.alu_res_b_n(0, self.reg.l),
+                    0x86 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(0, mmu.read(self.reg.hl())))
+                    }
+                    0x87 => self.reg.a = self.alu_res_b_n(0, self.reg.a),
+
+                    // RES 1,n
+                    0x88 => self.reg.b = self.alu_res_b_n(1, self.reg.b),
+                    0x89 => self.reg.c = self.alu_res_b_n(1, self.reg.c),
+                    0x8a => self.reg.d = self.alu_res_b_n(1, self.reg.d),
+                    0x8b => self.reg.e = self.alu_res_b_n(1, self.reg.e),
+                    0x8c => self.reg.h = self.alu_res_b_n(1, self.reg.h),
+                    0x8d => self.reg.l = self.alu_res_b_n(1, self.reg.l),
+                    0x8e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(1, mmu.read(self.reg.hl())))
+                    }
+                    0x8f => self.reg.a = self.alu_res_b_n(1, self.reg.a),
+
+                    // RES 2,n
+                    0x90 => self.reg.b = self.alu_res_b_n(2, self.reg.b),
+                    0x91 => self.reg.c = self.alu_res_b_n(2, self.reg.c),
+                    0x92 => self.reg.d = self.alu_res_b_n(2, self.reg.d),
+                    0x93 => self.reg.e = self.alu_res_b_n(2, self.reg.e),
+                    0x94 => self.reg.h = self.alu_res_b_n(2, self.reg.h),
+                    0x95 => self.reg.l = self.alu_res_b_n(2, self.reg.l),
+                    0x96 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(2, mmu.read(self.reg.hl())))
+                    }
+                    0x97 => self.reg.a = self.alu_res_b_n(2, self.reg.a),
+
+                    // RES 3,n
+                    0x98 => self.reg.b = self.alu_res_b_n(3, self.reg.b),
+                    0x99 => self.reg.c = self.alu_res_b_n(3, self.reg.c),
+                    0x9a => self.reg.d = self.alu_res_b_n(3, self.reg.d),
+                    0x9b => self.reg.e = self.alu_res_b_n(3, self.reg.e),
+                    0x9c => self.reg.h = self.alu_res_b_n(3, self.reg.h),
+                    0x9d => self.reg.l = self.alu_res_b_n(3, self.reg.l),
+                    0x9e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(3, mmu.read(self.reg.hl())))
+                    }
+                    0x9f => self.reg.a = self.alu_res_b_n(3, self.reg.a),
+
+                    // RES 4,n
+                    0xa0 => self.reg.b = self.alu_res_b_n(4, self.reg.b),
+                    0xa1 => self.reg.c = self.alu_res_b_n(4, self.reg.c),
+                    0xa2 => self.reg.d = self.alu_res_b_n(4, self.reg.d),
+                    0xa3 => self.reg.e = self.alu_res_b_n(4, self.reg.e),
+                    0xa4 => self.reg.h = self.alu_res_b_n(4, self.reg.h),
+                    0xa5 => self.reg.l = self.alu_res_b_n(4, self.reg.l),
+                    0xa6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(4, mmu.read(self.reg.hl())))
+                    }
+                    0xa7 => self.reg.a = self.alu_res_b_n(4, self.reg.a),
+
+                    // RES 5,n
+                    0xa8 => self.reg.b = self.alu_res_b_n(5, self.reg.b),
+                    0xa9 => self.reg.c = self.alu_res_b_n(5, self.reg.c),
+                    0xaa => self.reg.d = self.alu_res_b_n(5, self.reg.d),
+                    0xab => self.reg.e = self.alu_res_b_n(5, self.reg.e),
+                    0xac => self.reg.h = self.alu_res_b_n(5, self.reg.h),
+                    0xad => self.reg.l = self.alu_res_b_n(5, self.reg.l),
+                    0xae => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(5, mmu.read(self.reg.hl())))
+                    }
+                    0xaf => self.reg.a = self.alu_res_b_n(5, self.reg.a),
+
+                    // RES 6,n
+                    0xb0 => self.reg.b = self.alu_res_b_n(6, self.reg.b),
+                    0xb1 => self.reg.c = self.alu_res_b_n(6, self.reg.c),
+                    0xb2 => self.reg.d = self.alu_res_b_n(6, self.reg.d),
+                    0xb3 => self.reg.e = self.alu_res_b_n(6, self.reg.e),
+                    0xb4 => self.reg.h = self.alu_res_b_n(6, self.reg.h),
+                    0xb5 => self.reg.l = self.alu_res_b_n(6, self.reg.l),
+                    0xb6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(6, mmu.read(self.reg.hl())))
+                    }
+                    0xb7 => self.reg.a = self.alu_res_b_n(6, self.reg.a),
+
+                    // RES 7,n
+                    0xb8 => self.reg.b = self.alu_res_b_n(7, self.reg.b),
+                    0xb9 => self.reg.c = self.alu_res_b_n(7, self.reg.c),
+                    0xba => self.reg.d = self.alu_res_b_n(7, self.reg.d),
+                    0xbb => self.reg.e = self.alu_res_b_n(7, self.reg.e),
+                    0xbc => self.reg.h = self.alu_res_b_n(7, self.reg.h),
+                    0xbd => self.reg.l = self.alu_res_b_n(7, self.reg.l),
+                    0xbe => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_res_b_n(7, mmu.read(self.reg.hl())))
+                    }
+                    0xbf => self.reg.a = self.alu_res_b_n(7, self.reg.a),
+
+                    // SET 0,n
+                    0xc0 => self.reg.b = self.alu_set_b_n(0, self.reg.b),
+                    0xc1 => self.reg.c = self.alu_set_b_n(0, self.reg.c),
+                    0xc2 => self.reg.d = self.alu_set_b_n(0, self.reg.d),
+                    0xc3 => self.reg.e = self.alu_set_b_n(0, self.reg.e),
+                    0xc4 => self.reg.h = self.alu_set_b_n(0, self.reg.h),
+                    0xc5 => self.reg.l = self.alu_set_b_n(0, self.reg.l),
+                    0xc6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(0, mmu.read(self.reg.hl())))
+                    }
+                    0xc7 => self.reg.a = self.alu_set_b_n(0, self.reg.a),
+
+                    // SET 1,n
+                    0xc8 => self.reg.b = self.alu_set_b_n(1, self.reg.b),
+                    0xc9 => self.reg.c = self.alu_set_b_n(1, self.reg.c),
+                    0xca => self.reg.d = self.alu_set_b_n(1, self.reg.d),
+                    0xcb => self.reg.e = self.alu_set_b_n(1, self.reg.e),
+                    0xcc => self.reg.h = self.alu_set_b_n(1, self.reg.h),
+                    0xcd => self.reg.l = self.alu_set_b_n(1, self.reg.l),
+                    0xce => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(1, mmu.read(self.reg.hl())))
+                    }
+                    0xcf => self.reg.a = self.alu_set_b_n(1, self.reg.a),
+
+                    // SET 2,n
+                    0xd0 => self.reg.b = self.alu_set_b_n(2, self.reg.b),
+                    0xd1 => self.reg.c = self.alu_set_b_n(2, self.reg.c),
+                    0xd2 => self.reg.d = self.alu_set_b_n(2, self.reg.d),
+                    0xd3 => self.reg.e = self.alu_set_b_n(2, self.reg.e),
+                    0xd4 => self.reg.h = self.alu_set_b_n(2, self.reg.h),
+                    0xd5 => self.reg.l = self.alu_set_b_n(2, self.reg.l),
+                    0xd6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(2, mmu.read(self.reg.hl())))
+                    }
+                    0xd7 => self.reg.a = self.alu_set_b_n(2, self.reg.a),
+
+                    // SET 3,n
+                    0xd8 => self.reg.b = self.alu_set_b_n(3, self.reg.b),
+                    0xd9 => self.reg.c = self.alu_set_b_n(3, self.reg.c),
+                    0xda => self.reg.d = self.alu_set_b_n(3, self.reg.d),
+                    0xdb => self.reg.e = self.alu_set_b_n(3, self.reg.e),
+                    0xdc => self.reg.h = self.alu_set_b_n(3, self.reg.h),
+                    0xdd => self.reg.l = self.alu_set_b_n(3, self.reg.l),
+                    0xde => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(3, mmu.read(self.reg.hl())))
+                    }
+                    0xdf => self.reg.a = self.alu_set_b_n(3, self.reg.a),
+
+                    // SET 4,n
+                    0xe0 => self.reg.b = self.alu_set_b_n(4, self.reg.b),
+                    0xe1 => self.reg.c = self.alu_set_b_n(4, self.reg.c),
+                    0xe2 => self.reg.d = self.alu_set_b_n(4, self.reg.d),
+                    0xe3 => self.reg.e = self.alu_set_b_n(4, self.reg.e),
+                    0xe4 => self.reg.h = self.alu_set_b_n(4, self.reg.h),
+                    0xe5 => self.reg.l = self.alu_set_b_n(4, self.reg.l),
+                    0xe6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(4, mmu.read(self.reg.hl())))
+                    }
+                    0xe7 => self.reg.a = self.alu_set_b_n(4, self.reg.a),
+
+                    // SET 5,n
+                    0xe8 => self.reg.b = self.alu_set_b_n(5, self.reg.b),
+                    0xe9 => self.reg.c = self.alu_set_b_n(5, self.reg.c),
+                    0xea => self.reg.d = self.alu_set_b_n(5, self.reg.d),
+                    0xeb => self.reg.e = self.alu_set_b_n(5, self.reg.e),
+                    0xec => self.reg.h = self.alu_set_b_n(5, self.reg.h),
+                    0xed => self.reg.l = self.alu_set_b_n(5, self.reg.l),
+                    0xee => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(5, mmu.read(self.reg.hl())))
+                    }
+                    0xef => self.reg.a = self.alu_set_b_n(5, self.reg.a),
+
+                    // SET 6,n
+                    0xf0 => self.reg.b = self.alu_set_b_n(6, self.reg.b),
+                    0xf1 => self.reg.c = self.alu_set_b_n(6, self.reg.c),
+                    0xf2 => self.reg.d = self.alu_set_b_n(6, self.reg.d),
+                    0xf3 => self.reg.e = self.alu_set_b_n(6, self.reg.e),
+                    0xf4 => self.reg.h = self.alu_set_b_n(6, self.reg.h),
+                    0xf5 => self.reg.l = self.alu_set_b_n(6, self.reg.l),
+                    0xf6 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(6, mmu.read(self.reg.hl())))
+                    }
+                    0xf7 => self.reg.a = self.alu_set_b_n(6, self.reg.a),
+
+                    // SET 7,n
+                    0xf8 => self.reg.b = self.alu_set_b_n(7, self.reg.b),
+                    0xf9 => self.reg.c = self.alu_set_b_n(7, self.reg.c),
+                    0xfa => self.reg.d = self.alu_set_b_n(7, self.reg.d),
+                    0xfb => self.reg.e = self.alu_set_b_n(7, self.reg.e),
+                    0xfc => self.reg.h = self.alu_set_b_n(7, self.reg.h),
+                    0xfd => self.reg.l = self.alu_set_b_n(7, self.reg.l),
+                    0xfe => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_set_b_n(7, mmu.read(self.reg.hl())))
+                    }
+                    0xff => self.reg.a = self.alu_set_b_n(7, self.reg.a),
+
+                    // SRL n
+                    0x38 => self.reg.b = self.alu_srl_n(self.reg.b),
+                    0x39 => self.reg.c = self.alu_srl_n(self.reg.c),
+                    0x3a => self.reg.d = self.alu_srl_n(self.reg.d),
+                    0x3b => self.reg.e = self.alu_srl_n(self.reg.e),
+                    0x3c => self.reg.h = self.alu_srl_n(self.reg.h),
+                    0x3d => self.reg.l = self.alu_srl_n(self.reg.l),
+                    0x3e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_srl_n(mmu.read(self.reg.hl())))
+                    }
+                    0x3f => self.reg.a = self.alu_srl_n(self.reg.a),
+
+                    // SLA n
+                    0x20 => self.reg.b = self.alu_sla_n(self.reg.b),
+                    0x21 => self.reg.c = self.alu_sla_n(self.reg.c),
+                    0x22 => self.reg.d = self.alu_sla_n(self.reg.d),
+                    0x23 => self.reg.e = self.alu_sla_n(self.reg.e),
+                    0x24 => self.reg.h = self.alu_sla_n(self.reg.h),
+                    0x25 => self.reg.l = self.alu_sla_n(self.reg.l),
+                    0x26 => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_sla_n(mmu.read(self.reg.hl())))
+                    }
+                    0x27 => self.reg.a = self.alu_sla_n(self.reg.a),
+
+                    // SRA n
+                    0x28 => self.reg.b = self.alu_sra_n(self.reg.b),
+                    0x29 => self.reg.c = self.alu_sra_n(self.reg.c),
+                    0x2a => self.reg.d = self.alu_sra_n(self.reg.d),
+                    0x2b => self.reg.e = self.alu_sra_n(self.reg.e),
+                    0x2c => self.reg.h = self.alu_sra_n(self.reg.h),
+                    0x2d => self.reg.l = self.alu_sra_n(self.reg.l),
+                    0x2e => {
+                        let hl = self.reg.hl();
+                        mmu.write(hl, self.alu_sra_n(mmu.read(self.reg.hl())))
+                    }
+                    0x2f => self.reg.a = self.alu_sra_n(self.reg.a),
+
+                    _ => unimplemented!("{:x}", cb),
                 }
-                //unimplemented!("0xcb")
+
+                return match cb & 0x0f {
+                    0x06 | 0x0e => 16,
+                    _ => 8,
+                };
             }
 
             0xd3 | 0xdb | 0xdd | 0xe3 | 0xe4 | 0xeb..=0xed | 0xf4 | 0xfc | 0xfd => {
@@ -792,9 +1368,57 @@ impl Cpu {
             }
         }
 
-        0
+        let cycles = match opcode {
+            0x20 | 0x30 | 0x28 | 0x38 => {
+                if branch {
+                    12
+                } else {
+                    4
+                }
+            }
+            0xc0 | 0xd0 | 0xc8 | 0xd8 => {
+                if branch {
+                    20
+                } else {
+                    8
+                }
+            }
+            0xc2 | 0xd2 | 0xca | 0xda => {
+                if branch {
+                    16
+                } else {
+                    12
+                }
+            }
+            0xc4 | 0xd4 | 0xcc | 0xdc => {
+                if branch {
+                    24
+                } else {
+                    12
+                }
+            }
+            _ => CYCLES[opcode as usize] * 4,
+        };
+        assert_ne!(0, cycles, "{:x}", opcode);
+        cycles
     }
 }
 
 #[cfg(test)]
-mod test {}
+mod test {
+    use crate::{cartridge::RomOnly, cpu::Cpu, mmu::Mmu};
+
+    #[test]
+    fn stack() {
+        let mut cpu = Cpu::default();
+        let mut mmu = Mmu::new(RomOnly::tetris());
+
+        cpu.reg.sp = 0xfffc;
+
+        cpu.stack_push(0x1234, &mut mmu);
+        cpu.stack_push(0xabcd, &mut mmu);
+
+        assert_eq!(0xabcd, cpu.stack_pop(&mut mmu));
+        assert_eq!(0x1234, cpu.stack_pop(&mut mmu));
+    }
+}

@@ -6,11 +6,11 @@ use std::{
     time::Duration,
 };
 
-const TIMEOUT: u64 = 1;
+const TIMEOUT: u64 = 4;
 
 #[test]
 fn boot() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::default();
     let mut mmu = Mmu::new(RomOnly::tetris());
 
     let timeout = Arc::new(Mutex::new(Cell::new(false)));
@@ -27,11 +27,13 @@ fn boot() {
     mmu.write(0xff44, 144);
 
     while mmu.read(0xff50) == 0 {
+        //eprintln!("{:x}", mmu.read(0xff00));
         if timeout.lock().unwrap().get() {
             panic!("Timeout");
         }
 
-        let _ = cpu.step(&mut mmu);
+        let cycles = cpu.step(&mut mmu);
+        mmu.step(cycles);
 
         min_scy = min_scy.min(mmu.read(0xff42));
         max_scy = max_scy.max(mmu.read(0xff42));

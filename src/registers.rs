@@ -17,9 +17,9 @@ pub struct Registers {
     pub sp: u16,
 }
 
-impl Registers {
+impl Default for Registers {
     #[rustfmt::skip]
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
             a: 0, f: 0,
             b: 0, c: 0,
@@ -29,7 +29,9 @@ impl Registers {
             sp: 0
         }
     }
+}
 
+impl Registers {
     pub fn af(&self) -> u16 {
         u16::from(self.a) << 8 | u16::from(self.f)
     }
@@ -48,7 +50,8 @@ impl Registers {
 
     pub fn set_af(&mut self, af: u16) {
         self.a = (af >> 8) as u8;
-        self.f = (af & 0xff) as u8;
+        // low nibble in F register should always be 0
+        self.f = (af & 0xf0) as u8;
     }
 
     pub fn set_bc(&mut self, bc: u16) {
@@ -112,7 +115,7 @@ mod test {
 
     #[test]
     fn flags() {
-        let mut reg = Registers::new();
+        let mut reg = Registers::default();
 
         reg.set_flag(Z, true);
         reg.set_flag(N, false);
