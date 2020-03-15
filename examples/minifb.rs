@@ -67,6 +67,6 @@ fn main() {
                 .unwrap();
         }
 
-        //thread::sleep(Duration::new(0, 1_000_000_000 / 60));
+        thread::sleep(Duration::new(0, 1_000_000_000 / 60));
     }
 }

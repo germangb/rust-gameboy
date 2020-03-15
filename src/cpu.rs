@@ -442,31 +442,26 @@ impl Cpu {
         let ie = mmu.read(0xffff);
         let if_ = mmu.read(0xff0f);
         let tr = (ie & if_).trailing_zeros() as u8;
-        if self.ime && tr <= 4 {
-            self.ime = false;
+        if tr <= 4 {
             self.halt = false;
-            mmu.write(0xff0f, if_ & !(1 << tr));
-            self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
-            4
-        } else {
-            0
         }
+        if !self.ime || tr > 4 {
+            return 0;
+        }
+        self.ime = false;
+        mmu.write(0xff0f, if_ & !(1 << tr));
+        self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
+        4
     }
 
-    fn int_v(&mut self, v: u16, mmu: &mut Mmu) -> usize {
-        if v == 0x60 {
-            eprintln!("JOYPAD");
-        }
+    fn int_v(&mut self, v: u16, mmu: &mut Mmu) {
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = v;
-        16
     }
 
     fn exec(&mut self, mmu: &mut Mmu) -> usize {
         let opcode = self.fetch(mmu);
         let mut branch = false;
-
-        //eprintln!("pc={:x} op={:x}", self.reg.pc - 1, opcode);
 
         match opcode {
             // ADD A,n
@@ -955,7 +950,7 @@ impl Cpu {
             // Misc/control instructions
             0x00 => {}                                                 // NOP
             0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
-            0x76 => self.halt = false,
+            0x76 => self.halt = true,
             0xf3 => self.ime = false,
             0xfb => self.ime = true,
             0xcb => {
@@ -1352,8 +1347,6 @@ impl Cpu {
                         mmu.write(hl, self.alu_sra_n(mmu.read(self.reg.hl())))
                     }
                     0x2f => self.reg.a = self.alu_sra_n(self.reg.a),
-
-                    _ => unimplemented!("{:x}", cb),
                 }
 
                 return CB_CYCLES[cb as usize];
@@ -1395,7 +1388,7 @@ impl Cpu {
             }
             _ => CYCLES[opcode as usize],
         };
-        cycles
+        cycles.max(1)
     }
 }
 

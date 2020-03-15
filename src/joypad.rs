@@ -129,7 +129,7 @@ impl Device for Joypad {
 mod tests {
     use crate::{
         device::Device,
-        interrupts::{Flag, Interrupts},
+        interrupts::Interrupts,
         joypad::{Btn::*, Dir::*, Joypad, Key, BTN, DIR},
     };
     use std::{cell::RefCell, rc::Rc};
@@ -195,35 +195,5 @@ mod tests {
         assert_eq!(BTN | 0b0001, joypad.read(0xff00));
         joypad.press(&Key::Btn(B));
         assert_eq!(BTN | 0b0000, joypad.read(0xff00));
-    }
-
-    #[test]
-    fn interrupt_dir_selected() {
-        let int = Rc::new(RefCell::new(Interrupts::default()));
-        let mut joypad = Joypad::new(int.clone());
-
-        joypad.write(0xff00, DIR);
-        assert!(!int.borrow().is_active(Flag::Joypad));
-        joypad.press(&Key::Dir(Left));
-        assert!(int.borrow().is_active(Flag::Joypad));
-        int.borrow_mut().reset(Flag::Joypad);
-
-        joypad.press(&Key::Btn(A));
-        assert!(!int.borrow().is_active(Flag::Joypad));
-    }
-
-    #[test]
-    fn interrupt_btn_selected() {
-        let int = Rc::new(RefCell::new(Interrupts::default()));
-        let mut joypad = Joypad::new(int.clone());
-
-        joypad.write(0xff00, BTN);
-        assert!(!int.borrow().is_active(Flag::Joypad));
-        joypad.press(&Key::Btn(A));
-        assert!(int.borrow().is_active(Flag::Joypad));
-        int.borrow_mut().reset(Flag::Joypad);
-
-        joypad.press(&Key::Dir(Left));
-        assert!(!int.borrow().is_active(Flag::Joypad));
     }
 }

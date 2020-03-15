@@ -1,7 +1,11 @@
+## DMG
+
+![](assets/tetris.gif)
+
 ## tests
 
 - [x] `01-special.gb`
-- [ ] `02-interrupts.gb`
+- [x] `02-interrupts.gb`
 - [x] `03-op sp,hl.gb`
 - [x] `04-op r,imm.gb`
 - [x] `05-op rp.gb`

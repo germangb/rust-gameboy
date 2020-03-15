@@ -7,10 +7,10 @@ use std::{cell::RefCell, mem, rc::Rc};
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK: usize = 207 * 2;
-pub const OAM: usize = 83 * 2;
-pub const PIXEL: usize = 175 * 2;
-pub const VBLANK: usize = 4560 * 2;
+pub const HBLANK: usize = 207 * 4;
+pub const OAM: usize = 83 * 4;
+pub const PIXEL: usize = 175 * 4;
+pub const VBLANK: usize = 4560 * 4;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -19,6 +19,17 @@ enum Mode {
     VBlank = 1,
     OAM = 2,
     Pixel = 3,
+}
+
+#[repr(u8)]
+enum TileMap {
+    X9c00 = 0x8,
+    X9800 = 0,
+}
+#[repr(u8)]
+enum TileData {
+    X8000 = 0x10,
+    X8800 = 0,
 }
 
 #[repr(u32)]
@@ -81,7 +92,7 @@ impl Ppu {
         }
     }
 
-    pub(crate) fn step(&mut self, cycles: usize) {
+    pub fn step(&mut self, cycles: usize) {
         if self.lcdc & 0x80 == 0 {
             return;
         }
@@ -97,7 +108,8 @@ impl Ppu {
                 if self.cycles >= PIXEL {
                     self.mode = Mode::HBlank;
                     self.cycles %= PIXEL;
-                    self.render_line();
+                    self.render_bg();
+                    self.render_sprites();
                     if self.stat & 0x8 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
@@ -109,9 +121,7 @@ impl Ppu {
                     self.ly += 1;
                     if self.ly == 144 {
                         self.mode = Mode::VBlank;
-                        //if self.stat & 0x10 != 0 {
                         self.int.borrow_mut().set(Flag::VBlank);
-                    //}
                     } else {
                         self.mode = Mode::OAM;
                         if self.stat & 0x20 != 0 {
@@ -137,21 +147,9 @@ impl Ppu {
         &self.buffer
     }
 
-    fn render_line(&mut self) {
-        #[repr(u8)]
-        enum TileMap {
-            X9c00 = 0x8,
-            X9800 = 0,
-        }
-        #[repr(u8)]
-        enum TileData {
-            X8000 = 0x10,
-            X8800 = 0,
-        }
+    fn render_bg(&mut self) {
         let bgp = self.bgp;
         let bg_display = self.lcdc & 0x1 != 0;
-        let obj_display = self.lcdc & 0x2 != 0;
-        let win_display = self.lcdc & 0x20 != 0;
         let bg_tile_map = if self.lcdc & 0x8 == 0x8 {
             TileMap::X9c00
         } else {
@@ -197,6 +195,16 @@ impl Ppu {
                 self.buffer[160 * self.ly as usize + pix] = pal[col_idx as usize];
             }
         }
+    }
+
+    fn render_sprites(&mut self) {
+        let obj_display = self.lcdc & 0x2 != 0;
+        let pal = [
+            Color::White,
+            Color::LightGray,
+            Color::DarkGray,
+            Color::Black,
+        ];
         if obj_display {
             for oam in (&self.oam[..]).chunks(4) {
                 let y = oam[0] as i16;
