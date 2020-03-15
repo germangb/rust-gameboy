@@ -21,9 +21,9 @@ pub trait Device {
     }
 
     fn read_slice(&self, addr: u16, slice: &mut [u8]) {
-        for i in 0..slice.len() {
+        for (i, item) in slice.iter_mut().enumerate() {
             let addr = addr.wrapping_add(i as u16);
-            slice[i] = self.read(addr);
+            *item = self.read(addr);
         }
     }
 }

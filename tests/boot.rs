@@ -27,7 +27,6 @@ fn boot() {
     mmu.write(0xff44, 144);
 
     while mmu.read(0xff50) == 0 {
-        //eprintln!("{:x}", mmu.read(0xff00));
         if timeout.lock().unwrap().get() {
             panic!("Timeout");
         }

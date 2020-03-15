@@ -17,7 +17,10 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    pub fn new<C: Cartridge + 'static>(cartridge: C) -> Self {
+    pub fn new<C>(cartridge: C) -> Self
+    where
+        C: Cartridge + 'static,
+    {
         let int = Rc::new(RefCell::new(Interrupts::default()));
         Self {
             boot: 0x0,
@@ -26,7 +29,7 @@ impl Mmu {
             timer: Timer::new(Rc::clone(&int)),
             wram: [0; 0x2000],
             joy: Joypad::new(Rc::clone(&int)),
-            sound: Sound::new(),
+            sound: Sound::new(Rc::clone(&int)),
             hram: [0; 0x7f],
             int,
         }
@@ -42,6 +45,10 @@ impl Mmu {
 
     pub fn ppu(&self) -> &Ppu {
         &self.ppu
+    }
+
+    pub fn ppu_mut(&mut self) -> &mut Ppu {
+        &mut self.ppu
     }
 
     fn dma(&mut self, d: u8) {
@@ -104,7 +111,7 @@ impl Device for Mmu {
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.read(addr),
                 0xff46 => 0x0,
                 0xff50 => self.boot,
-                addr @ _ => {
+                addr => {
                     eprintln!("unhandled addr = {:x}", addr);
                     0
                 }
@@ -143,12 +150,8 @@ impl Device for Mmu {
                 | 0xff20..=0xff26 => self.sound.write(addr, data),
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.write(addr, data),
                 0xff46 => self.dma(data),
-                0xff50 => {
-                    eprintln!("0xff50 (boot) = {:x}", data);
-                    self.boot = data;
-                }
-
-                addr @ _ => eprintln!("unhandled addr = {:x}", addr),
+                0xff50 => self.boot = data,
+                addr => eprintln!("unhandled addr = {:x}", addr),
             },
             0xff80..=0xfffe => match addr {
                 0xff0f => self.int.borrow_mut().write(addr, data),

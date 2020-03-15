@@ -1,5 +1,5 @@
 use dmg::{cartridge::RomOnly, Dmg};
-use minifb::{Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions};
 use std::{mem, thread, time::Duration};
 
 const WIDTH: usize = 160;
@@ -24,10 +24,10 @@ fn cpu_test(file: &str) {
     let mut dmg = Dmg::new(RomOnly::from_bytes(std::fs::read(file).unwrap()));
     let opts = WindowOptions::default();
     let mut window = Window::new("window", WIDTH, HEIGHT, opts).unwrap();
-    while window.is_open() {
+    while window.is_open() && !window.is_key_released(Key::Escape) {
         dmg.emulate_frame();
+        let buffer = dmg.mmu().ppu().buffer();
         unsafe {
-            let buffer = dmg.mmu().ppu().buffer();
             window
                 .update_with_buffer(mem::transmute(&buffer[..]), 160, 144)
                 .unwrap();

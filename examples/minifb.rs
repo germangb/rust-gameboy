@@ -2,20 +2,19 @@ use dmg::{
     cartridge::RomOnly,
     device::Device,
     joypad::{
-        Btn::{Select, Start, A, B},
-        Dir::{Down, Left, Right, Up},
+        Btn::*,
+        Dir::*,
         Key::{Btn, Dir},
     },
     Dmg,
 };
-use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Menu, Scale, Window, WindowOptions};
 use std::{mem, thread, time::Duration};
 
 fn main() {
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X2;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
-
     let mut dmg = Dmg::new(RomOnly::tetris());
 
     while window.is_open() {
@@ -26,6 +25,7 @@ fn main() {
             println!("lcdc={:08b}", dmg.mmu().read(0xff40));
             println!("if={:08b}", dmg.mmu().read(0xff0f));
             println!("ie={:08b}", dmg.mmu().read(0xffff));
+            println!("tac={:08b}", dmg.mmu().read(0xff07));
             println!("{:?}", dmg.cpu());
         }
 
@@ -52,9 +52,9 @@ fn main() {
 
         for (j, k) in joypad.iter().zip(keys) {
             if window.is_key_down(*k) {
-                dmg.mmu_mut().joypad_mut().press(j);
+                dmg.mmu_mut().joypad_mut().press(*j);
             } else {
-                dmg.mmu_mut().joypad_mut().release(j);
+                dmg.mmu_mut().joypad_mut().release(*j);
             }
         }
 
@@ -67,6 +67,6 @@ fn main() {
                 .unwrap();
         }
 
-        thread::sleep(Duration::new(0, 1_000_000_000 / 60));
+        //thread::sleep(Duration::new(0, 1_000_000_000 / 60));
     }
 }

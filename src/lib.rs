@@ -1,12 +1,14 @@
+//#![deny(dead_code)]
 #![deny(unused_imports)]
-#![deny(clippy::all)]
-
-use crate::{
-    cartridge::Cartridge,
-    cpu::Cpu,
-    mmu::Mmu,
-    ppu::{HBLANK, OAM, PIXEL},
-};
+#![deny(unused_must_use)]
+//#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
+use crate::{cartridge::Cartridge, cpu::Cpu, mmu::Mmu};
+use crate::ppu::{OAM, PIXEL, HBLANK};
 
 pub mod cartridge;
 pub mod cpu;
@@ -43,6 +45,7 @@ impl Dmg {
             self.mmu.step(cpu_cycles);
             cycles += cpu_cycles;
         }
+        self.mmu.ppu_mut().render_sprites();
         self.carry = cycles % frame_ticks;
     }
 

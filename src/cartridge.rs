@@ -19,7 +19,7 @@ impl RomOnly {
     }
 
     pub fn test() -> Self {
-        let rom = include_bytes!("../roms/cpu_instrs/individual/02-interrupts.gb").to_vec();
+        let rom = include_bytes!("../roms/gb-test-roms/interrupt_time/interrupt_time.gb").to_vec();
         Self::from_bytes(rom)
     }
 

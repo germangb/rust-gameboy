@@ -41,6 +41,13 @@ pub enum Color {
     Black = 0x00_0000,
 }
 
+const BG_PALLETE: [Color; 4] = [
+    Color::White,
+    Color::LightGray,
+    Color::DarkGray,
+    Color::Black,
+];
+
 pub struct Ppu {
     buffer: [Color; 160 * 144],
     cycles: usize,
@@ -96,6 +103,9 @@ impl Ppu {
         if self.lcdc & 0x80 == 0 {
             return;
         }
+        if let Mode::HBlank = self.mode {
+            //println!("stat={:?} cycles={}", self.mode, self.cycles);
+        }
         self.cycles += cycles;
         match self.mode {
             Mode::OAM => {
@@ -108,8 +118,7 @@ impl Ppu {
                 if self.cycles >= PIXEL {
                     self.mode = Mode::HBlank;
                     self.cycles %= PIXEL;
-                    self.render_bg();
-                    self.render_sprites();
+                    self.render_line();
                     if self.stat & 0x8 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
@@ -120,6 +129,7 @@ impl Ppu {
                     self.cycles %= HBLANK;
                     self.ly += 1;
                     if self.ly == 144 {
+                        //self.render_sprites();
                         self.mode = Mode::VBlank;
                         self.int.borrow_mut().set(Flag::VBlank);
                     } else {
@@ -147,106 +157,100 @@ impl Ppu {
         &self.buffer
     }
 
-    fn render_bg(&mut self) {
-        let bgp = self.bgp;
-        let bg_display = self.lcdc & 0x1 != 0;
-        let bg_tile_map = if self.lcdc & 0x8 == 0x8 {
+    fn bg_tile_map(&self) -> TileMap {
+        if self.lcdc & 0x8 == 0x8 {
             TileMap::X9c00
         } else {
             TileMap::X9800
-        };
-        let bg_win_tile_data = if self.lcdc & 0x10 == 0x10 {
-            TileData::X8000
-        } else {
-            TileData::X8800
-        };
-        let pal = [
-            Color::White,
-            Color::LightGray,
-            Color::DarkGray,
-            Color::Black,
-        ];
-        for pix in 0..160 {
-            let y = self.scy.wrapping_add(self.ly) as u16;
-            let x = self.scx.wrapping_add(pix as u8) as u16;
-            if bg_display {
-                let tile_map_idx = 32u16 * (y / 8) + (x / 8);
-                let tile = match bg_tile_map {
-                    TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
-                    TileMap::X9800 => self.read(0x9800 + tile_map_idx),
-                };
-                let mut tile_data = [0u8; 16];
-                match bg_win_tile_data {
-                    TileData::X8000 => {
-                        self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..])
-                    }
-                    TileData::X8800 => {
-                        let tile: i8 = unsafe { mem::transmute(tile) };
-                        let tile = (tile as i16 + 128) as u16;
-                        self.read_slice(0x8800 + 16 * tile, &mut tile_data[..])
-                    }
-                }
-                let column = 7 - (x & 0x7) as u8;
-                let line = y & 0x7;
-                let lo = tile_data[line as usize * 2] >> column & 0x1;
-                let hi = tile_data[line as usize * 2 + 1] >> column & 0x1;
-                let pal_idx = (hi << 1) | lo;
-                let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
-                self.buffer[160 * self.ly as usize + pix] = pal[col_idx as usize];
-            }
         }
     }
 
-    fn render_sprites(&mut self) {
+    fn bg_win_tile_data(&self) -> TileData {
+        if self.lcdc & 0x10 == 0x10 {
+            TileData::X8000
+        } else {
+            TileData::X8800
+        }
+    }
+
+    fn render_line(&mut self) {
+        let bg_display = self.lcdc & 0x1 != 0;
         let obj_display = self.lcdc & 0x2 != 0;
-        let pal = [
-            Color::White,
-            Color::LightGray,
-            Color::DarkGray,
-            Color::Black,
-        ];
-        if obj_display {
-            for oam in (&self.oam[..]).chunks(4) {
-                let y = oam[0] as i16;
-                let x = oam[1] as i16;
-                let ly = self.ly as i16;
-                if ly < y - 15 || ly > y - 7 {
-                    // TODO 16 pixel sprites
-                    continue;
+        if bg_display {
+            self.render_bg();
+        }
+    }
+
+    fn render_bg(&mut self) {
+        let bgp = self.bgp;
+        let bg_tile_map = self.bg_tile_map();
+        let bg_win_tile_data = self.bg_win_tile_data();
+        for pix in 0..160 {
+            let y = self.scy.wrapping_add(self.ly) as u16;
+            let x = self.scx.wrapping_add(pix as u8) as u16;
+            let tile_map_idx = 32u16 * (y / 8) + (x / 8);
+            let tile = match bg_tile_map {
+                TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
+                TileMap::X9800 => self.read(0x9800 + tile_map_idx),
+            };
+            let mut tile_data = [0u8; 16];
+            match bg_win_tile_data {
+                TileData::X8000 => {
+                    self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..])
                 }
-                let tile = oam[2];
-                let flag = oam[3];
-                let x_flip = flag & 0x20 != 0;
-                let y_flip = flag & 0x40 != 0;
-                let spr_pal = if flag & 0x10 != 0 {
-                    self.obp1
-                } else {
-                    self.obp0
-                };
-                let mut tile_data = [0; 16];
-                self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..]);
-                for sy in y - 16..(y - 8) {
-                    for sx in x - 8..x {
-                        if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
-                            let mut row = (sy - (y - 16)) as u8;
-                            let mut col = 7 - (sx - (x - 8)) as u8;
-                            if x_flip {
-                                col = 7 - col;
-                            }
-                            if y_flip {
-                                row = 7 - row;
-                            }
-                            assert!(row <= 7);
-                            assert!(col <= 7);
-                            let lo = tile_data[row as usize * 2] >> col & 0x1;
-                            let hi = tile_data[row as usize * 2 + 1] >> col & 0x1;
-                            let pal_idx = (hi << 1) | lo;
-                            let col_idx = (spr_pal >> (2 * pal_idx)) & 0x3;
-                            let p = (160 * sy + sx) as usize;
-                            match pal[col_idx as usize] {
-                                Color::White => {}
-                                c => self.buffer[p] = c,
-                            }
+                TileData::X8800 => {
+                    let tile: i8 = unsafe { mem::transmute(tile) };
+                    let tile = (tile as i16 + 128) as u16;
+                    self.read_slice(0x8800 + 16 * tile, &mut tile_data[..])
+                }
+            }
+            let column = 7 - (x & 0x7) as u8;
+            let line = y & 0x7;
+            let lo = tile_data[line as usize * 2] >> column & 0x1;
+            let hi = tile_data[line as usize * 2 + 1] >> column & 0x1;
+            let pal_idx = (hi << 1) | lo;
+            let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
+            self.buffer[160 * self.ly as usize + pix] = BG_PALLETE[col_idx as usize];
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn render_sprites(&mut self) {
+        for oam in (&self.oam[..]).chunks(4) {
+            let y = oam[0] as i16;
+            let x = oam[1] as i16;
+            let tile = oam[2];
+            let flag = oam[3];
+            let x_flip = flag & 0x20 != 0;
+            let y_flip = flag & 0x40 != 0;
+            let spr_pal = if flag & 0x10 != 0 {
+                self.obp1
+            } else {
+                self.obp0
+            };
+            let mut tile_data = [0; 16];
+            self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..]);
+            for sy in y - 16..(y - 8) {
+                for sx in x - 8..x {
+                    if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
+                        let mut row = (sy - (y - 16)) as u8;
+                        let mut col = 7 - (sx - (x - 8)) as u8;
+                        if x_flip {
+                            col = 7 - col;
+                        }
+                        if y_flip {
+                            row = 7 - row;
+                        }
+                        assert!(row <= 7);
+                        assert!(col <= 7);
+                        let lo = tile_data[row as usize * 2] >> col & 0x1;
+                        let hi = tile_data[row as usize * 2 + 1] >> col & 0x1;
+                        let pal_idx = (hi << 1) | lo;
+                        let col_idx = (spr_pal >> (2 * pal_idx)) & 0x3;
+                        let p = (160 * sy + sx) as usize;
+                        match BG_PALLETE[col_idx as usize] {
+                            Color::White => {}
+                            c => self.buffer[p] = c,
                         }
                     }
                 }
@@ -284,9 +288,10 @@ impl Device for Ppu {
             0x8000..=0x9fff => self.vram[addr as usize - 0x8000] = data,
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00] = data,
             0xff40 => {
+                println!("lcdc = {:08b}", data);
                 self.lcdc = data;
-                if self.lcdc & 0x1 == 0 {
-                    self.mode = Mode::OAM;
+                if self.lcdc & 0x80 == 0 {
+                    self.mode = Mode::HBlank;
                     self.ly = 0;
                     mem::replace(&mut self.buffer, [Color::White; 160 * 144]);
                 }

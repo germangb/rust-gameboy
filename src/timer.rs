@@ -38,14 +38,14 @@ impl Timer {
     pub fn step(&mut self, cycles: usize) {
         // DIV counter
         self.div_cycles += cycles as u64;
-        let cycles_per_tick = SPEED / 16_384;
+        let cycles_per_tick = SPEED / 16_384 / 2;
 
         if self.div_cycles > cycles_per_tick {
             self.div_cycles %= cycles_per_tick;
             self.div = self.div.wrapping_add(1);
         }
 
-        if self.tac & 0x3 == 0 {
+        if self.tac & 0x4 == 0 {
             return;
         }
 
@@ -88,7 +88,7 @@ impl Device for Timer {
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
             0xff04 => {
-                self.div_cycles = 0;
+                //self.div_cycles = 0;
                 self.div = 0
             }
             0xff05 => self.tima = data,
