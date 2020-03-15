@@ -7,10 +7,10 @@ use std::{cell::RefCell, mem, rc::Rc};
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK: usize = 207 * 4;
-pub const OAM: usize = 83 * 4;
-pub const PIXEL: usize = 175 * 4;
-pub const VBLANK: usize = 4560 * 4;
+pub const HBLANK: usize = 207;
+pub const OAM: usize = 83;
+pub const PIXEL: usize = 175;
+pub const VBLANK: usize = 4650;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -50,6 +50,7 @@ const BG_PALLETE: [Color; 4] = [
 
 pub struct Ppu {
     buffer: [Color; 160 * 144],
+    back_buffer: [Color; 160 * 144],
     cycles: usize,
     vram: [u8; 0x2000],
     oam: [u8; 0xa0],
@@ -79,7 +80,8 @@ pub struct Ppu {
 impl Ppu {
     pub fn new(int: Rc<RefCell<Interrupts>>) -> Self {
         Self {
-            buffer: [Color::Black; 160 * 144],
+            buffer: [Color::White; 160 * 144],
+            back_buffer: [Color::White; 160 * 144],
             cycles: 0,
             vram: [0; 0x2000],
             oam: [0; 0xa0],
@@ -101,10 +103,7 @@ impl Ppu {
 
     pub fn step(&mut self, cycles: usize) {
         if self.lcdc & 0x80 == 0 {
-            return;
-        }
-        if let Mode::HBlank = self.mode {
-            //println!("stat={:?} cycles={}", self.mode, self.cycles);
+            //return;
         }
         self.cycles += cycles;
         match self.mode {
@@ -129,7 +128,11 @@ impl Ppu {
                     self.cycles %= HBLANK;
                     self.ly += 1;
                     if self.ly == 144 {
-                        //self.render_sprites();
+                        let obj_display = self.lcdc & 0x2 != 0;
+                        if obj_display {
+                            self.render_sprites();
+                        }
+                        self.swap_buffers();
                         self.mode = Mode::VBlank;
                         self.int.borrow_mut().set(Flag::VBlank);
                     } else {
@@ -175,10 +178,13 @@ impl Ppu {
 
     fn render_line(&mut self) {
         let bg_display = self.lcdc & 0x1 != 0;
-        let obj_display = self.lcdc & 0x2 != 0;
         if bg_display {
             self.render_bg();
         }
+    }
+
+    fn swap_buffers(&mut self) {
+        std::mem::replace(&mut self.buffer, self.back_buffer);
     }
 
     fn render_bg(&mut self) {
@@ -193,32 +199,49 @@ impl Ppu {
                 TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
                 TileMap::X9800 => self.read(0x9800 + tile_map_idx),
             };
-            let mut tile_data = [0u8; 16];
-            match bg_win_tile_data {
+            // let mut tile_data = [0u8; 16];
+            // match bg_win_tile_data {
+            //     TileData::X8000 => {
+            //         self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..])
+            //     }
+            //     TileData::X8800 => {
+            //         let tile: i8 = unsafe { mem::transmute(tile) };
+            //         let tile = (tile as i16 + 128) as u16;
+            //         self.read_slice(0x8800 + 16 * tile, &mut tile_data[..])
+            //     }
+            // }
+            let col = 7 - (x & 0x7) as u8;
+            let lin = y & 0x7;
+            //let lo = tile_data[line as usize * 2] >> column & 0x1;
+            //let hi = tile_data[line as usize * 2 + 1] >> column & 0x1;
+            let (lo, hi) = match bg_win_tile_data {
                 TileData::X8000 => {
-                    self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..])
+                    let lo = self.read(0x8000 + 16 * u16::from(tile) + lin * 2) >> col & 0x1;
+                    let hi = self.read(0x8000 + 16 * u16::from(tile) + lin * 2 + 1) >> col & 0x1;
+                    (lo, hi)
                 }
                 TileData::X8800 => {
                     let tile: i8 = unsafe { mem::transmute(tile) };
                     let tile = (tile as i16 + 128) as u16;
-                    self.read_slice(0x8800 + 16 * tile, &mut tile_data[..])
+                    let lo = self.read(0x8800 + 16 * tile + lin * 2) >> col & 0x1;
+                    let hi = self.read(0x8800 + 16 * tile + lin * 2 + 1) >> col & 0x1;
+                    (lo, hi)
                 }
-            }
-            let column = 7 - (x & 0x7) as u8;
-            let line = y & 0x7;
-            let lo = tile_data[line as usize * 2] >> column & 0x1;
-            let hi = tile_data[line as usize * 2 + 1] >> column & 0x1;
+            };
             let pal_idx = (hi << 1) | lo;
             let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
-            self.buffer[160 * self.ly as usize + pix] = BG_PALLETE[col_idx as usize];
+            self.back_buffer[160 * self.ly as usize + pix] = BG_PALLETE[col_idx as usize];
         }
     }
 
-    #[allow(dead_code)]
+    #[rustfmt::skip]
     pub fn render_sprites(&mut self) {
         for oam in (&self.oam[..]).chunks(4) {
             let y = oam[0] as i16;
             let x = oam[1] as i16;
+            if x < 0 || x >= 160+8 || y < 8 || y >= 144+16 {
+                continue;
+            }
             let tile = oam[2];
             let flag = oam[3];
             let x_flip = flag & 0x20 != 0;
@@ -228,29 +251,21 @@ impl Ppu {
             } else {
                 self.obp0
             };
-            let mut tile_data = [0; 16];
-            self.read_slice(0x8000 + 16 * u16::from(tile), &mut tile_data[..]);
             for sy in y - 16..(y - 8) {
                 for sx in x - 8..x {
                     if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
-                        let mut row = (sy - (y - 16)) as u8;
+                        let mut lin = (sy - (y - 16)) as u16;
                         let mut col = 7 - (sx - (x - 8)) as u8;
-                        if x_flip {
-                            col = 7 - col;
-                        }
-                        if y_flip {
-                            row = 7 - row;
-                        }
-                        assert!(row <= 7);
-                        assert!(col <= 7);
-                        let lo = tile_data[row as usize * 2] >> col & 0x1;
-                        let hi = tile_data[row as usize * 2 + 1] >> col & 0x1;
+                        if x_flip { col = 7 - col }
+                        if y_flip { lin = 7 - lin  }
+                        let lo = self.read(0x8000 + 16 * u16::from(tile) + lin * 2) >> col & 0x1;
+                        let hi = self.read(0x8000 + 16 * u16::from(tile) + lin * 2 + 1) >> col & 0x1;
                         let pal_idx = (hi << 1) | lo;
                         let col_idx = (spr_pal >> (2 * pal_idx)) & 0x3;
                         let p = (160 * sy + sx) as usize;
                         match BG_PALLETE[col_idx as usize] {
-                            Color::White => {}
-                            c => self.buffer[p] = c,
+                            Color::LightGray => {}
+                            c => self.back_buffer[p] = c,
                         }
                     }
                 }
@@ -288,12 +303,13 @@ impl Device for Ppu {
             0x8000..=0x9fff => self.vram[addr as usize - 0x8000] = data,
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00] = data,
             0xff40 => {
-                println!("lcdc = {:08b}", data);
+                //println!("lcdc = {:08b}", data);
                 self.lcdc = data;
                 if self.lcdc & 0x80 == 0 {
                     self.mode = Mode::HBlank;
                     self.ly = 0;
                     mem::replace(&mut self.buffer, [Color::White; 160 * 144]);
+                    mem::replace(&mut self.back_buffer, [Color::White; 160 * 144]);
                 }
             }
             0xff41 => self.stat = data,

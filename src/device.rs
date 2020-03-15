@@ -3,7 +3,7 @@ pub trait Device {
 
     fn write(&mut self, addr: u16, data: u8);
 
-    fn read_i(&self, addr: u16) -> i8 {
+    fn read_signed(&self, addr: u16) -> i8 {
         unsafe { std::mem::transmute(self.read(addr)) }
     }
 
@@ -18,13 +18,6 @@ pub trait Device {
         let hi = data >> 8;
         self.write(addr, lo as u8);
         self.write(addr + 1, hi as u8);
-    }
-
-    fn read_slice(&self, addr: u16, slice: &mut [u8]) {
-        for (i, item) in slice.iter_mut().enumerate() {
-            let addr = addr.wrapping_add(i as u16);
-            *item = self.read(addr);
-        }
     }
 }
 

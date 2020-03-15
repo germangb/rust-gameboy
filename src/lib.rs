@@ -7,8 +7,12 @@
 #![deny(clippy::correctness)]
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
-use crate::{cartridge::Cartridge, cpu::Cpu, mmu::Mmu};
-use crate::ppu::{OAM, PIXEL, HBLANK};
+use crate::{
+    cartridge::Cartridge,
+    cpu::Cpu,
+    mmu::Mmu,
+    ppu::{HBLANK, OAM, PIXEL},
+};
 
 pub mod cartridge;
 pub mod cpu;
@@ -38,14 +42,12 @@ impl Dmg {
 
     pub fn emulate_frame(&mut self) {
         let frame_ticks = (OAM + PIXEL + HBLANK) * 153;
-        //let frame_ticks = 70224;
         let mut cycles = 0;
         while cycles < frame_ticks {
             let cpu_cycles = self.cpu.step(&mut self.mmu);
             self.mmu.step(cpu_cycles);
             cycles += cpu_cycles;
         }
-        self.mmu.ppu_mut().render_sprites();
         self.carry = cycles % frame_ticks;
     }
 

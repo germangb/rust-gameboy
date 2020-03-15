@@ -10,12 +10,15 @@ use dmg::{
 };
 use minifb::{Key, KeyRepeat, Menu, Scale, Window, WindowOptions};
 use std::{mem, thread, time::Duration};
+use std::time::Instant;
 
 fn main() {
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X2;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
-    let mut dmg = Dmg::new(RomOnly::tetris());
+    let mut dmg = Dmg::new(RomOnly::dr_mario());
+
+    let mut log = Instant::now();
 
     while window.is_open() {
         if window.is_key_pressed(Key::Enter, KeyRepeat::No) {
@@ -58,7 +61,15 @@ fn main() {
             }
         }
 
+        let begin = Instant::now();
         dmg.emulate_frame();
+        let elapsed = begin.elapsed();
+
+        if log.elapsed() > Duration::new(1, 0) {
+            println!("sim time = {:?}", elapsed);
+            log = Instant::now();
+        }
+
 
         unsafe {
             let buffer = dmg.mmu().ppu().buffer();
@@ -67,6 +78,9 @@ fn main() {
                 .unwrap();
         }
 
-        //thread::sleep(Duration::new(0, 1_000_000_000 / 60));
+        let wait = Duration::new(0, 1_000_000_000 / 60);
+        if elapsed < wait {
+            thread::sleep(wait - elapsed);
+        }
     }
 }
