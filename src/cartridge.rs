@@ -10,20 +10,20 @@ pub struct RomOnly {
 impl RomOnly {
     pub fn tetris() -> Self {
         let rom = include_bytes!("../roms/Tetris-USA.gb").to_vec();
-        Self::from_rom(rom)
+        Self::from_bytes(rom)
     }
 
     pub fn dr_mario() -> Self {
         let rom = include_bytes!("../roms/Dr. Mario (World).gb").to_vec();
-        Self::from_rom(rom)
+        Self::from_bytes(rom)
     }
 
     pub fn test() -> Self {
         let rom = include_bytes!("../roms/cpu_instrs/individual/02-interrupts.gb").to_vec();
-        Self::from_rom(rom)
+        Self::from_bytes(rom)
     }
 
-    fn from_rom<B: Into<Box<[u8]>>>(rom: B) -> Self {
+    pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
         Self {
             rom: rom.into(),
             ram: Box::new([0; 0x2000]),
