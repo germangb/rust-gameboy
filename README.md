@@ -1,6 +1,6 @@
 ## DMG
 
-![](assets/tetris.gif)
+![](assets/drmario.gif)
 
 ## tests
 

@@ -7,9 +7,9 @@ use std::{cell::RefCell, mem, rc::Rc};
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK: usize = 207;
-pub const OAM: usize = 83;
-pub const PIXEL: usize = 175;
+pub const HBLANK: usize = 201;
+pub const OAM: usize = 77;
+pub const PIXEL: usize = 169;
 pub const VBLANK: usize = 4650;
 
 #[repr(u8)]
@@ -251,8 +251,8 @@ impl Ppu {
             } else {
                 self.obp0
             };
-            for sy in y - 16..(y - 8) {
-                for sx in x - 8..x {
+            for sy in y - 16..y-8 {
+                for sx in x-8..x {
                     if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
                         let mut lin = (sy - (y - 16)) as u16;
                         let mut col = 7 - (sx - (x - 8)) as u8;
@@ -264,8 +264,8 @@ impl Ppu {
                         let col_idx = (spr_pal >> (2 * pal_idx)) & 0x3;
                         let p = (160 * sy + sx) as usize;
                         match BG_PALLETE[col_idx as usize] {
-                            Color::LightGray => {}
-                            c => self.back_buffer[p] = c,
+                            Color::White => {}
+                            color => self.back_buffer[p] = color,
                         }
                     }
                 }

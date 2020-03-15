@@ -3,7 +3,7 @@ use dmg::{cartridge::RomOnly, cpu::Cpu, device::Device, mmu::Mmu};
 #[test]
 #[ignore]
 fn interrupts() {
-    let mut cpu = Cpu::default();
+    let cpu = Cpu::default();
     let mut mmu = Mmu::new(RomOnly::tetris());
 
     mmu.write(0xff50, 1);

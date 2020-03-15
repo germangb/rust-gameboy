@@ -8,9 +8,11 @@ use dmg::{
     },
     Dmg,
 };
-use minifb::{Key, KeyRepeat, Menu, Scale, Window, WindowOptions};
-use std::{mem, thread, time::Duration};
-use std::time::Instant;
+use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
+use std::{
+    mem, thread,
+    time::{Duration, Instant},
+};
 
 fn main() {
     let mut opt = WindowOptions::default();
@@ -69,7 +71,6 @@ fn main() {
             println!("sim time = {:?}", elapsed);
             log = Instant::now();
         }
-
 
         unsafe {
             let buffer = dmg.mmu().ppu().buffer();
