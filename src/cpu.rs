@@ -3,6 +3,8 @@ use crate::{
     mmu::Mmu,
     registers::{Flag::*, Registers},
 };
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
 
 static CYCLES: [usize; 256] = [
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
@@ -27,6 +29,7 @@ static CB_CYCLES: [usize; 256] = [
 ];
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Cpu {
     reg: Registers,
     ime: bool,

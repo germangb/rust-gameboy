@@ -1,5 +1,8 @@
 use crate::device::Device;
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 enum Mode {
     Ram,
     Rtc,
@@ -101,5 +104,27 @@ impl Device for Mbc3 {
             }
             _ => panic!(),
         }
+    }
+}
+
+#[allow(unused_variables)]
+#[cfg(feature = "serialize")]
+impl Serialize for Mbc3 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        unimplemented!()
+    }
+}
+
+#[allow(unused_variables)]
+#[cfg(feature = "serialize")]
+impl<'de> Deserialize<'de> for Mbc3 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        unimplemented!()
     }
 }

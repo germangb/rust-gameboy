@@ -21,6 +21,16 @@ pub trait Device {
     }
 }
 
+impl<T: Device> Device for Box<T> {
+    fn read(&self, addr: u16) -> u8 {
+        <T as Device>::read(self, addr)
+    }
+
+    fn write(&mut self, addr: u16, data: u8) {
+        <T as Device>::write(self, addr, data);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::device::Device;

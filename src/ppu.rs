@@ -148,38 +148,41 @@ impl Ppu {
                     self.mode = Mode::HBlank;
                     self.cycles %= PIXEL;
                     self.render_line();
-
-                    // The gameboy permanently compares the value of the LYC and LY registers. When
-                    // both values are identical, the coincident bit in the STAT register becomes
-                    // set, and (if enabled) a STAT interrupt is requested.
-                    if self.stat & 0x40 != 0 && self.ly == self.lyc {
-                        //println!("LY=LYC int");
-                        self.int.borrow_mut().set(Flag::LCDStat);
-                    }
-
-                    if self.stat & 0x8 != 0 {
-                        self.int.borrow_mut().set(Flag::LCDStat);
-                    }
                 }
             }
             Mode::HBlank => {
                 if self.cycles >= HBLANK {
                     self.cycles %= HBLANK;
 
+                    // The gameboy permanently compares the value of the LYC and LY registers. When
+                    // both values are identical, the coincident bit in the STAT register becomes
+                    // set, and (if enabled) a STAT interrupt is requested.
+                    if self.stat & 0x40 != 0 && self.ly == self.lyc {
+                        self.int.borrow_mut().set(Flag::LCDStat);
+                    }
+
+                    if self.stat & 0x8 != 0 {
+                        self.int.borrow_mut().set(Flag::LCDStat);
+                    }
+
                     self.ly += 1;
 
                     if self.ly == 144 {
+                        // TODO fix worms rom
                         //let obj_display = self.lcdc & 0x2 != 0;
-                        //if obj_display {
-                        self.render_sprites();
-                        //}
+                        let obj_display = true;
+                        if obj_display {
+                            self.render_sprites();
+                        }
+
                         self.swap_buffers();
+
                         self.mode = Mode::VBlank;
+                        self.int.borrow_mut().set(Flag::VBlank);
 
                         if self.stat & 0x10 != 0 {
                             self.int.borrow_mut().set(Flag::LCDStat);
                         }
-                        self.int.borrow_mut().set(Flag::VBlank);
                     } else {
                         self.mode = Mode::OAM;
                         if self.stat & 0x20 != 0 {
@@ -316,7 +319,7 @@ impl Ppu {
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
         for pix in 0..160 {
-            let y = scy.wrapping_add(self.ly) as u16;
+            let y = scy.wrapping_add(self.ly).wrapping_sub(0) as u16;
             let x = (pix as u8).wrapping_add(scx) as u16;
             let tile_map_idx = 32u16 * (y / 8) + (x / 8);
             let tile = match bg_tile_map {
@@ -366,19 +369,14 @@ impl Ppu {
     fn render_sprites(&mut self) {
         let mut entries = self.oam_entries().to_vec();
         entries.sort_by_key(|o| o.xpos);
-        for OamEntry {
-            ypos,
-            xpos,
-            tile,
-            flag,
-        } in entries
-        {
-            let xpos = i16::from(xpos);
-            let ypos = i16::from(ypos);
-            let behind_bg = flag & 0x80 != 0;
-            let x_flip = flag & 0x20 != 0;
-            let y_flip = flag & 0x40 != 0;
-            let pal = if flag & 0x10 != 0 {
+        for oam in entries {
+            let tile = u16::from(oam.tile);
+            let xpos = i16::from(oam.xpos);
+            let ypos = i16::from(oam.ypos);
+            let behind_bg = oam.flag & 0x80 != 0;
+            let x_flip = oam.flag & 0x20 != 0;
+            let y_flip = oam.flag & 0x40 != 0;
+            let pal = if oam.flag & 0x10 != 0 {
                 self.obp1
             } else {
                 self.obp0
@@ -399,9 +397,8 @@ impl Ppu {
                                 lin = 15 - lin;
                             }
                         }
-                        let lo = self.read(0x8000 + 16 * u16::from(tile) + lin * 2) >> col & 0x1;
-                        let hi =
-                            self.read(0x8000 + 16 * u16::from(tile) + lin * 2 + 1) >> col & 0x1;
+                        let lo = self.read(0x8000 + 16 * tile + lin * 2) >> col & 0x1;
+                        let hi = self.read(0x8000 + 16 * tile + lin * 2 + 1) >> col & 0x1;
                         let pal_idx = (hi << 1) | lo;
                         if pal_idx == 0 {
                             continue;

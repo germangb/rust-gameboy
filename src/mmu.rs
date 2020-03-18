@@ -18,7 +18,7 @@ use std::{cell::RefCell, rc::Rc};
 // FFFF        Interrupt Enable Register
 pub struct Mmu {
     boot: u8,
-    cartridge: Cartridge,
+    cartridge: Box<dyn Cartridge>,
     ppu: Ppu,
     timer: Timer,
     wram: [u8; 0x2000],
@@ -31,12 +31,12 @@ pub struct Mmu {
 impl Mmu {
     pub fn new<C>(cartridge: C) -> Self
     where
-        C: Into<Cartridge> + 'static,
+        C: Cartridge + 'static,
     {
         let int = Rc::new(RefCell::new(Interrupts::default()));
         Self {
             boot: 0x0,
-            cartridge: cartridge.into(),
+            cartridge: Box::new(cartridge),
             ppu: Ppu::new(Rc::clone(&int)),
             timer: Timer::new(Rc::clone(&int)),
             wram: [0; 0x2000],
@@ -47,12 +47,12 @@ impl Mmu {
         }
     }
 
-    pub fn cartridge(&self) -> &Cartridge {
-        &self.cartridge
+    pub fn cartridge(&self) -> &dyn Cartridge {
+        self.cartridge.as_ref()
     }
 
-    pub fn cartridge_mut(&mut self) -> &mut Cartridge {
-        &mut self.cartridge
+    pub fn cartridge_mut(&mut self) -> &mut dyn Cartridge {
+        self.cartridge.as_mut()
     }
 
     pub fn joypad(&self) -> &Joypad {

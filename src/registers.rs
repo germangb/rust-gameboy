@@ -1,3 +1,6 @@
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
+
 #[repr(u8)]
 pub enum Flag {
     Z = 0x80,
@@ -7,6 +10,7 @@ pub enum Flag {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Registers {
     pub a: u8,
     pub f: u8,
