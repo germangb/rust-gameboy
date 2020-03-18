@@ -54,7 +54,10 @@ impl Device for Interrupts {
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
             0xff0f => self.flags = data,
-            0xffff => self.enable = data,
+            0xffff => {
+                //println!("IE={:08b}", data);
+                self.enable = data
+            }
             _ => panic!(),
         }
     }

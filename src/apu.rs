@@ -1,18 +1,18 @@
 use crate::{device::Device, interrupts::Interrupts};
 use std::{cell::RefCell, rc::Rc};
 
-pub struct Sound {
+pub struct Apu {
     #[allow(dead_code)]
     int: Rc<RefCell<Interrupts>>,
 }
 
-impl Sound {
+impl Apu {
     pub fn new(int: Rc<RefCell<Interrupts>>) -> Self {
         Self { int }
     }
 }
 
-impl Device for Sound {
+impl Device for Apu {
     fn read(&self, _addr: u16) -> u8 {
         0
     }

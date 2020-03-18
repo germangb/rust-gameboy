@@ -1,6 +1,6 @@
 use crate::{
-    cartridge::Cartridge, device::Device, interrupts::Interrupts, joypad::Joypad, ppu::Ppu,
-    sound::Sound, timer::Timer,
+    apu::Apu, cartridge::Cartridge, device::Device, interrupts::Interrupts, joypad::Joypad,
+    ppu::Ppu, timer::Timer,
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -11,9 +11,9 @@ pub struct Mmu {
     timer: Timer,
     wram: [u8; 0x2000],
     joy: Joypad,
-    sound: Sound,
+    sound: Apu,
     hram: [u8; 0x7f],
-    pub(crate) int: Rc<RefCell<Interrupts>>,
+    int: Rc<RefCell<Interrupts>>,
 }
 
 impl Mmu {
@@ -29,10 +29,18 @@ impl Mmu {
             timer: Timer::new(Rc::clone(&int)),
             wram: [0; 0x2000],
             joy: Joypad::new(Rc::clone(&int)),
-            sound: Sound::new(Rc::clone(&int)),
+            sound: Apu::new(Rc::clone(&int)),
             hram: [0; 0x7f],
             int,
         }
+    }
+
+    pub fn cartridge(&self) -> &dyn Cartridge {
+        self.cartridge.as_ref()
+    }
+
+    pub fn cartridge_mut(&mut self) -> &mut dyn Cartridge {
+        self.cartridge.as_mut()
     }
 
     pub fn joypad(&self) -> &Joypad {
@@ -51,6 +59,12 @@ impl Mmu {
         &mut self.ppu
     }
 
+    pub fn step(&mut self, cycles: usize) {
+        self.ppu.step(cycles);
+        self.timer.step(cycles);
+        self.cartridge.step(cycles);
+    }
+
     fn dma(&mut self, d: u8) {
         for addr in 0..=0x9f {
             let src = u16::from(d) << 8 | (addr as u16);
@@ -59,12 +73,7 @@ impl Mmu {
         }
     }
 
-    pub fn step(&mut self, cycles: usize) {
-        self.ppu.step(cycles);
-        self.timer.step(cycles);
-    }
-
-    fn boot(&self) -> bool {
+    fn boot_rom_enabled(&self) -> bool {
         (self.read(0xff50) & 0x1) != 1
     }
 }
@@ -84,7 +93,9 @@ impl Device for Mmu {
     // FFFF        Interrupt Enable Register
     fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x000..=0x00ff if self.boot() => include_bytes!("../roms/dmg_boot.bin")[addr as usize],
+            0x000..=0x00ff if self.boot_rom_enabled() => {
+                include_bytes!("../roms/dmg_boot.bin")[addr as usize]
+            }
             0x0000..=0x7fff => self.cartridge.read(addr),
             0x8000..=0x9fff => self.ppu.read(addr),
             0xa000..=0xbfff => self.cartridge.read(addr),
@@ -111,8 +122,8 @@ impl Device for Mmu {
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.read(addr),
                 0xff46 => 0x0,
                 0xff50 => self.boot,
-                addr => {
-                    eprintln!("unhandled addr = {:x}", addr);
+                _addr => {
+                    //eprintln!("unhandled addr = {:x}", addr);
                     0
                 }
             },
@@ -127,7 +138,7 @@ impl Device for Mmu {
 
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0x000..=0x00ff if self.boot() => { /* read only boot rom */ }
+            0x000..=0x00ff if self.boot_rom_enabled() => { /* read only boot rom */ }
             0x0000..=0x7fff => self.cartridge.write(addr, data),
             0x8000..=0x9fff => self.ppu.write(addr, data),
             0xa000..=0xbfff => self.cartridge.write(addr, data),
@@ -151,7 +162,9 @@ impl Device for Mmu {
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.write(addr, data),
                 0xff46 => self.dma(data),
                 0xff50 => self.boot = data,
-                addr => eprintln!("unhandled addr = {:x}", addr),
+                _addr => {
+                    //eprintln!("unhandled addr = {:x}", addr)
+                }
             },
             0xff80..=0xfffe => match addr {
                 0xff0f => self.int.borrow_mut().write(addr, data),
@@ -164,4 +177,20 @@ impl Device for Mmu {
 }
 
 #[cfg(tests)]
-mod tests {}
+mod tests {
+    use crate::{cartridge::RomOnly, device::Device, mmu::Mmu};
+
+    #[test]
+    fn dma() {
+        let mut mmu = Mmu::new(RomOnly::tetris());
+
+        mmu.write(0xff50, 1);
+        mmu.write(0xff46, 0);
+
+        for addr in 0..=0x9f {
+            let rom = mmu.read(addr as u16);
+            let oam = mmu.read(0xfe00 | (addr as u16));
+            assert_eq!(rom, oam);
+        }
+    }
+}

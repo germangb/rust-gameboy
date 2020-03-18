@@ -48,6 +48,10 @@ impl Cpu {
         &self.reg
     }
 
+    pub fn reg_mut(&mut self) -> &mut Registers {
+        &mut self.reg
+    }
+
     fn fetch(&mut self, mmu: &Mmu) -> u8 {
         let b = mmu.read(self.reg.pc);
         self.reg.pc += 1;
@@ -415,7 +419,6 @@ impl Cpu {
     // Add n to current address and jump tp it.
     fn jr_c(&mut self, c: bool, mmu: &mut Mmu) -> bool {
         let n = self.fetch_signed(mmu);
-        //eprintln!("r8 = {}", n);
         if c {
             let pc = i32::from(self.reg.pc) + i32::from(n);
             self.reg.pc = (pc & 0xffff) as u16;
@@ -461,10 +464,6 @@ impl Cpu {
     fn exec(&mut self, mmu: &mut Mmu) -> usize {
         let opcode = self.fetch(mmu);
         let mut branch = false;
-
-        if self.reg.pc >= 1920 {
-            //eprintln!("pc={:x}, op={:x}", self.reg.pc, opcode);
-        }
 
         match opcode {
             // ADD A,n
@@ -530,7 +529,6 @@ impl Cpu {
             0xa7 => self.and_n(self.reg.a),
             0xe6 => {
                 let d8 = self.fetch(mmu);
-                //eprintln!("d8 = {:x}", d8);
                 self.and_n(d8)
             }
             // XOR n
@@ -861,7 +859,6 @@ impl Cpu {
             }
             0xf0 => {
                 let a8 = self.fetch(mmu) as u16;
-                //eprintln!("a8 = {:x}", a8);
                 self.reg.a = mmu.read(0xff00 + a8);
             }
 
@@ -953,8 +950,9 @@ impl Cpu {
             }
 
             // Misc/control instructions
-            0x00 => {}                                                 // NOP
-            0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
+            0x00 => {} // NOP
+            //0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
+            0x10 => {}
             0x76 => self.halt = true,
             0xf3 => self.ime = false,
             0xfb => self.ime = true,
@@ -1399,7 +1397,7 @@ impl Cpu {
 
 #[cfg(test)]
 mod test {
-    use crate::{cartridge::RomOnly, cpu::Cpu, mmu::Mmu};
+    use crate::{cartridge::RomOnly, cpu::Cpu, device::Device, mmu::Mmu};
 
     #[test]
     fn stack() {
@@ -1413,5 +1411,17 @@ mod test {
 
         assert_eq!(0xabcd, cpu.stack_pop(&mut mmu));
         assert_eq!(0x1234, cpu.stack_pop(&mut mmu));
+    }
+
+    #[test]
+    #[ignore]
+    fn interrupts() {
+        let cpu = Cpu::default();
+        let mut mmu = Mmu::new(RomOnly::tetris());
+
+        mmu.write(0xff50, 1);
+        mmu.write(0xffff, 0x10); // joypad
+
+        assert_eq!(0, cpu.reg().pc)
     }
 }
