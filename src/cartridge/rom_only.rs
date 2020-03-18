@@ -1,4 +1,4 @@
-use crate::{cartridge::Cartridge, device::Device};
+use crate::device::Device;
 
 #[derive(Debug)]
 pub struct RomOnly {
@@ -6,32 +6,6 @@ pub struct RomOnly {
 }
 
 impl RomOnly {
-    pub fn tetris() -> Self {
-        let rom = include_bytes!("../../roms/Tetris-USA.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn print10_demo() -> Self {
-        let rom = include_bytes!("../../roms/10-print.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn dr_mario() -> Self {
-        let rom = include_bytes!("../../roms/Dr. Mario (World).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn tennis() -> Self {
-        let rom = include_bytes!("../../roms/Tennis (JUE) [!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn test() -> Self {
-        let rom =
-            include_bytes!("../../roms/gb-test-roms/interrupt_time/interrupt_time.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
     pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
         Self { rom: rom.into() }
     }
@@ -52,5 +26,3 @@ impl Device for RomOnly {
         }
     }
 }
-
-impl Cartridge for RomOnly {}

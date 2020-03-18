@@ -167,13 +167,6 @@ impl Ppu {
                     self.cycles %= HBLANK;
 
                     self.ly += 1;
-                    // // The gameboy permanently compares the value of the LYC and LY registers.
-                    // When // both values are identical, the coincident bit in
-                    // the STAT register becomes // set, and (if enabled) a STAT
-                    // interrupt is requested. if self.stat & 0x40 != 0 &&
-                    // self.ly == self.lyc {     //println!("LY=LYC int");
-                    //     self.int.borrow_mut().set(Flag::LCDStat);
-                    // }
 
                     if self.ly == 144 {
                         //let obj_display = self.lcdc & 0x2 != 0;
@@ -473,10 +466,7 @@ impl Device for Ppu {
                 // indicate the V-Blank period. Writing will reset the counter.
                 self.ly = 0;
             }
-            0xff45 => {
-                //println!("lyc = {}", data);
-                self.lyc = data
-            }
+            0xff45 => self.lyc = data,
             0xff4a => self.wy = data,
             0xff4b => self.wx = data,
             0xff47 => self.bgp = data,
@@ -489,11 +479,11 @@ impl Device for Ppu {
 
 #[cfg(test)]
 mod tests {
-    use crate::{cartridge::RomOnly, device::Device, mmu::Mmu};
+    use crate::{device::Device, mmu::Mmu};
 
     #[test]
     fn vram() {
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(crate::test::rom());
 
         mmu.write(0x8000, 1);
         mmu.write(0x9fff, 2);
@@ -504,7 +494,7 @@ mod tests {
 
     #[test]
     fn oam() {
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(crate::test::rom());
 
         mmu.write(0xfe00, 1);
         mmu.write(0xfe9f, 2);
@@ -515,7 +505,7 @@ mod tests {
 
     #[test]
     fn registers() {
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(crate::test::rom());
 
         mmu.write(0xff42, 1);
         mmu.write(0xff43, 2);

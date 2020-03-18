@@ -1,4 +1,4 @@
-use crate::{cartridge::Cartridge, device::Device};
+use crate::device::Device;
 
 enum Mode {
     Rom,
@@ -16,133 +16,6 @@ pub struct Mbc1 {
 }
 
 impl Mbc1 {
-    pub fn test() -> Self {
-        let rom = include_bytes!("../../roms/gb-test-roms/cpu_instrs/cpu_instrs.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn test_oam_bug() -> Self {
-        let rom =
-            include_bytes!("../../roms/gb-test-roms/oam_bug/rom_singles/1-lcd_sync.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn pocket_demo() -> Self {
-        let rom = include_bytes!("../../roms/pocket.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn oh_demo() -> Self {
-        let rom = include_bytes!("../../roms/oh.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn gejmboj_demo() -> Self {
-        let rom = include_bytes!("../../roms/gejmboj.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn jml_a09_demo() -> Self {
-        let rom = include_bytes!("../../roms/jml-a09.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn metroid() -> Self {
-        let rom = include_bytes!("../../roms/Metroid II - Return of Samus (UE).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn ducktales() -> Self {
-        let rom = include_bytes!("../../roms/Duck Tales (USA).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn ducktales_2() -> Self {
-        let rom = include_bytes!("../../roms/Duck Tales 2 (USA).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn contra() -> Self {
-        let rom = include_bytes!("../../roms/Contra (J).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn aladdin() -> Self {
-        let rom = include_bytes!("../../roms/Aladdin (U) [S][!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn zelda() -> Self {
-        let rom =
-            include_bytes!("../../roms/Legend of Zelda, The - Link's Awakening (U) (V1.2) [!].gb")
-                .to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn donkey_kong_land() -> Self {
-        let rom = include_bytes!("../../roms/Donkey Kong Land (USA, Europe).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn mario() -> Self {
-        let rom = include_bytes!("../../roms/Super Mario Land (World).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn mario_2() -> Self {
-        let rom =
-            include_bytes!("../../roms/Super Mario Land 2 - 6 Golden Coins (UE) (V1.0) [!].gb")
-                .to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn mario_4() -> Self {
-        let rom = include_bytes!("../../roms/Super Mario Land 4 (J) [!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn batman() -> Self {
-        let rom = include_bytes!("../../roms/Batman (JU) [!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn batman_animated() -> Self {
-        let rom = include_bytes!("../../roms/Batman - The Animated Series (U).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn worms() -> Self {
-        let rom = include_bytes!("../../roms/Worms (U) [!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn pinball() -> Self {
-        let rom = include_bytes!("../../roms/Pinball Deluxe (U).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn f1_race() -> Self {
-        let rom = include_bytes!("../../roms/F-1 Race (JUE) (v1.1).gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn race_drivin() -> Self {
-        let rom = include_bytes!("../../roms/Race Drivin' (U) [b2].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn ferrari() -> Self {
-        let rom = include_bytes!("../../roms/Ferrari - Grand Prix Challenge (U) [!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn v_rally() -> Self {
-        let rom =
-            include_bytes!("../../roms/V-Rally - Championship Edition (Europe) (En,Fr,De).gb")
-                .to_vec();
-        Self::from_bytes(rom)
-    }
-
     pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
         let ram_banks = 4;
         Self {
@@ -209,5 +82,3 @@ impl Device for Mbc1 {
         }
     }
 }
-
-impl Cartridge for Mbc1 {}

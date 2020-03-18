@@ -1,4 +1,4 @@
-use crate::{cartridge::Cartridge, device::Device};
+use crate::device::Device;
 
 enum Mode {
     Ram,
@@ -26,27 +26,6 @@ pub struct Mbc3 {
 }
 
 impl Mbc3 {
-    pub fn deadeus() -> Self {
-        let rom =
-            include_bytes!("../../roms/Deadeus - Regular Edition/Deadeus/rom/game.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn gurbs_adventure() -> Self {
-        let rom = include_bytes!("../../roms/GurbsAdventure/build/web/rom/game.gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn pokemon_red() -> Self {
-        let rom = include_bytes!("../../roms/Pokemon Red (UE) [S][!].gb").to_vec();
-        Self::from_bytes(rom)
-    }
-
-    pub fn pokemon_gold() -> Self {
-        let rom = include_bytes!("../../roms/Pokemon - Gold Version (UE) [C][!].gbc").to_vec();
-        Self::from_bytes(rom)
-    }
-
     pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
         let ram_banks = 4;
         Self {
@@ -124,5 +103,3 @@ impl Device for Mbc3 {
         }
     }
 }
-
-impl Cartridge for Mbc3 {}

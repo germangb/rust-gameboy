@@ -1397,12 +1397,12 @@ impl Cpu {
 
 #[cfg(test)]
 mod test {
-    use crate::{cartridge::RomOnly, cpu::Cpu, device::Device, mmu::Mmu};
+    use crate::{cpu::Cpu, device::Device, mmu::Mmu};
 
     #[test]
     fn stack() {
         let mut cpu = Cpu::default();
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(crate::test::rom());
 
         cpu.reg.sp = 0xfffc;
 
@@ -1417,7 +1417,7 @@ mod test {
     #[ignore]
     fn interrupts() {
         let cpu = Cpu::default();
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(crate::test::rom());
 
         mmu.write(0xff50, 1);
         mmu.write(0xffff, 0x10); // joypad

@@ -4,14 +4,26 @@ use crate::{
 };
 use std::{cell::RefCell, rc::Rc};
 
+// 0000-3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
+// 4000-7FFF   16KB ROM Bank 01..NN (in cartridge, switchable bank number)
+// 8000-9FFF   8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
+// A000-BFFF   8KB External RAM     (in cartridge, switchable bank, if any)
+// C000-CFFF   4KB Work RAM Bank 0 (WRAM)
+// D000-DFFF   4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
+// E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
+// FE00-FE9F   Sprite Attribute Table (OAM)
+// FEA0-FEFF   Not Usable
+// FF00-FF7F   I/O Ports
+// FF80-FFFE   High RAM (HRAM)
+// FFFF        Interrupt Enable Register
 pub struct Mmu {
     boot: u8,
-    cartridge: Box<dyn Cartridge>,
+    cartridge: Cartridge,
     ppu: Ppu,
     timer: Timer,
     wram: [u8; 0x2000],
     joy: Joypad,
-    sound: Apu,
+    apu: Apu,
     hram: [u8; 0x7f],
     int: Rc<RefCell<Interrupts>>,
 }
@@ -19,28 +31,28 @@ pub struct Mmu {
 impl Mmu {
     pub fn new<C>(cartridge: C) -> Self
     where
-        C: Cartridge + 'static,
+        C: Into<Cartridge> + 'static,
     {
         let int = Rc::new(RefCell::new(Interrupts::default()));
         Self {
             boot: 0x0,
-            cartridge: Box::new(cartridge),
+            cartridge: cartridge.into(),
             ppu: Ppu::new(Rc::clone(&int)),
             timer: Timer::new(Rc::clone(&int)),
             wram: [0; 0x2000],
             joy: Joypad::new(Rc::clone(&int)),
-            sound: Apu::new(Rc::clone(&int)),
+            apu: Apu::new(Rc::clone(&int)),
             hram: [0; 0x7f],
             int,
         }
     }
 
-    pub fn cartridge(&self) -> &dyn Cartridge {
-        self.cartridge.as_ref()
+    pub fn cartridge(&self) -> &Cartridge {
+        &self.cartridge
     }
 
-    pub fn cartridge_mut(&mut self) -> &mut dyn Cartridge {
-        self.cartridge.as_mut()
+    pub fn cartridge_mut(&mut self) -> &mut Cartridge {
+        &mut self.cartridge
     }
 
     pub fn joypad(&self) -> &Joypad {
@@ -79,18 +91,6 @@ impl Mmu {
 }
 
 impl Device for Mmu {
-    // 0000-3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
-    // 4000-7FFF   16KB ROM Bank 01..NN (in cartridge, switchable bank number)
-    // 8000-9FFF   8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
-    // A000-BFFF   8KB External RAM     (in cartridge, switchable bank, if any)
-    // C000-CFFF   4KB Work RAM Bank 0 (WRAM)
-    // D000-DFFF   4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
-    // E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
-    // FE00-FE9F   Sprite Attribute Table (OAM)
-    // FEA0-FEFF   Not Usable
-    // FF00-FF7F   I/O Ports
-    // FF80-FFFE   High RAM (HRAM)
-    // FFFF        Interrupt Enable Register
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x000..=0x00ff if self.boot_rom_enabled() => {
@@ -109,7 +109,7 @@ impl Device for Mmu {
             0xff00..=0xff7f => match addr {
                 0xff00 => self.joy.read(addr),
                 0xff01 | 0xff02 => {
-                    /* serial data transfer (link cable) */
+                    // TODO serial data transfer (link cable)
                     0
                 }
                 0xff04..=0xff07 => self.timer.read(addr),
@@ -118,12 +118,12 @@ impl Device for Mmu {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.sound.read(addr),
+                | 0xff20..=0xff26 => self.apu.read(addr),
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.read(addr),
                 0xff46 => 0x0,
                 0xff50 => self.boot,
-                _addr => {
-                    //eprintln!("unhandled addr = {:x}", addr);
+                _ => {
+                    // unhandled address
                     0
                 }
             },
@@ -158,12 +158,12 @@ impl Device for Mmu {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.sound.write(addr, data),
+                | 0xff20..=0xff26 => self.apu.write(addr, data),
                 0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.write(addr, data),
                 0xff46 => self.dma(data),
                 0xff50 => self.boot = data,
-                _addr => {
-                    //eprintln!("unhandled addr = {:x}", addr)
+                _ => {
+                    // unhandled address
                 }
             },
             0xff80..=0xfffe => match addr {

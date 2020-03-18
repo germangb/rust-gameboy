@@ -25,6 +25,8 @@ pub mod joypad;
 pub mod mmu;
 pub mod ppu;
 pub mod registers;
+#[cfg(test)]
+pub mod test;
 pub mod timer;
 
 pub struct Dmg {
@@ -34,7 +36,7 @@ pub struct Dmg {
 }
 
 impl Dmg {
-    pub fn new<C: Cartridge + 'static>(cartridge: C) -> Self {
+    pub fn new<C: Into<Cartridge> + 'static>(cartridge: C) -> Self {
         Self {
             cpu: Cpu::default(),
             mmu: Box::new(Mmu::new(cartridge)),
