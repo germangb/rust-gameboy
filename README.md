@@ -1,4 +1,4 @@
-## `DMG Emulator`
+# `DMG Emulator`
 
 ![](assets/zelda.gif)
 
