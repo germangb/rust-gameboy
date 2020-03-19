@@ -14,6 +14,7 @@ pub(crate) const HBLANK: usize = 201;
 pub(crate) const OAM: usize = 77;
 pub(crate) const PIXEL: usize = 169;
 pub(crate) const VBLANK: usize = 4650;
+
 const PIXELS: usize = 160 * 144;
 
 // const PALETTE: [Color; 4] = [
@@ -52,24 +53,24 @@ pub struct OamEntry {
     pub flag: u8,
 }
 
-// #[repr(u32)]
-// #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-// pub enum Color {
-//     #[allow(clippy::style)]
-//     White = 0xffffff,
-//     #[allow(clippy::style)]
-//     LightGray = 0xaaaaaa,
-//     #[allow(clippy::style)]
-//     DarkGray = 0x555555,
-//     #[allow(clippy::style)]
-//     Black = 0x000000,
-// }
-
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Scroll {
     pub scy: u8,
     pub scx: u8,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct Window {
+    pub wy: u8,
+    pub wx: u8,
+}
+
+pub struct Pal {
+    pub bgp: u8,
+    pub obp0: u8,
+    pub obp1: u8,
 }
 
 pub struct Ppu {
@@ -94,17 +95,20 @@ pub struct Ppu {
     scroll: Scroll,
     ly: u8,
     lyc: u8,
-    wy: u8,
-    wx: u8,
-    bgp: u8,
-    obp0: u8,
-    obp1: u8,
+    window: Window,
+    pal: Pal,
     int: Rc<RefCell<Interrupts>>,
 }
 
 impl Ppu {
     pub fn new(int: Rc<RefCell<Interrupts>>) -> Self {
         let scroll = Scroll { scy: 0, scx: 0 };
+        let window = Window { wy: 0, wx: 0 };
+        let pal = Pal {
+            bgp: 0,
+            obp0: 0,
+            obp1: 0,
+        };
         let palette = palette::GRAYSCALE;
         Self {
             palette,
@@ -119,11 +123,8 @@ impl Ppu {
             scroll,
             ly: 0,
             lyc: 0,
-            wy: 0,
-            wx: 0,
-            bgp: 0,
-            obp0: 0,
-            obp1: 0,
+            window,
+            pal,
             int,
         }
     }
@@ -270,18 +271,20 @@ impl Ppu {
     }
 
     fn render_win(&mut self) {
-        if self.ly < self.wy || self.wx >= 160 {
+        let Window { wy, wx } = self.window;
+        let Pal { bgp, .. } = self.pal;
+        if self.ly < wy || wx >= 160 {
             return;
         }
-        let bgp = self.bgp;
+        let bgp = bgp;
         let win_tile_map = self.win_tile_map();
         let bg_win_tile_data = self.bg_win_tile_data();
-        for pix in self.wx..=166 {
+        for pix in wx..=166 {
             if pix < 7 {
                 continue;
             }
-            let y = u16::from(self.ly - self.wy);
-            let x = u16::from(pix - self.wx);
+            let y = u16::from(self.ly - wy);
+            let x = u16::from(pix - wx);
             let pixel = 160 * self.ly as usize + (pix - 7) as usize;
             if pixel >= PIXELS {
                 continue;
@@ -314,7 +317,7 @@ impl Ppu {
     }
 
     fn render_bg(&mut self) {
-        let bgp = self.bgp;
+        let Pal { bgp, .. } = self.pal;
         let bg_tile_map = self.bg_tile_map();
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
@@ -367,6 +370,7 @@ impl Ppu {
     }
 
     fn render_sprites(&mut self) {
+        let Pal { obp0, obp1, .. } = self.pal;
         let mut entries = self.oam_entries().to_vec();
         entries.sort_by_key(|o| o.xpos);
         for oam in entries {
@@ -376,11 +380,7 @@ impl Ppu {
             let behind_bg = oam.flag & 0x80 != 0;
             let x_flip = oam.flag & 0x20 != 0;
             let y_flip = oam.flag & 0x40 != 0;
-            let pal = if oam.flag & 0x10 != 0 {
-                self.obp1
-            } else {
-                self.obp0
-            };
+            let pal = if oam.flag & 0x10 != 0 { obp1 } else { obp0 };
             let lim = if self.lcdc & 0x4 != 0 { 0 } else { 8 };
             for sy in ypos - 16..ypos - lim {
                 for sx in xpos - 8..xpos {
@@ -428,11 +428,11 @@ impl Device for Ppu {
             0xff43 => self.scroll.scx,
             0xff44 => self.ly,
             0xff45 => self.lyc,
-            0xff4a => self.wy,
-            0xff4b => self.wx,
-            0xff47 => self.bgp,
-            0xff48 => self.obp0,
-            0xff49 => self.obp1,
+            0xff4a => self.window.wy,
+            0xff4b => self.window.wx,
+            0xff47 => self.pal.bgp,
+            0xff48 => self.pal.obp0,
+            0xff49 => self.pal.obp1,
             _ => panic!(),
         }
     }
@@ -464,11 +464,11 @@ impl Device for Ppu {
                 self.ly = 0;
             }
             0xff45 => self.lyc = data,
-            0xff4a => self.wy = data,
-            0xff4b => self.wx = data,
-            0xff47 => self.bgp = data,
-            0xff48 => self.obp0 = data,
-            0xff49 => self.obp1 = data,
+            0xff4a => self.window.wy = data,
+            0xff4b => self.window.wx = data,
+            0xff47 => self.pal.bgp = data,
+            0xff48 => self.pal.obp0 = data,
+            0xff49 => self.pal.obp1 = data,
             _ => panic!(),
         }
     }

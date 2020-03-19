@@ -1,4 +1,6 @@
 use crate::device::Device;
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
 
 #[repr(u8)]
 pub enum Flag {
@@ -10,6 +12,7 @@ pub enum Flag {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Interrupts {
     flags: u8,
     enable: u8,

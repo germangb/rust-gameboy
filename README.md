@@ -1,6 +1,6 @@
 ## DMG
 
-![](assets/drmario.gif)
+![](assets/zelda.gif)
 
 ## tests
 

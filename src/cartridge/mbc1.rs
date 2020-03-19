@@ -1,15 +1,19 @@
 use crate::device::Device;
 #[cfg(feature = "serialize")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 enum Mode {
     Rom,
     Ram,
 }
 
-#[allow(dead_code)]
+#[rustfmt::skip]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Mbc1 {
     rom: Box<[u8]>,
+    #[cfg_attr(feature = "serialize", serde(serialize_with = "crate::serde::ser_vec_8k"))]
+    #[cfg_attr(feature = "serialize", serde(deserialize_with = "crate::serde::de_vec_8k"))]
     ram: Vec<[u8; 0x2000]>,
     rom_bank: usize,
     ram_bank: usize,
@@ -82,27 +86,5 @@ impl Device for Mbc1 {
             0xa000..=0xbfff => self.ram[self.ram_bank][addr as usize - 0xa000] = data,
             addr => panic!("{:x}", addr),
         }
-    }
-}
-
-#[allow(unused_variables)]
-#[cfg(feature = "serialize")]
-impl Serialize for Mbc1 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        unimplemented!()
-    }
-}
-
-#[allow(unused_variables)]
-#[cfg(feature = "serialize")]
-impl<'de> Deserialize<'de> for Mbc1 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        unimplemented!()
     }
 }

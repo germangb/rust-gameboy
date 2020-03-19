@@ -1,9 +1,13 @@
 use crate::device::Device;
 #[cfg(feature = "serialize")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
+#[rustfmt::skip]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct RomOnly {
     rom: Box<[u8]>,
+    #[cfg_attr(feature = "serialize", serde(serialize_with = "crate::serde::ser_boxed_8k"))]
+    #[cfg_attr(feature = "serialize", serde(deserialize_with = "crate::serde::de_boxed_8k"))]
     ram: Box<[u8; 0x2000]>,
 }
 
@@ -31,27 +35,5 @@ impl Device for RomOnly {
             addr @ 0xa000..=0xbfff => self.ram[addr - 0xa000] = data,
             _ => panic!(),
         }
-    }
-}
-
-#[allow(unused_variables)]
-#[cfg(feature = "serialize")]
-impl Serialize for RomOnly {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        unimplemented!()
-    }
-}
-
-#[allow(unused_variables)]
-#[cfg(feature = "serialize")]
-impl<'de> Deserialize<'de> for RomOnly {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        unimplemented!()
     }
 }
