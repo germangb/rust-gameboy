@@ -94,7 +94,7 @@ impl Registers {
 
 #[cfg(test)]
 mod test {
-    use crate::registers::{
+    use crate::reg::{
         Flag::{C, H, N, Z},
         Registers,
     };

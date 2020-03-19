@@ -16,7 +16,7 @@ use std::{
 
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 const ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+    include_bytes!("../roms/Pokemon - Crystal Version (UE) (V1.1) [C][!].gbc");
 
 fn main() {
     let cartridge = Mbc3::from_bytes(ROM);
@@ -26,14 +26,16 @@ fn main() {
     let mut dmg = Dmg::new(cartridge);
     dmg.mmu_mut().ppu_mut().set_palette(PALETTE);
 
-    if dmg.mmu().cartridge().cgb().is_some() {
-        dmg.boot_cgb();
-    } else {
-        dmg.boot();
-    }
+    // if dmg.mmu().cartridge().cgb().is_some() {
+    //     dmg.boot_cgb();
+    // } else {
+    //     dmg.boot();
+    // }
+    //
+    dmg.boot_cgb();
 
     let mut opt = WindowOptions::default();
-    opt.scale = Scale::X2;
+    opt.scale = Scale::X4;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
 
     while window.is_open() {

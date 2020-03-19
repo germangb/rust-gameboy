@@ -1,7 +1,7 @@
 use crate::{
     dev::Device,
     mmu::Mmu,
-    registers::{Flag::*, Registers},
+    reg::{Flag::*, Registers},
 };
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};

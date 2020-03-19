@@ -25,7 +25,7 @@ pub mod interrupts;
 pub mod joypad;
 pub mod mmu;
 pub mod ppu;
-pub mod registers;
+pub mod reg;
 pub mod timer;
 pub mod vram;
 pub mod wram;
