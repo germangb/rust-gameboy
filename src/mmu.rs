@@ -1,6 +1,6 @@
 use crate::{
     apu::Apu, cartridge::Cartridge, dev::Device, interrupts::Interrupts, joypad::Joypad, ppu::Ppu,
-    timer::Timer,
+    timer::Timer, wram::WorkRam,
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -21,7 +21,7 @@ pub struct Mmu {
     cartridge: Box<dyn Cartridge>,
     ppu: Ppu,
     timer: Timer,
-    wram: [u8; 0x2000],
+    wram: WorkRam,
     joy: Joypad,
     apu: Apu,
     hram: [u8; 0x7f],
@@ -39,7 +39,7 @@ impl Mmu {
             cartridge: Box::new(cartridge),
             ppu: Ppu::new(Rc::clone(&int)),
             timer: Timer::new(Rc::clone(&int)),
-            wram: [0; 0x2000],
+            wram: WorkRam::new(),
             joy: Joypad::new(Rc::clone(&int)),
             apu: Apu::new(Rc::clone(&int)),
             hram: [0; 0x7f],
@@ -71,6 +71,22 @@ impl Mmu {
         &mut self.ppu
     }
 
+    pub fn wram(&self) -> &WorkRam {
+        &self.wram
+    }
+
+    pub fn wram_mut(&mut self) -> &mut WorkRam {
+        &mut self.wram
+    }
+
+    pub fn apu(&self) -> &Apu {
+        &self.apu
+    }
+
+    pub fn apu_mut(&mut self) -> &mut Apu {
+        &mut self.apu
+    }
+
     pub fn step(&mut self, cycles: usize) {
         self.ppu.step(cycles);
         self.timer.step(cycles);
@@ -99,10 +115,9 @@ impl Device for Mmu {
             0x0000..=0x7fff => self.cartridge.read(addr),
             0x8000..=0x9fff => self.ppu.read(addr),
             0xa000..=0xbfff => self.cartridge.read(addr),
-            0xc000..=0xcfff => self.wram[addr as usize - 0xc000],
-            0xd000..=0xdfff => self.wram[addr as usize - 0xc000],
+            0xc000..=0xdfff => self.wram.read(addr),
             // E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
-            0xe000..=0xfdff => self.wram[addr as usize - 0xe000],
+            0xe000..=0xfdff => self.wram.read(addr),
             0xfe00..=0xfe9f => self.ppu.read(addr),
             #[rustfmt::skip]
             0xfea0..=0xfeff => { /* Not Usable */ 0x0 }
@@ -119,9 +134,10 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.read(addr),
-                0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.read(addr),
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 => self.ppu.read(addr),
                 0xff46 => 0x0,
                 0xff50 => self.boot,
+                0xff70 => self.wram.read(addr),
                 _ => {
                     // unhandled address
                     0
@@ -142,10 +158,9 @@ impl Device for Mmu {
             0x0000..=0x7fff => self.cartridge.write(addr, data),
             0x8000..=0x9fff => self.ppu.write(addr, data),
             0xa000..=0xbfff => self.cartridge.write(addr, data),
-            0xc000..=0xcfff => self.wram[addr as usize - 0xc000] = data,
-            0xd000..=0xdfff => self.wram[addr as usize - 0xc000] = data,
+            0xc000..=0xdfff => self.wram.write(addr, data),
             // E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
-            0xe000..=0xfdff => self.wram[addr as usize - 0xe000] = data,
+            0xe000..=0xfdff => self.wram.write(addr, data),
             0xfe00..=0xfe9f => self.ppu.write(addr, data),
             #[rustfmt::skip]
             0xfea0..=0xfeff => { /* Not Usable */ }
@@ -159,9 +174,12 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.write(addr, data),
-                0xff40..=0xff45 | 0xff47..=0xff4b => self.ppu.write(addr, data),
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 => {
+                    self.ppu.write(addr, data)
+                }
                 0xff46 => self.dma(data),
                 0xff50 => self.boot = data,
+                0xff70 => self.wram.write(addr, data),
                 _ => {
                     // unhandled address
                 }

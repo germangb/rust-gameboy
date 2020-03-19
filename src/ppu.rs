@@ -2,6 +2,7 @@ use crate::{
     dev::Device,
     interrupts::{Flag, Interrupts},
     ppu::palette::{Color, Palette},
+    vram::VideoRam,
 };
 use std::{cell::RefCell, mem, rc::Rc, slice};
 
@@ -26,7 +27,7 @@ const PIXELS: usize = 160 * 144;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
-pub enum Mode {
+enum Mode {
     HBlank = 0,
     VBlank = 1,
     OAM = 2,
@@ -34,12 +35,12 @@ pub enum Mode {
 }
 
 #[repr(u8)]
-pub enum TileMap {
+enum TileMap {
     X9c00 = 0x8,
     X9800 = 0,
 }
 #[repr(u8)]
-pub enum TileData {
+enum TileData {
     X8000 = 0x10,
     X8800 = 0,
 }
@@ -55,31 +56,50 @@ pub struct OamEntry {
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Scroll {
+struct Scroll {
     pub scy: u8,
     pub scx: u8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub struct Window {
+struct Window {
     pub wy: u8,
     pub wx: u8,
 }
 
-pub struct Pal {
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct Pal {
     pub bgp: u8,
     pub obp0: u8,
     pub obp1: u8,
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct Line {
+    pub ly: u8,
+    pub lyc: u8,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct VRamDma {
+    hdma1: u8,
+    hdma2: u8,
+    hdma3: u8,
+    hdma4: u8,
+    hdma5: u8,
+}
+
 pub struct Ppu {
+    cycles: usize,
     palette: Palette,
     buffer: [Color; PIXELS],
     back_buffer: [Color; PIXELS],
 
-    cycles: usize,
-    vram: [u8; 0x2000],
+    vram: VideoRam,
     oam: [u8; 0xa0],
     mode: Mode,
     // Bit 7 - LCD Display Enable             (0=Off, 1=On)
@@ -91,19 +111,33 @@ pub struct Ppu {
     // Bit 1 - OBJ (Sprite) Display Enable    (0=Off, 1=On)
     // Bit 0 - BG Display (for CGB see below) (0=Off, 1=On)
     lcdc: u8,
+    // Bit 6 - LYC=LY Coincidence Interrupt (1=Enable) (Read/Write)
+    // Bit 5 - Mode 2 OAM Interrupt         (1=Enable) (Read/Write)
+    // Bit 4 - Mode 1 V-Blank Interrupt     (1=Enable) (Read/Write)
+    // Bit 3 - Mode 0 H-Blank Interrupt     (1=Enable) (Read/Write)
+    // Bit 2 - Coincidence Flag  (0:LYC<>LY, 1:LYC=LY) (Read Only)
+    // Bit 1-0 - Mode Flag       (Mode 0-3, see below) (Read Only)
     stat: u8,
     scroll: Scroll,
-    ly: u8,
-    lyc: u8,
-    window: Window,
+    line: Line,
+    win: Window,
+    vram_dma: VRamDma,
     pal: Pal,
     int: Rc<RefCell<Interrupts>>,
 }
 
 impl Ppu {
     pub fn new(int: Rc<RefCell<Interrupts>>) -> Self {
+        let vram_dma = VRamDma {
+            hdma1: 0,
+            hdma2: 0,
+            hdma3: 0,
+            hdma4: 0,
+            hdma5: 0,
+        };
         let scroll = Scroll { scy: 0, scx: 0 };
-        let window = Window { wy: 0, wx: 0 };
+        let win = Window { wy: 0, wx: 0 };
+        let line = Line { ly: 0, lyc: 0 };
         let pal = Pal {
             bgp: 0,
             obp0: 0,
@@ -115,15 +149,15 @@ impl Ppu {
             buffer: [palette[0]; PIXELS],
             back_buffer: [palette[0]; PIXELS],
             cycles: 0,
-            vram: [0; 0x2000],
+            vram: VideoRam::new(),
             oam: [0; 0xa0],
             mode: Mode::OAM,
             lcdc: 0,
             stat: 0,
             scroll,
-            ly: 0,
-            lyc: 0,
-            window,
+            line,
+            win,
+            vram_dma,
             pal,
             int,
         }
@@ -158,7 +192,7 @@ impl Ppu {
                     // The gameboy permanently compares the value of the LYC and LY registers. When
                     // both values are identical, the coincident bit in the STAT register becomes
                     // set, and (if enabled) a STAT interrupt is requested.
-                    if self.stat & 0x40 != 0 && self.ly == self.lyc {
+                    if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
 
@@ -166,9 +200,9 @@ impl Ppu {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
 
-                    self.ly += 1;
+                    self.line.ly += 1;
 
-                    if self.ly == 144 {
+                    if self.line.ly == 144 {
                         // TODO fix worms rom
                         //let obj_display = self.lcdc & 0x2 != 0;
                         let obj_display = true;
@@ -196,22 +230,30 @@ impl Ppu {
                 if self.cycles >= VBLANK {
                     self.mode = Mode::OAM;
                     self.cycles %= VBLANK;
-                    self.ly = 0;
+                    self.line.ly = 0;
                     if self.stat & 0x20 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
                 } else {
                     let line_vb = self.cycles / (OAM + PIXEL + HBLANK);
-                    self.ly = 144 + line_vb as u8;
+                    self.line.ly = 144 + line_vb as u8;
                 }
             }
         }
 
-        if self.ly == self.lyc {
+        if self.line.ly == self.line.lyc {
             self.stat |= 0x4;
         } else {
             self.stat &= !0x4;
         }
+    }
+
+    pub fn vram(&self) -> &VideoRam {
+        &self.vram
+    }
+
+    pub fn vram_mut(&mut self) -> &mut VideoRam {
+        &mut self.vram
     }
 
     pub fn buffer(&self) -> &[Color; 160 * 144] {
@@ -271,9 +313,9 @@ impl Ppu {
     }
 
     fn render_win(&mut self) {
-        let Window { wy, wx } = self.window;
+        let Window { wy, wx } = self.win;
         let Pal { bgp, .. } = self.pal;
-        if self.ly < wy || wx >= 160 {
+        if self.line.ly < wy || wx >= 160 {
             return;
         }
         let bgp = bgp;
@@ -283,9 +325,9 @@ impl Ppu {
             if pix < 7 {
                 continue;
             }
-            let y = u16::from(self.ly - wy);
+            let y = u16::from(self.line.ly - wy);
             let x = u16::from(pix - wx);
-            let pixel = 160 * self.ly as usize + (pix - 7) as usize;
+            let pixel = 160 * self.line.ly as usize + (pix - 7) as usize;
             if pixel >= PIXELS {
                 continue;
             }
@@ -322,7 +364,7 @@ impl Ppu {
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
         for pix in 0..160 {
-            let y = scy.wrapping_add(self.ly).wrapping_sub(0) as u16;
+            let y = scy.wrapping_add(self.line.ly).wrapping_sub(0) as u16;
             let x = (pix as u8).wrapping_add(scx) as u16;
             let tile_map_idx = 32u16 * (y / 8) + (x / 8);
             let tile = match bg_tile_map {
@@ -347,7 +389,7 @@ impl Ppu {
             };
             let pal_idx = (hi << 1) | lo;
             let col_idx = (bgp >> (2 * pal_idx)) & 0x3;
-            self.back_buffer[160 * self.ly as usize + pix] = self.palette[col_idx as usize];
+            self.back_buffer[160 * self.line.ly as usize + pix] = self.palette[col_idx as usize];
         }
     }
 
@@ -420,26 +462,32 @@ impl Ppu {
 impl Device for Ppu {
     fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x8000..=0x9fff => self.vram[addr as usize - 0x8000],
+            0x8000..=0x9fff => self.vram.read(addr),
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00],
             0xff40 => self.lcdc,
             0xff41 => (self.stat & 0xfc) | self.mode as u8,
             0xff42 => self.scroll.scy,
             0xff43 => self.scroll.scx,
-            0xff44 => self.ly,
-            0xff45 => self.lyc,
-            0xff4a => self.window.wy,
-            0xff4b => self.window.wx,
+            0xff44 => self.line.ly,
+            0xff45 => self.line.lyc,
+            0xff4a => self.win.wy,
+            0xff4b => self.win.wx,
             0xff47 => self.pal.bgp,
             0xff48 => self.pal.obp0,
             0xff49 => self.pal.obp1,
+            0xff4f => self.vram.read(addr),
+            0xff51 => self.vram_dma.hdma1,
+            0xff52 => self.vram_dma.hdma2,
+            0xff53 => self.vram_dma.hdma3,
+            0xff54 => self.vram_dma.hdma4,
+            0xff55 => self.vram_dma.hdma5,
             _ => panic!(),
         }
     }
 
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0x8000..=0x9fff => self.vram[addr as usize - 0x8000] = data,
+            0x8000..=0x9fff => self.vram.write(addr, data),
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00] = data,
             0xff40 => {
                 //println!("lcdc = {:08b}", data);
@@ -447,7 +495,7 @@ impl Device for Ppu {
                 if self.lcdc & 0x80 == 0 {
                     self.clear();
                     self.mode = Mode::HBlank;
-                    self.ly = 0;
+                    self.line.ly = 0;
                 }
             }
             0xff41 => {
@@ -461,14 +509,23 @@ impl Device for Ppu {
                 // is transferred to the LCD Driver. The LY can take on any
                 // value between 0 through 153. The values between 144 and 153
                 // indicate the V-Blank period. Writing will reset the counter.
-                self.ly = 0;
+                self.line.ly = 0;
             }
-            0xff45 => self.lyc = data,
-            0xff4a => self.window.wy = data,
-            0xff4b => self.window.wx = data,
+            0xff45 => self.line.lyc = data,
+            0xff4a => self.win.wy = data,
+            0xff4b => self.win.wx = data,
             0xff47 => self.pal.bgp = data,
             0xff48 => self.pal.obp0 = data,
             0xff49 => self.pal.obp1 = data,
+            0xff4f => self.vram.write(addr, data),
+            0xff51 => self.vram_dma.hdma1 = data,
+            0xff52 => self.vram_dma.hdma2 = data,
+            0xff53 => self.vram_dma.hdma3 = data,
+            0xff54 => self.vram_dma.hdma4 = data,
+            0xff55 => {
+                self.vram_dma.hdma5 = data;
+                unimplemented!()
+            }
             _ => panic!(),
         }
     }

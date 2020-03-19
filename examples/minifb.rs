@@ -1,5 +1,5 @@
 use dmg::{
-    cartridge::{Cartridge, Mbc3, ZeroRom},
+    cartridge::{Cartridge, Mbc1, Mbc3, ZeroRom},
     joypad::{
         Btn::*,
         Dir::*,
@@ -19,13 +19,18 @@ const ROM: &[u8] =
     include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
 fn main() {
-    let cartridge = ZeroRom;
+    let cartridge = Mbc3::from_bytes(ROM);
 
     println!("{:?}", cartridge.cgb());
 
     let mut dmg = Dmg::new(cartridge);
     dmg.mmu_mut().ppu_mut().set_palette(PALETTE);
-    //dmg.boot();
+
+    if dmg.mmu().cartridge().cgb().is_some() {
+        dmg.boot_cgb();
+    } else {
+        dmg.boot();
+    }
 
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X2;

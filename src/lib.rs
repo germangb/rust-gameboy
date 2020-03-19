@@ -1,13 +1,14 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![deny(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_must_use)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(unused_imports)]
+#![allow(clippy::style)]
+#![allow(clippy::correctness)]
+#![allow(clippy::complexity)]
+#![allow(clippy::perf)]
+
 use crate::{
     cartridge::Cartridge,
     cpu::Cpu,
@@ -26,6 +27,8 @@ pub mod mmu;
 pub mod ppu;
 pub mod registers;
 pub mod timer;
+pub mod vram;
+pub mod wram;
 
 pub struct Dmg {
     cpu: Cpu,
@@ -40,6 +43,11 @@ impl Dmg {
             mmu: Box::new(Mmu::new(cartridge)),
             carry: 0,
         }
+    }
+
+    pub fn boot_cgb(&mut self) {
+        self.boot();
+        self.cpu.reg_mut().a = 0x11;
     }
 
     /// Skip the power up sequence.
@@ -120,5 +128,9 @@ impl Dmg {
 
     pub fn cpu(&self) -> &Cpu {
         &self.cpu
+    }
+
+    pub fn cpu_mut(&mut self) -> &mut Cpu {
+        &mut self.cpu
     }
 }
