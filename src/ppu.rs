@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    dev::Device,
     interrupts::{Flag, Interrupts},
     ppu::palette::{Color, Palette},
 };
@@ -476,11 +476,11 @@ impl Device for Ppu {
 
 #[cfg(test)]
 mod tests {
-    use crate::{device::Device, mmu::Mmu};
+    use crate::{cartridge::ZeroRom, dev::Device, mmu::Mmu};
 
     #[test]
     fn vram() {
-        let mut mmu = Mmu::new(crate::test::rom());
+        let mut mmu = Mmu::new(ZeroRom);
 
         mmu.write(0x8000, 1);
         mmu.write(0x9fff, 2);
@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn oam() {
-        let mut mmu = Mmu::new(crate::test::rom());
+        let mut mmu = Mmu::new(ZeroRom);
 
         mmu.write(0xfe00, 1);
         mmu.write(0xfe9f, 2);
@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn registers() {
-        let mut mmu = Mmu::new(crate::test::rom());
+        let mut mmu = Mmu::new(ZeroRom);
 
         mmu.write(0xff42, 1);
         mmu.write(0xff43, 2);

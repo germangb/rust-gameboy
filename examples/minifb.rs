@@ -1,36 +1,35 @@
 use dmg::{
-    cartridge::{Mbc1, Mbc3, RomOnly},
-    device::Device,
+    cartridge::{Cartridge, Mbc3, ZeroRom},
     joypad::{
         Btn::*,
         Dir::*,
         Key::{Btn, Dir},
     },
-    ppu::palette::{
-        Color, ANDRADE_GAMEBOY, GRAYSCALE, HARSHGREEN, ICE_CREAM_GB, LINKS_AWAKENING_SGB,
-        NINTENDO_GAMEBOY_BLACK_ZERO, NOSTALGIA, RUSTIC_GB,
-    },
+    ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
     Dmg,
 };
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use std::{
-    fs::File,
-    io::Write,
     mem, thread,
     time::{Duration, Instant},
 };
 
+const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
+const ROM: &[u8] =
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+
 fn main() {
+    let cartridge = ZeroRom;
+
+    println!("{:?}", cartridge.cgb());
+
+    let mut dmg = Dmg::new(cartridge);
+    dmg.mmu_mut().ppu_mut().set_palette(PALETTE);
+    //dmg.boot();
+
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X2;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
-
-    let mut dmg = Dmg::new(RomOnly::print10_demo());
-
-    dmg.mmu_mut()
-        .ppu_mut()
-        .set_palette(NINTENDO_GAMEBOY_BLACK_ZERO);
-    dmg.boot();
 
     while window.is_open() {
         let joy = &[

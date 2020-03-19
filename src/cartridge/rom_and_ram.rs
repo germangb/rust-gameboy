@@ -1,17 +1,12 @@
-use crate::device::Device;
-#[cfg(feature = "serialize")]
-use serde::{Deserialize, Serialize};
+use crate::dev::Device;
 
 #[rustfmt::skip]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct RomOnly {
+pub struct RomAndRam {
     rom: Box<[u8]>,
-    #[cfg_attr(feature = "serialize", serde(serialize_with = "crate::serde::ser_boxed_8k"))]
-    #[cfg_attr(feature = "serialize", serde(deserialize_with = "crate::serde::de_boxed_8k"))]
     ram: Box<[u8; 0x2000]>,
 }
 
-impl RomOnly {
+impl RomAndRam {
     pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
         Self {
             rom: rom.into(),
@@ -20,7 +15,7 @@ impl RomOnly {
     }
 }
 
-impl Device for RomOnly {
+impl Device for RomAndRam {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0x0000..=0x7fff => *self.rom.get(addr).unwrap_or(&0),

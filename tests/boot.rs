@@ -1,4 +1,4 @@
-use dmg::{cartridge::RomOnly, cpu::Cpu, device::Device, mmu::Mmu};
+use dmg::{cartridge::ZeroRom, cpu::Cpu, dev::Device, mmu::Mmu};
 use std::{
     cell::Cell,
     sync::{Arc, Mutex},
@@ -9,11 +9,9 @@ use std::{
 const TIMEOUT: u64 = 4;
 
 #[test]
-#[ignore]
-#[cfg(nope)]
 fn boot() {
     let mut cpu = Cpu::default();
-    let mut mmu = Mmu::new(rom);
+    let mut mmu = Mmu::new(ZeroRom);
 
     let timeout = Arc::new(Mutex::new(Cell::new(false)));
 

@@ -1,17 +1,17 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_must_use)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(unused_imports)]
-#![allow(clippy::style)]
-#![allow(clippy::correctness)]
-#![allow(clippy::complexity)]
-#![allow(clippy::perf)]
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 use crate::{
     cartridge::Cartridge,
     cpu::Cpu,
-    device::Device,
+    dev::Device,
     mmu::Mmu,
     ppu::{HBLANK, OAM, PIXEL},
 };
@@ -19,16 +19,12 @@ use crate::{
 pub mod apu;
 pub mod cartridge;
 pub mod cpu;
-pub mod device;
+pub mod dev;
 pub mod interrupts;
 pub mod joypad;
 pub mod mmu;
 pub mod ppu;
 pub mod registers;
-#[cfg(feature = "serialize")]
-mod serde;
-#[cfg(test)]
-mod test;
 pub mod timer;
 
 pub struct Dmg {

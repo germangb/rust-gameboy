@@ -1,13 +1,10 @@
-use dmg::{cartridge::RomOnly, Dmg};
+use dmg::{cartridge::RomAndRam, Dmg};
 use minifb::{Key, Window, WindowOptions};
 use std::{
     mem, thread,
-    thread::{JoinHandle, Thread},
+    thread::JoinHandle,
     time::{Duration, Instant},
 };
-
-const WIDTH: usize = 160;
-const HEIGHT: usize = 144;
 
 fn main() {
     let tests = &[
@@ -39,10 +36,10 @@ fn main() {
 
 fn cpu_test(file: &str, idx: usize) {
     let idx = idx as isize;
-    let mut dmg = Dmg::new(RomOnly::from_bytes(std::fs::read(file).unwrap()));
+    let mut dmg = Dmg::new(RomAndRam::from_bytes(std::fs::read(file).unwrap()));
     dmg.boot();
-    let mut opts = WindowOptions::default();
-    let mut window = Window::new("window", WIDTH, HEIGHT, opts).unwrap();
+    let opts = WindowOptions::default();
+    let mut window = Window::new("window", 160, 144, opts).unwrap();
     let x = idx % 5;
     let y = idx / 5;
     window.set_position((160 + 64) * x, (144 + 64) * y);

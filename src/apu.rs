@@ -1,4 +1,4 @@
-use crate::{device::Device, interrupts::Interrupts};
+use crate::{dev::Device, interrupts::Interrupts};
 use std::{cell::RefCell, rc::Rc};
 
 pub struct Apu {

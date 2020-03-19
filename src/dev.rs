@@ -33,7 +33,7 @@ impl<T: Device> Device for Box<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::device::Device;
+    use crate::dev::Device;
 
     #[test]
     fn words() {

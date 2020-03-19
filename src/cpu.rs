@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    dev::Device,
     mmu::Mmu,
     registers::{Flag::*, Registers},
 };
@@ -1400,12 +1400,12 @@ impl Cpu {
 
 #[cfg(test)]
 mod test {
-    use crate::{cpu::Cpu, device::Device, mmu::Mmu};
+    use crate::{cartridge::ZeroRom, cpu::Cpu, dev::Device, mmu::Mmu};
 
     #[test]
     fn stack() {
         let mut cpu = Cpu::default();
-        let mut mmu = Mmu::new(crate::test::rom());
+        let mut mmu = Mmu::new(ZeroRom);
 
         cpu.reg.sp = 0xfffc;
 
@@ -1420,7 +1420,7 @@ mod test {
     #[ignore]
     fn interrupts() {
         let cpu = Cpu::default();
-        let mut mmu = Mmu::new(crate::test::rom());
+        let mut mmu = Mmu::new(ZeroRom);
 
         mmu.write(0xff50, 1);
         mmu.write(0xffff, 0x10); // joypad

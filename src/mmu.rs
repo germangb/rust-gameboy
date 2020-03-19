@@ -1,6 +1,6 @@
 use crate::{
-    apu::Apu, cartridge::Cartridge, device::Device, interrupts::Interrupts, joypad::Joypad,
-    ppu::Ppu, timer::Timer,
+    apu::Apu, cartridge::Cartridge, dev::Device, interrupts::Interrupts, joypad::Joypad, ppu::Ppu,
+    timer::Timer,
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -178,11 +178,11 @@ impl Device for Mmu {
 
 #[cfg(tests)]
 mod tests {
-    use crate::{cartridge::RomOnly, device::Device, mmu::Mmu};
+    use crate::{cartridge::RomAndRam, dev::Device, mmu::Mmu};
 
     #[test]
     fn dma() {
-        let mut mmu = Mmu::new(RomOnly::tetris());
+        let mut mmu = Mmu::new(RomAndRam::tetris());
 
         mmu.write(0xff50, 1);
         mmu.write(0xff46, 0);

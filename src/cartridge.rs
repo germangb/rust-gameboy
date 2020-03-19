@@ -1,12 +1,12 @@
-use crate::device::Device;
+use crate::dev::Device;
 
 mod mbc1;
 mod mbc3;
-mod rom_only;
+mod rom_and_ram;
 
 pub use mbc1::Mbc1;
 pub use mbc3::Mbc3;
-pub use rom_only::RomOnly;
+pub use rom_and_ram::RomAndRam;
 
 // 00h -  32KByte (no ROM banking)
 // 01h -  64KByte (4 banks)
@@ -109,7 +109,19 @@ pub trait Cartridge: Device {
     }
 }
 
-impl Cartridge for RomOnly {}
+#[derive(Debug, Copy, Clone)]
+pub struct ZeroRom;
+
+impl Device for ZeroRom {
+    fn read(&self, _: u16) -> u8 {
+        0
+    }
+
+    fn write(&mut self, _: u16, _: u8) {}
+}
+
+impl Cartridge for ZeroRom {}
+impl Cartridge for RomAndRam {}
 impl Cartridge for Mbc1 {}
 impl Cartridge for Mbc3 {}
 impl<C: Cartridge> Cartridge for Box<C> {}

@@ -1,19 +1,13 @@
-use crate::device::Device;
-#[cfg(feature = "serialize")]
-use serde::{Deserialize, Serialize};
+use crate::dev::Device;
 
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 enum Mode {
     Rom,
     Ram,
 }
 
 #[rustfmt::skip]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Mbc1 {
     rom: Box<[u8]>,
-    #[cfg_attr(feature = "serialize", serde(serialize_with = "crate::serde::ser_vec_8k"))]
-    #[cfg_attr(feature = "serialize", serde(deserialize_with = "crate::serde::de_vec_8k"))]
     ram: Vec<[u8; 0x2000]>,
     rom_bank: usize,
     ram_bank: usize,

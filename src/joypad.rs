@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    dev::Device,
     interrupts::{Flag, Interrupts},
 };
 use std::{cell::RefCell, rc::Rc};
@@ -117,7 +117,7 @@ impl Device for Joypad {
 #[cfg(test)]
 mod tests {
     use crate::{
-        device::Device,
+        dev::Device,
         interrupts::Interrupts,
         joypad::{Btn::*, Dir::*, Joypad, Key, BTN, DIR},
     };

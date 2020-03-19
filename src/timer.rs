@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    dev::Device,
     interrupts::{Flag, Interrupts},
 };
 use std::{cell::RefCell, rc::Rc};
