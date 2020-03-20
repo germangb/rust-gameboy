@@ -12,6 +12,14 @@ impl VideoRam {
             vbk: 0,
         }
     }
+
+    pub fn bank_0(&self) -> &[u8; 0x2000] {
+        &self.vram[0]
+    }
+
+    pub fn bank_1(&self) -> &[u8; 0x2000] {
+        &self.vram[1]
+    }
 }
 
 impl Device for VideoRam {

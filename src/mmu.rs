@@ -134,7 +134,9 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.read(addr),
-                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 => self.ppu.read(addr),
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 | 0xff68..=0xff6b => {
+                    self.ppu.read(addr)
+                }
                 0xff46 => 0x0,
                 0xff50 => self.boot,
                 0xff70 => self.wram.read(addr),
@@ -174,7 +176,7 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.write(addr, data),
-                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 => {
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 | 0xff68..=0xff6b => {
                     self.ppu.write(addr, data)
                 }
                 0xff46 => self.dma(data),

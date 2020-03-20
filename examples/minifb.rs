@@ -16,7 +16,7 @@ use std::{
 
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 const ROM: &[u8] =
-    include_bytes!("../roms/Pokemon - Crystal Version (UE) (V1.1) [C][!].gbc");
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
 fn main() {
     let cartridge = Mbc3::from_bytes(ROM);
@@ -35,7 +35,7 @@ fn main() {
     dmg.boot_cgb();
 
     let mut opt = WindowOptions::default();
-    opt.scale = Scale::X4;
+    opt.scale = Scale::X2;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
 
     while window.is_open() {

@@ -18,13 +18,6 @@ pub(crate) const VBLANK: usize = 4650;
 
 const PIXELS: usize = 160 * 144;
 
-// const PALETTE: [Color; 4] = [
-//     Color::White,
-//     Color::LightGray,
-//     Color::DarkGray,
-//     Color::Black,
-// ];
-
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
 enum Mode {
@@ -39,6 +32,7 @@ enum TileMap {
     X9c00 = 0x8,
     X9800 = 0,
 }
+
 #[repr(u8)]
 enum TileData {
     X8000 = 0x10,
@@ -57,30 +51,48 @@ pub struct OamEntry {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct Scroll {
-    pub scy: u8,
-    pub scx: u8,
+    scy: u8,
+    scx: u8,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct Window {
-    pub wy: u8,
-    pub wx: u8,
+    wy: u8,
+    wx: u8,
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 struct Pal {
-    pub bgp: u8,
-    pub obp0: u8,
-    pub obp1: u8,
+    bgp: u8,
+    obp0: u8,
+    obp1: u8,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ColorPal {
+    // This register is used to address a byte in the CGBs Background Palette Memory. Each two byte
+    // in that memory define a color value. The first 8 bytes define Color 0-3 of Palette 0 (BGP0),
+    // and so on for BGP1-7.
+    //     Bit 0-5   Index (00-3F)
+    //     Bit 7     Auto Increment  (0=Disabled, 1=Increment after Writing)
+    // Data can be read/written to/from the specified index address through Register FF69. When the
+    // Auto Increment Bit is set then the index is automatically incremented after each <write> to
+    // FF69. Auto Increment has no effect when <reading> from FF69, so the index must be manually
+    // incremented in that case.
+    bgpi: u8,
+    obpi: u8,
+    bgp: [u8; 0x40],
+    obp: [u8; 0x40],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct Line {
-    pub ly: u8,
-    pub lyc: u8,
+    ly: u8,
+    lyc: u8,
 }
 
 #[repr(C)]
@@ -123,6 +135,7 @@ pub struct Ppu {
     win: Window,
     vram_dma: VRamDma,
     pal: Pal,
+    color_pal: ColorPal,
     int: Rc<RefCell<Interrupts>>,
 }
 
@@ -144,6 +157,12 @@ impl Ppu {
             obp1: 0,
         };
         let palette = palette::GRAYSCALE;
+        let color_pal = ColorPal {
+            bgpi: 0,
+            obpi: 0,
+            bgp: [0xff; 0x40],
+            obp: [0xff; 0x40],
+        };
         Self {
             palette,
             buffer: [palette[0]; PIXELS],
@@ -159,6 +178,7 @@ impl Ppu {
             win,
             vram_dma,
             pal,
+            color_pal,
             int,
         }
     }
@@ -331,13 +351,23 @@ impl Ppu {
             if pixel >= PIXELS {
                 continue;
             }
-            let tile_map_idx = 32u16 * (y / 8) + (x / 8);
-            let tile = match win_tile_map {
-                TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
-                TileMap::X9800 => self.read(0x9800 + tile_map_idx),
+
+            let tile_map_idx = (32u16 * (y / 8) + (x / 8)) as usize;
+            let bank_0 = self.vram.bank_0();
+            let bank_1 = self.vram.bank_1();
+            let (tile, flags) = match win_tile_map {
+                TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
+                TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
             };
-            let col = 7 - (x & 0x7) as u8;
-            let lin = y & 0x7;
+            let mut col = 7 - (x & 0x7) as u8;
+            let mut lin = y & 0x7;
+            if flags & 0x20 != 0 {
+                col = 7 - col;
+            }
+            if flags & 0x40 != 0 {
+                lin = 7 - lin;
+            }
+
             let (lo, hi) = match bg_win_tile_data {
                 TileData::X8000 => {
                     let lo = self.read(0x8000 + 16 * u16::from(tile) + lin * 2) >> col & 0x1;
@@ -366,13 +396,23 @@ impl Ppu {
         for pix in 0..160 {
             let y = scy.wrapping_add(self.line.ly).wrapping_sub(0) as u16;
             let x = (pix as u8).wrapping_add(scx) as u16;
-            let tile_map_idx = 32u16 * (y / 8) + (x / 8);
-            let tile = match bg_tile_map {
-                TileMap::X9c00 => self.read(0x9c00 + tile_map_idx),
-                TileMap::X9800 => self.read(0x9800 + tile_map_idx),
+
+            let tile_map_idx = (32u16 * (y / 8) + (x / 8)) as usize;
+            let bank_0 = self.vram.bank_0();
+            let bank_1 = self.vram.bank_1();
+            let (tile, flags) = match bg_tile_map {
+                TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
+                TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
             };
-            let col = 7 - (x & 0x7) as u8;
-            let lin = y & 0x7;
+            let mut col = 7 - (x & 0x7) as u8;
+            let mut lin = y & 0x7;
+            if flags & 0x20 != 0 {
+                col = 7 - col;
+            }
+            if flags & 0x40 != 0 {
+                lin = 7 - lin;
+            }
+
             let (lo, hi) = match bg_win_tile_data {
                 TileData::X8000 => {
                     let lo = self.read(0x8000 + 16 * u16::from(tile) + lin * 2) >> col & 0x1;
@@ -409,6 +449,15 @@ impl Ppu {
 
     fn pixel(&self, y: usize, x: usize) -> Color {
         self.back_buffer[160 * y + x]
+    }
+
+    fn write_color_pal(pal: &mut [u8], mut idx: u8, data: u8) -> u8 {
+        pal[(idx & 0x3f) as usize] = data;
+        if idx & 0x80 != 0 {
+            idx += 1;
+            idx &= 0xbf;
+        }
+        idx
     }
 
     fn render_sprites(&mut self) {
@@ -481,6 +530,19 @@ impl Device for Ppu {
             0xff53 => self.vram_dma.hdma3,
             0xff54 => self.vram_dma.hdma4,
             0xff55 => self.vram_dma.hdma5,
+            // This register allows to read/write data to the CGBs Background Palette Memory,
+            // addressed through Register FF68. Each color is defined by two bytes (Bit
+            // 0-7 in first byte).     Bit 0-4   Red Intensity   (00-1F)
+            //     Bit 5-9   Green Intensity (00-1F)
+            //     Bit 10-14 Blue Intensity  (00-1F)
+            // Much like VRAM, Data in Palette Memory cannot be read/written during the time when
+            // the LCD Controller is reading from it. (That is when the STAT register
+            // indicates Mode 3). Note: Initially all background colors are initialized
+            // as white.
+            0xff68 => self.color_pal.bgpi,
+            0xff69 => self.color_pal.bgp[(self.color_pal.bgpi & 0x3f) as usize],
+            0xff6a => self.color_pal.obpi,
+            0xff6b => self.color_pal.obp[(self.color_pal.obpi & 0x3f) as usize],
             _ => panic!(),
         }
     }
@@ -525,6 +587,16 @@ impl Device for Ppu {
             0xff55 => {
                 self.vram_dma.hdma5 = data;
                 unimplemented!()
+            }
+            0xff68 => self.color_pal.bgpi = data,
+            0xff69 => {
+                self.color_pal.bgpi =
+                    Self::write_color_pal(&mut self.color_pal.bgp[..], self.color_pal.bgpi, data)
+            }
+            0xff6a => self.color_pal.obpi = data,
+            0xff6b => {
+                self.color_pal.obpi =
+                    Self::write_color_pal(&mut self.color_pal.obp[..], self.color_pal.obpi, data)
             }
             _ => panic!(),
         }
