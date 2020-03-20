@@ -1,13 +1,13 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_must_use)]
-#![allow(unused_variables)]
-#![allow(unused_mut)]
-#![allow(unused_imports)]
-#![allow(clippy::style)]
-#![allow(clippy::correctness)]
-#![allow(clippy::complexity)]
-#![allow(clippy::perf)]
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 
 use crate::{
     cartridge::Cartridge,
@@ -30,28 +30,37 @@ pub mod timer;
 pub mod vram;
 pub mod wram;
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub enum Mode {
+    GB,
+    CGB,
+}
+
 pub struct Dmg {
+    mode: Mode,
+    boot: bool,
     cpu: Cpu,
     mmu: Box<Mmu>,
     carry: usize,
 }
 
 impl Dmg {
-    pub fn new<C: Cartridge + 'static>(cartridge: C) -> Self {
+    pub fn new<C: Cartridge + 'static>(cartridge: C, mode: Mode) -> Self {
         Self {
+            mode,
+            boot: false,
             cpu: Cpu::default(),
-            mmu: Box::new(Mmu::new(cartridge)),
+            mmu: Box::new(Mmu::new(cartridge, mode)),
             carry: 0,
         }
     }
 
-    pub fn boot_cgb(&mut self) {
-        self.boot();
+    fn boot_cgb(&mut self) {
+        self.boot_gb();
         self.cpu.reg_mut().a = 0x11;
     }
 
-    /// Skip the power up sequence.
-    pub fn boot(&mut self) {
+    fn boot_gb(&mut self) {
         // When the GameBoy is powered up, a 256 byte program starting at memory
         // location 0 is executed. This program is located in a ROM inside the GameBoy.
         // The first thing the program does is read the cartridge locations from $104 to
@@ -108,6 +117,15 @@ impl Dmg {
     }
 
     pub fn emulate_frame(&mut self) {
+        if !self.boot {
+            self.boot = true;
+            match self.mode {
+                Mode::GB => {
+                    //self.boot_gb()
+                }
+                Mode::CGB => self.boot_cgb(),
+            }
+        }
         let frame_ticks = (OAM + PIXEL + HBLANK) * 154;
         let mut cycles = 0;
         while cycles < frame_ticks {

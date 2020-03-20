@@ -6,7 +6,7 @@ use dmg::{
         Key::{Btn, Dir},
     },
     ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
-    Dmg,
+    Dmg, Mode,
 };
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use std::{
@@ -21,18 +21,10 @@ const ROM: &[u8] =
 fn main() {
     let cartridge = Mbc3::from_bytes(ROM);
 
-    println!("{:?}", cartridge.cgb());
-
-    let mut dmg = Dmg::new(cartridge);
-    dmg.mmu_mut().ppu_mut().set_palette(PALETTE);
-
-    // if dmg.mmu().cartridge().cgb().is_some() {
-    //     dmg.boot_cgb();
-    // } else {
-    //     dmg.boot();
-    // }
-    //
-    dmg.boot_cgb();
+    let mut dmg = Dmg::new(cartridge, Mode::CGB);
+    dmg.mmu_mut()
+        .ppu_mut()
+        .set_palette(dmg::ppu::palette::NINTENDO_GAMEBOY_BLACK_ZERO);
 
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X2;

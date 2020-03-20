@@ -1,7 +1,7 @@
 use dmg::{
     cartridge::Mbc1,
     ppu::palette::{Color, GRAYSCALE},
-    Dmg,
+    Dmg, Mode,
 };
 use std::{
     cell::Cell,
@@ -18,18 +18,8 @@ static ROM: &[u8] = include_bytes!("../roms/gb-test-roms/cpu_instrs/cpu_instrs.g
 static PASS: &[u8] = include_bytes!("cpu.bin");
 
 #[test]
-fn cpu_instrs_no_boot() {
-    let mut dmg = Dmg::new(Mbc1::from_bytes(ROM));
-
-    // skip boot sequence
-    dmg.boot();
-
-    test(dmg);
-}
-
-#[test]
 fn cpu_instrs() {
-    test(Dmg::new(Mbc1::from_bytes(ROM)));
+    test(Dmg::new(Mbc1::from_bytes(ROM), Mode::GB));
 }
 
 fn test(mut dmg: Dmg) {

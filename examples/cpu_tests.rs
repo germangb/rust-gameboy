@@ -1,4 +1,4 @@
-use dmg::{cartridge::RomAndRam, Dmg};
+use dmg::{cartridge::RomAndRam, ppu::palette::GRAYSCALE, Dmg, Mode};
 use minifb::{Key, Window, WindowOptions};
 use std::{
     mem, thread,
@@ -36,8 +36,10 @@ fn main() {
 
 fn cpu_test(file: &str, idx: usize) {
     let idx = idx as isize;
-    let mut dmg = Dmg::new(RomAndRam::from_bytes(std::fs::read(file).unwrap()));
-    dmg.boot();
+    let mut dmg = Dmg::new(
+        RomAndRam::from_bytes(std::fs::read(file).unwrap()),
+        Mode::GB,
+    );
     let opts = WindowOptions::default();
     let mut window = Window::new("window", 160, 144, opts).unwrap();
     let x = idx % 5;

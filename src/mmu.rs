@@ -1,6 +1,6 @@
 use crate::{
     apu::Apu, cartridge::Cartridge, dev::Device, interrupts::Interrupts, joypad::Joypad, ppu::Ppu,
-    timer::Timer, wram::WorkRam,
+    timer::Timer, wram::WorkRam, Mode,
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -29,7 +29,7 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    pub fn new<C>(cartridge: C) -> Self
+    pub fn new<C>(cartridge: C, mode: Mode) -> Self
     where
         C: Cartridge + 'static,
     {
@@ -37,7 +37,7 @@ impl Mmu {
         Self {
             boot: 0x0,
             cartridge: Box::new(cartridge),
-            ppu: Ppu::new(Rc::clone(&int)),
+            ppu: Ppu::new(mode, Rc::clone(&int)),
             timer: Timer::new(Rc::clone(&int)),
             wram: WorkRam::new(),
             joy: Joypad::new(Rc::clone(&int)),
