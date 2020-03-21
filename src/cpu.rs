@@ -55,6 +55,14 @@ impl Cpu {
         &mut self.reg
     }
 
+    pub fn ime(&self) -> bool {
+        self.ime
+    }
+
+    pub fn halt(&self) -> bool {
+        self.halt
+    }
+
     fn fetch(&mut self, mmu: &Mmu) -> u8 {
         let b = mmu.read(self.reg.pc);
         self.reg.pc += 1;

@@ -333,7 +333,7 @@ impl Ppu {
     fn clear(&mut self) {
         let color = match self.mode {
             Mode::GB => self.palette[0],
-            Mode::CGB => 0xff_ffffff,
+            Mode::CGB => [0xff, 0xff, 0xff],
         };
         mem::replace(&mut self.buffer, [color; 160 * 144]);
         mem::replace(&mut self.back_buffer, [color; 160 * 144]);
@@ -352,22 +352,22 @@ impl Ppu {
             if pix < 7 {
                 continue;
             }
-            let y = u16::from(self.line.ly - wy);
-            let x = u16::from(pix - wx);
+            let lcd_y = u16::from(self.line.ly - wy);
+            let lcd_x = u16::from(pix - wx);
             let pixel = 160 * self.line.ly as usize + (pix - 7) as usize;
             if pixel >= PIXELS {
                 continue;
             }
 
-            let tile_map_idx = (32u16 * (y / 8) + (x / 8)) as usize;
+            let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
             let bank_0 = self.vram.bank_0();
             let bank_1 = self.vram.bank_1();
             let (tile, flags) = match win_tile_map {
                 TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
                 TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
             };
-            let col = 7 - (x & 0x7) as u8;
-            let lin = y & 0x7;
+            let col = 7 - (lcd_x & 0x7) as u8;
+            let lin = lcd_y & 0x7;
 
             let tile_data_bank = if flags & 0x8 != 0 { bank_1 } else { bank_0 };
             let pal_idx = match bg_win_tile_data {
@@ -395,10 +395,10 @@ impl Ppu {
                     let gbc_pal = &self.color_pal.bgp[8 * gbc_pal..8 * gbc_pal + 8];
                     let color: u16 =
                         u16::from(gbc_pal[2 * pal_idx]) | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
-                    let r = (0xff * (color & 0x1f) / 0x1f) as Color;
-                    let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as Color;
-                    let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as Color;
-                    self.back_buffer[pixel] = (r << 16) | (g << 8) | b;
+                    let r = (0xff * (color & 0x1f) / 0x1f) as u8;
+                    let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
+                    let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
+                    self.back_buffer[pixel] = [r, g, b];
                 }
             }
         }
@@ -410,19 +410,19 @@ impl Ppu {
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
         for pixel in 0..160 {
-            let y = scy.wrapping_add(self.line.ly).wrapping_sub(0) as u16;
-            let x = (pixel as u8).wrapping_add(scx) as u16;
+            let lcd_y = scy.wrapping_add(self.line.ly).wrapping_sub(0) as u16;
+            let lcd_x = (pixel as u8).wrapping_add(scx) as u16;
             let pixel = 160 * self.line.ly as usize + pixel;
 
-            let tile_map_idx = (32u16 * (y / 8) + (x / 8)) as usize;
+            let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
             let bank_0 = self.vram.bank_0();
             let bank_1 = self.vram.bank_1();
             let (tile, flags) = match bg_tile_map {
                 TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
                 TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
             };
-            let mut col = 7 - (x & 0x7) as u8;
-            let mut lin = y & 0x7;
+            let mut col = 7 - (lcd_x & 0x7) as u8;
+            let mut lin = lcd_y & 0x7;
             if flags & 0x20 != 0 {
                 col = 7 - col
             }
@@ -455,10 +455,10 @@ impl Ppu {
                     let gbc_pal = &self.color_pal.bgp[8 * gbc_pal..8 * gbc_pal + 8];
                     let color: u16 =
                         u16::from(gbc_pal[2 * pal_idx]) | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
-                    let r = (0xff * (color & 0x1f) / 0x1f) as Color;
-                    let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as Color;
-                    let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as Color;
-                    self.back_buffer[pixel] = (r << 16) | (g << 8) | b;
+                    let r = (0xff * (color & 0x1f) / 0x1f) as u8;
+                    let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
+                    let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
+                    self.back_buffer[pixel] = [r, g, b];
                 }
             }
         }
@@ -532,10 +532,10 @@ impl Ppu {
                                 let gbc_pal = &self.color_pal.obp[8 * gbc_pal..8 * gbc_pal + 8];
                                 let color: u16 = u16::from(gbc_pal[2 * pal_idx])
                                     | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
-                                let r = (0xff * (color & 0x1f) / 0x1f) as Color;
-                                let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as Color;
-                                let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as Color;
-                                self.back_buffer[pixel] = (r << 16) | (g << 8) | b;
+                                let r = (0xff * (color & 0x1f) / 0x1f) as u8;
+                                let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
+                                let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
+                                self.back_buffer[pixel] = [r, g, b];
                             }
                         }
                     }
@@ -619,7 +619,7 @@ impl Device for Ppu {
             0xff54 => self.vram_dma.hdma4 = data,
             0xff55 => {
                 self.vram_dma.hdma5 = data;
-                unimplemented!()
+                unimplemented!("CGB DMA transfers")
             }
             0xff68 => self.color_pal.bgpi = data,
             0xff69 => {

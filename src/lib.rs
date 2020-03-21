@@ -4,7 +4,7 @@
 #![deny(unused_variables)]
 #![deny(unused_mut)]
 #![deny(unused_imports)]
-#![deny(clippy::style)]
+#![warn(clippy::style)]
 #![deny(clippy::correctness)]
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
@@ -38,7 +38,6 @@ pub enum Mode {
 
 pub struct Dmg {
     mode: Mode,
-    boot: bool,
     cpu: Cpu,
     mmu: Box<Mmu>,
     carry: usize,
@@ -48,16 +47,17 @@ impl Dmg {
     pub fn new<C: Cartridge + 'static>(cartridge: C, mode: Mode) -> Self {
         Self {
             mode,
-            boot: false,
             cpu: Cpu::default(),
             mmu: Box::new(Mmu::new(cartridge, mode)),
             carry: 0,
         }
     }
 
-    fn boot_cgb(&mut self) {
+    pub fn boot(&mut self) {
         self.boot_gb();
-        self.cpu.reg_mut().a = 0x11;
+        if let Mode::CGB = self.mode {
+            self.cpu.reg_mut().a = 0x11;
+        }
     }
 
     fn boot_gb(&mut self) {
@@ -117,15 +117,6 @@ impl Dmg {
     }
 
     pub fn emulate_frame(&mut self) {
-        if !self.boot {
-            self.boot = true;
-            match self.mode {
-                Mode::GB => {
-                    //self.boot_gb()
-                }
-                Mode::CGB => self.boot_cgb(),
-            }
-        }
         let frame_ticks = (OAM + PIXEL + HBLANK) * 154;
         let mut cycles = 0;
         while cycles < frame_ticks {

@@ -124,4 +124,3 @@ impl Cartridge for ZeroRom {}
 impl Cartridge for RomAndRam {}
 impl Cartridge for Mbc1 {}
 impl Cartridge for Mbc3 {}
-impl<C: Cartridge> Cartridge for Box<C> {}

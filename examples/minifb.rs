@@ -15,20 +15,23 @@ use std::{
 };
 
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
-const ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+const ROM: &[u8] = include_bytes!("../roms/Dr. Mario (World).gb");
 
 fn main() {
     let cartridge = Mbc3::from_bytes(ROM);
 
-    let mut dmg = Dmg::new(cartridge, Mode::CGB);
+    let mut dmg = Dmg::new(cartridge, Mode::GB);
     dmg.mmu_mut()
         .ppu_mut()
         .set_palette(dmg::ppu::palette::NINTENDO_GAMEBOY_BLACK_ZERO);
+    dmg.boot();
 
     let mut opt = WindowOptions::default();
-    opt.scale = Scale::X2;
+    opt.scale = Scale::X4;
+    opt.resize = true;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
+
+    let mut buffer = vec![0u32; 160 * 144];
 
     while window.is_open() {
         let joy = &[
@@ -68,7 +71,10 @@ fn main() {
         dmg.emulate_frame();
 
         unsafe {
-            let buffer = dmg.mmu().ppu().buffer();
+            let frame = dmg.mmu().ppu().buffer();
+            for (i, [r, g, b]) in frame.iter().enumerate() {
+                buffer[i] = u32::from(*r) << 16 | u32::from(*g) << 8 | u32::from(*b);
+            }
             window
                 .update_with_buffer(mem::transmute(&buffer[..]), 160, 144)
                 .unwrap();
