@@ -44,9 +44,24 @@ pub fn draw(ui: &Ui, app: &mut App) {
         Window::new(im_str!("Display"))
             .resizable(false)
             .always_auto_resize(true)
+            .menu_bar(true)
             .build(ui, || {
+                ui.menu_bar(|| {
+                    ui.menu(im_str!("Scale"), true, || {
+                        if ui.small_button(im_str!("x1")) {
+                            app.display_scale = 1;
+                        }
+                        if ui.small_button(im_str!("x2")) {
+                            app.display_scale = 2;
+                        }
+                        if ui.small_button(im_str!("x4")) {
+                            app.display_scale = 4;
+                        }
+                    });
+                });
                 let texture = TextureId::from(app.texture as usize);
-                Image::new(texture, [160.0 * 2.0, 144.0 * 2.0])
+                let scale = app.display_scale as f32;
+                Image::new(texture, [160.0 * scale, 144.0 * scale])
                     .border_col([1.0, 1.0, 1.0, 1.0])
                     .build(ui);
             });

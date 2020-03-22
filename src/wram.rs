@@ -9,6 +9,7 @@ pub struct WorkRam {
     wram: [[u8; 0x1000]; 8],
 }
 
+#[allow(clippy::style)]
 impl WorkRam {
     pub fn new() -> Self {
         Self {

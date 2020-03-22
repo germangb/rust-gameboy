@@ -96,23 +96,12 @@ struct Line {
     lyc: u8,
 }
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct VRamDma {
-    hdma1: u8,
-    hdma2: u8,
-    hdma3: u8,
-    hdma4: u8,
-    hdma5: u8,
-}
-
 pub struct Ppu {
     mode: Mode,
     cycles: usize,
     palette: Palette,
     buffer: [Color; PIXELS],
     back_buffer: [Color; PIXELS],
-
     vram: VideoRam,
     oam: [u8; 0xa0],
     state: State,
@@ -135,7 +124,6 @@ pub struct Ppu {
     scroll: Scroll,
     line: Line,
     win: Window,
-    vram_dma: VRamDma,
     pal: Pal,
     color_pal: ColorPal,
     int: Rc<RefCell<Interrupts>>,
@@ -143,13 +131,6 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new(mode: Mode, int: Rc<RefCell<Interrupts>>) -> Self {
-        let vram_dma = VRamDma {
-            hdma1: 0,
-            hdma2: 0,
-            hdma3: 0,
-            hdma4: 0,
-            hdma5: 0,
-        };
         let scroll = Scroll { scy: 0, scx: 0 };
         let win = Window { wy: 0, wx: 0 };
         let line = Line { ly: 0, lyc: 0 };
@@ -179,7 +160,6 @@ impl Ppu {
             scroll,
             line,
             win,
-            vram_dma,
             pal,
             color_pal,
             int,
@@ -191,8 +171,6 @@ impl Ppu {
             return;
         }
         self.cycles += cycles;
-        //println!("ly={} lyc={} | mode={:?} | stat={:07b} lcdc={:08b}", self.ly,
-        // self.lyc, self.mode, self.stat, self.lcdc);
 
         match self.state {
             State::OAM => {
@@ -206,11 +184,6 @@ impl Ppu {
                     self.state = State::HBlank;
                     self.cycles %= PIXEL;
                     self.render_line();
-                }
-            }
-            State::HBlank => {
-                if self.cycles >= HBLANK {
-                    self.cycles %= HBLANK;
 
                     // The gameboy permanently compares the value of the LYC and LY registers. When
                     // both values are identical, the coincident bit in the STAT register becomes
@@ -222,19 +195,22 @@ impl Ppu {
                     if self.stat & 0x8 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
-
+                }
+            }
+            State::HBlank => {
+                if self.cycles >= HBLANK {
+                    self.cycles %= HBLANK;
                     self.line.ly += 1;
 
                     if self.line.ly == 144 {
                         // TODO fix worms rom
-                        //let obj_display = self.lcdc & 0x2 != 0;
-                        let obj_display = true;
-                        if obj_display {
-                            self.render_sprites();
-                        }
+                        // //let obj_display = self.lcdc & 0x2 != 0;
+                        // let obj_display = true;
+                        // if obj_display {
+                        //     //self.render_sprites();
+                        // }
 
                         self.swap_buffers();
-
                         self.state = State::VBlank;
                         self.int.borrow_mut().set(Flag::VBlank);
 
@@ -254,6 +230,7 @@ impl Ppu {
                     self.state = State::OAM;
                     self.cycles %= VBLANK;
                     self.line.ly = 0;
+
                     if self.stat & 0x20 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
@@ -318,19 +295,28 @@ impl Ppu {
     fn render_line(&mut self) {
         let bg_display = self.lcdc & 0x1 != 0;
         let window_display = self.lcdc & 0x20 != 0;
+        let obj_display = self.lcdc & 0x2 != 0;
         if bg_display {
             self.render_bg();
         }
         if window_display {
             self.render_win();
         }
+        if obj_display {
+            self.render_sprites();
+        }
     }
 
     fn swap_buffers(&mut self) {
+        let color = match self.mode {
+            Mode::GB => self.palette[0],
+            Mode::CGB => [0xff, 0xff, 0xff],
+        };
         mem::replace(&mut self.buffer, self.back_buffer);
+        mem::replace(&mut self.back_buffer, [color; 160 * 144]);
     }
 
-    fn clear(&mut self) {
+    fn clear_buffer(&mut self) {
         let color = match self.mode {
             Mode::GB => self.palette[0],
             Mode::CGB => [0xff, 0xff, 0xff],
@@ -498,6 +484,9 @@ impl Ppu {
             let gbc_pal = (oam.flag & 0x7) as usize;
             let lim = if self.lcdc & 0x4 != 0 { 0 } else { 8 };
             for sy in ypos - 16..ypos - lim {
+                if sy != self.line.ly as _ {
+                    continue;
+                }
                 for sx in xpos - 8..xpos {
                     if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
                         let pixel = 160 * sy as usize + sx as usize;
@@ -513,8 +502,12 @@ impl Ppu {
                                 lin = 15 - lin;
                             }
                         }
-                        let lo = self.read(0x8000 + 16 * tile + lin * 2) >> col & 0x1;
-                        let hi = self.read(0x8000 + 16 * tile + lin * 2 + 1) >> col & 0x1;
+                        let bank_0 = self.vram.bank_0();
+                        let bank_1 = self.vram.bank_1();
+                        let bank = if oam.flag & 0x8 == 0 { bank_0 } else { bank_1 };
+
+                        let lo = bank[16 * tile as usize + lin as usize * 2] >> col & 0x1;
+                        let hi = bank[16 * tile as usize + lin as usize * 2 + 1] >> col & 0x1;
                         let pal_idx = ((hi << 1) | lo) as usize;
                         if pal_idx == 0 {
                             continue;
@@ -562,11 +555,6 @@ impl Device for Ppu {
             0xff48 => self.pal.obp0,
             0xff49 => self.pal.obp1,
             0xff4f => self.vram.read(addr),
-            0xff51 => self.vram_dma.hdma1,
-            0xff52 => self.vram_dma.hdma2,
-            0xff53 => self.vram_dma.hdma3,
-            0xff54 => self.vram_dma.hdma4,
-            0xff55 => self.vram_dma.hdma5,
             // This register allows to read/write data to the CGBs Background Palette Memory,
             // addressed through Register FF68. Each color is defined by two bytes (Bit
             // 0-7 in first byte).     Bit 0-4   Red Intensity   (00-1F)
@@ -591,7 +579,7 @@ impl Device for Ppu {
             0xff40 => {
                 self.lcdc = data;
                 if self.lcdc & 0x80 == 0 {
-                    self.clear();
+                    self.clear_buffer();
                     self.state = State::HBlank;
                     self.line.ly = 0;
                 }
@@ -613,14 +601,6 @@ impl Device for Ppu {
             0xff48 => self.pal.obp0 = data,
             0xff49 => self.pal.obp1 = data,
             0xff4f => self.vram.write(addr, data),
-            0xff51 => self.vram_dma.hdma1 = data,
-            0xff52 => self.vram_dma.hdma2 = data,
-            0xff53 => self.vram_dma.hdma3 = data,
-            0xff54 => self.vram_dma.hdma4 = data,
-            0xff55 => {
-                self.vram_dma.hdma5 = data;
-                unimplemented!("CGB DMA transfers")
-            }
             0xff68 => self.color_pal.bgpi = data,
             0xff69 => {
                 self.color_pal.bgpi =

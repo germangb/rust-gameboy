@@ -4,6 +4,16 @@ use crate::{
 };
 use std::{cell::RefCell, rc::Rc};
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct VRamDma {
+    hdma1: u8,
+    hdma2: u8,
+    hdma3: u8,
+    hdma4: u8,
+    hdma5: u8,
+}
+
 // 0000-3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
 // 4000-7FFF   16KB ROM Bank 01..NN (in cartridge, switchable bank number)
 // 8000-9FFF   8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
@@ -25,6 +35,7 @@ pub struct Mmu {
     joy: Joypad,
     apu: Apu,
     hram: [u8; 0x7f],
+    vram_dma: VRamDma,
     int: Rc<RefCell<Interrupts>>,
 }
 
@@ -34,6 +45,13 @@ impl Mmu {
         C: Cartridge + 'static,
     {
         let int = Rc::new(RefCell::new(Interrupts::default()));
+        let vram_dma = VRamDma {
+            hdma1: 0,
+            hdma2: 0,
+            hdma3: 0,
+            hdma4: 0,
+            hdma5: 0,
+        };
         Self {
             boot: 0x0,
             cartridge: Box::new(cartridge),
@@ -43,6 +61,7 @@ impl Mmu {
             joy: Joypad::new(Rc::clone(&int)),
             apu: Apu::new(Rc::clone(&int)),
             hram: [0; 0x7f],
+            vram_dma,
             int,
         }
     }
@@ -116,11 +135,12 @@ impl Device for Mmu {
             0x8000..=0x9fff => self.ppu.read(addr),
             0xa000..=0xbfff => self.cartridge.read(addr),
             0xc000..=0xdfff => self.wram.read(addr),
-            // E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
             0xe000..=0xfdff => self.wram.read(addr),
             0xfe00..=0xfe9f => self.ppu.read(addr),
-            #[rustfmt::skip]
-            0xfea0..=0xfeff => { /* Not Usable */ 0x0 }
+            0xfea0..=0xfeff => {
+                /* Not Usable */
+                0x0
+            }
             0xff00..=0xff7f => match addr {
                 0xff00 => self.joy.read(addr),
                 0xff01 | 0xff02 => {
@@ -134,11 +154,16 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.read(addr),
-                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 | 0xff68..=0xff6b => {
-                    self.ppu.read(addr)
-                }
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => self.ppu.read(addr),
                 0xff46 => 0x0,
                 0xff50 => self.boot,
+
+                // HDMA
+                0xff51..=0xff54 => 0xff,
+                0xff55 => {
+                    eprintln!("read hdmi5");
+                    0x80
+                }
                 0xff70 => self.wram.read(addr),
                 _ => {
                     // unhandled address
@@ -161,10 +186,8 @@ impl Device for Mmu {
             0x8000..=0x9fff => self.ppu.write(addr, data),
             0xa000..=0xbfff => self.cartridge.write(addr, data),
             0xc000..=0xdfff => self.wram.write(addr, data),
-            // E000-FDFF   Same as C000-DDFF (ECHO)    (typically not used)
             0xe000..=0xfdff => self.wram.write(addr, data),
             0xfe00..=0xfe9f => self.ppu.write(addr, data),
-            #[rustfmt::skip]
             0xfea0..=0xfeff => { /* Not Usable */ }
             0xff00..=0xff7f => match addr {
                 0xff00 => self.joy.write(addr, data),
@@ -176,11 +199,34 @@ impl Device for Mmu {
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
                 | 0xff20..=0xff26 => self.apu.write(addr, data),
-                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff51..=0xff55 | 0xff68..=0xff6b => {
+                0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => {
                     self.ppu.write(addr, data)
                 }
                 0xff46 => self.dma(data),
                 0xff50 => self.boot = data,
+                0xff51 => self.vram_dma.hdma1 = data,
+                0xff52 => self.vram_dma.hdma2 = data,
+                0xff53 => self.vram_dma.hdma3 = data,
+                0xff54 => self.vram_dma.hdma4 = data,
+                0xff55 => {
+                    let hdma1 = self.vram_dma.hdma1;
+                    let hdma2 = self.vram_dma.hdma2;
+                    let hdma3 = self.vram_dma.hdma3;
+                    let hdma4 = self.vram_dma.hdma4;
+
+                    let src = (u16::from(hdma1) << 8) | u16::from(hdma2 & 0xf0);
+                    let dst = 0x8000 | (u16::from(hdma3 & 0x1f) << 8) | u16::from(hdma4 & 0xf0);
+                    let len = (u16::from(data & 0x7f) + 1) * 32;
+
+                    let src = src..src + len;
+                    let dst = dst..dst + len;
+
+                    for (src, dst) in src.zip(dst) {
+                        eprintln!("src={:x}, dst={:x}", src, dst);
+                        let src = self.read(src);
+                        self.write(dst, src);
+                    }
+                }
                 0xff70 => self.wram.write(addr, data),
                 _ => {
                     // unhandled address
@@ -198,11 +244,16 @@ impl Device for Mmu {
 
 #[cfg(tests)]
 mod tests {
-    use crate::{cartridge::RomAndRam, dev::Device, mmu::Mmu};
+    use crate::{
+        cartridge::{RomAndRam, ZeroRom},
+        dev::Device,
+        mmu::Mmu,
+        Mode,
+    };
 
     #[test]
     fn dma() {
-        let mut mmu = Mmu::new(RomAndRam::tetris());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB);
 
         mmu.write(0xff50, 1);
         mmu.write(0xff46, 0);

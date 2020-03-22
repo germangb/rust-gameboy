@@ -2,10 +2,12 @@ use crate::dev::Device;
 
 mod mbc1;
 mod mbc3;
+mod mbc5;
 mod rom_and_ram;
 
 pub use mbc1::Mbc1;
 pub use mbc3::Mbc3;
+pub use mbc5::Mbc5;
 pub use rom_and_ram::RomAndRam;
 
 // 00h -  32KByte (no ROM banking)
@@ -36,8 +38,8 @@ pub enum RomSize {
 }
 
 impl RomSize {
-    pub fn banks(&self) -> usize {
-        match *self as usize {
+    pub fn banks(self) -> usize {
+        match self as usize {
             idx @ 0x0..=0x7 => [0, 4, 8, 16, 32, 64, 128, 256][idx],
             idx @ 0x52..=0x54 => [72, 80, 95][idx - 0x52],
             _ => unreachable!(),
@@ -59,8 +61,8 @@ pub enum RamSize {
 }
 
 impl RamSize {
-    pub fn banks(&self) -> usize {
-        [0, 0, 0, 4][*self as usize]
+    pub fn banks(self) -> usize {
+        [0, 0, 0, 4][self as usize]
     }
 }
 
@@ -124,3 +126,4 @@ impl Cartridge for ZeroRom {}
 impl Cartridge for RomAndRam {}
 impl Cartridge for Mbc1 {}
 impl Cartridge for Mbc3 {}
+impl Cartridge for Mbc5 {}

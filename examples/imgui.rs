@@ -8,12 +8,12 @@
 #![deny(clippy::correctness)]
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
+
 use dmg::{
     joypad::{Btn::*, Dir::*, Key::*},
     ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
     Dmg,
 };
-use imgui::ImString;
 use sdl2::keyboard::Scancode;
 use std::{
     path::PathBuf,
@@ -34,9 +34,9 @@ pub struct App {
     cgb: bool,
     pal: Palette,
     roms_dir: PathBuf,
-    roms_filter: ImString,
     roms_selected: i32,
-    roms_entries: Vec<PathBuf>,
+    roms_entries: Vec<(String, PathBuf)>,
+    display_scale: i32,
 }
 
 fn main() {
@@ -54,9 +54,9 @@ fn main() {
         cgb: true,
         pal: NINTENDO_GAMEBOY_BLACK_ZERO,
         roms_dir: PathBuf::from("roms"),
-        roms_filter: ImString::with_capacity(1024),
         roms_selected: 0,
         roms_entries: Vec::new(),
+        display_scale: 2,
     };
 
     gl::load_with(|s| window.gl_get_proc_addr(s) as _);

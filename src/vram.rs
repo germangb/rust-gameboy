@@ -5,6 +5,7 @@ pub struct VideoRam {
     vbk: u8,
 }
 
+#[allow(clippy::style)]
 impl VideoRam {
     pub fn new() -> Self {
         Self {
