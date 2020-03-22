@@ -15,7 +15,7 @@ pub mod palette;
 pub(crate) const HBLANK: usize = 201;
 pub(crate) const OAM: usize = 77;
 pub(crate) const PIXEL: usize = 169;
-pub(crate) const VBLANK: usize = 4650;
+pub(crate) const VBLANK: usize = (OAM + PIXEL + HBLANK) * 10;
 
 const PIXELS: usize = 160 * 144;
 
@@ -94,6 +94,7 @@ struct ColorPal {
 struct Line {
     ly: u8,
     lyc: u8,
+    cycles: usize,
 }
 
 pub struct Ppu {
@@ -133,7 +134,11 @@ impl Ppu {
     pub fn new(mode: Mode, int: Rc<RefCell<Interrupts>>) -> Self {
         let scroll = Scroll { scy: 0, scx: 0 };
         let win = Window { wy: 0, wx: 0 };
-        let line = Line { ly: 0, lyc: 0 };
+        let line = Line {
+            ly: 0,
+            lyc: 0,
+            cycles: 0,
+        };
         let pal = Pal {
             bgp: 0,
             obp0: 0,
@@ -170,7 +175,35 @@ impl Ppu {
         if self.lcdc & 0x80 == 0 {
             return;
         }
+
         self.cycles += cycles;
+        self.line.cycles += cycles;
+
+        if self.line.cycles > OAM + PIXEL + HBLANK {
+            if self.line.ly < 144 {
+                self.render_line(self.line.ly);
+            }
+
+            self.line.cycles %= OAM + PIXEL + HBLANK;
+            self.line.ly += 1;
+
+            if self.line.ly == 154 {
+                self.line.ly = 0;
+            }
+
+            // The gameboy permanently compares the value of the LYC and LY registers. When
+            // both values are identical, the coincident bit in the STAT register becomes
+            // set, and (if enabled) a STAT interrupt is requested.
+            if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
+                self.int.borrow_mut().set(Flag::LCDStat);
+            }
+        }
+
+        if self.line.ly == self.line.lyc {
+            self.stat |= 0x4;
+        } else {
+            self.stat &= !0x4;
+        }
 
         match self.state {
             State::OAM => {
@@ -183,14 +216,10 @@ impl Ppu {
                 if self.cycles >= PIXEL {
                     self.state = State::HBlank;
                     self.cycles %= PIXEL;
-                    self.render_line();
 
-                    // The gameboy permanently compares the value of the LYC and LY registers. When
-                    // both values are identical, the coincident bit in the STAT register becomes
-                    // set, and (if enabled) a STAT interrupt is requested.
-                    if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
-                        self.int.borrow_mut().set(Flag::LCDStat);
-                    }
+                    //if self.line.ly < 144 {
+                    //    self.render_line();
+                    //}
 
                     if self.stat & 0x8 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
@@ -200,16 +229,8 @@ impl Ppu {
             State::HBlank => {
                 if self.cycles >= HBLANK {
                     self.cycles %= HBLANK;
-                    self.line.ly += 1;
 
                     if self.line.ly == 144 {
-                        // TODO fix worms rom
-                        // //let obj_display = self.lcdc & 0x2 != 0;
-                        // let obj_display = true;
-                        // if obj_display {
-                        //     //self.render_sprites();
-                        // }
-
                         self.swap_buffers();
                         self.state = State::VBlank;
                         self.int.borrow_mut().set(Flag::VBlank);
@@ -229,22 +250,16 @@ impl Ppu {
                 if self.cycles >= VBLANK {
                     self.state = State::OAM;
                     self.cycles %= VBLANK;
-                    self.line.ly = 0;
+                    //self.line.ly = 0;
 
                     if self.stat & 0x20 != 0 {
                         self.int.borrow_mut().set(Flag::LCDStat);
                     }
                 } else {
-                    let line_vb = self.cycles / (OAM + PIXEL + HBLANK);
-                    self.line.ly = 144 + line_vb as u8;
+                    //let line_vb = self.cycles / (OAM + PIXEL + HBLANK);
+                    //self.line.ly = 144 + line_vb as u8;
                 }
             }
-        }
-
-        if self.line.ly == self.line.lyc {
-            self.stat |= 0x4;
-        } else {
-            self.stat &= !0x4;
         }
     }
 
@@ -292,18 +307,18 @@ impl Ppu {
         }
     }
 
-    fn render_line(&mut self) {
+    fn render_line(&mut self, ly: u8) {
         let bg_display = self.lcdc & 0x1 != 0;
         let window_display = self.lcdc & 0x20 != 0;
         let obj_display = self.lcdc & 0x2 != 0;
         if bg_display {
-            self.render_bg();
+            self.render_bg(ly);
         }
         if window_display {
-            self.render_win();
+            self.render_win(ly);
         }
         if obj_display {
-            self.render_sprites();
+            self.render_sprites(ly);
         }
     }
 
@@ -325,10 +340,10 @@ impl Ppu {
         mem::replace(&mut self.back_buffer, [color; 160 * 144]);
     }
 
-    fn render_win(&mut self) {
+    fn render_win(&mut self, ly: u8) {
         let Window { wy, wx } = self.win;
         let Pal { bgp, .. } = self.pal;
-        if self.line.ly < wy || wx >= 160 {
+        if ly < wy || wx >= 160 {
             return;
         }
         let gb_pal = bgp;
@@ -338,9 +353,9 @@ impl Ppu {
             if pix < 7 {
                 continue;
             }
-            let lcd_y = u16::from(self.line.ly - wy);
+            let lcd_y = u16::from(ly - wy);
             let lcd_x = u16::from(pix - wx);
-            let pixel = 160 * self.line.ly as usize + (pix - 7) as usize;
+            let pixel = 160 * ly as usize + (pix - 7) as usize;
             if pixel >= PIXELS {
                 continue;
             }
@@ -390,15 +405,15 @@ impl Ppu {
         }
     }
 
-    fn render_bg(&mut self) {
+    fn render_bg(&mut self, ly: u8) {
         let Pal { bgp: gb_pal, .. } = self.pal;
         let bg_tile_map = self.bg_tile_map();
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
         for pixel in 0..160 {
-            let lcd_y = scy.wrapping_add(self.line.ly).wrapping_sub(0) as u16;
+            let lcd_y = scy.wrapping_add(ly).wrapping_sub(0) as u16;
             let lcd_x = (pixel as u8).wrapping_add(scx) as u16;
-            let pixel = 160 * self.line.ly as usize + pixel;
+            let pixel = 160 * ly as usize + pixel;
 
             let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
             let bank_0 = self.vram.bank_0();
@@ -469,10 +484,10 @@ impl Ppu {
         idx
     }
 
-    fn render_sprites(&mut self) {
+    fn render_sprites(&mut self, ly: u8) {
         let Pal { obp0, obp1, .. } = self.pal;
-        let mut entries = self.oam_entries().to_vec();
-        entries.sort_by_key(|o| o.xpos);
+        let entries = self.oam_entries().to_vec();
+        //entries.sort_by_key(|o| o.xpos);
         for oam in entries {
             let tile = u16::from(oam.tile);
             let xpos = i16::from(oam.xpos);
@@ -482,9 +497,18 @@ impl Ppu {
             let y_flip = oam.flag & 0x40 != 0;
             let gb_pal = if oam.flag & 0x10 != 0 { obp1 } else { obp0 };
             let gbc_pal = (oam.flag & 0x7) as usize;
-            let lim = if self.lcdc & 0x4 != 0 { 0 } else { 8 };
-            for sy in ypos - 16..ypos - lim {
-                if sy != self.line.ly as _ {
+
+            // FIXME codesmell
+            let sprite_mode = if self.lcdc & 0x4 != 0 {
+                // 8x16
+                0
+            } else {
+                // 8x8
+                8
+            };
+
+            for sy in ypos - 16..ypos - sprite_mode {
+                if sy != ly as _ {
                     continue;
                 }
                 for sx in xpos - 8..xpos {
@@ -496,12 +520,13 @@ impl Ppu {
                             col = 7 - col
                         }
                         if y_flip {
-                            if lim == 8 {
+                            if sprite_mode == 8 {
                                 lin = 7 - lin;
                             } else {
                                 lin = 15 - lin;
                             }
                         }
+
                         let bank_0 = self.vram.bank_0();
                         let bank_1 = self.vram.bank_1();
                         let bank = if oam.flag & 0x8 == 0 { bank_0 } else { bank_1 };
@@ -509,6 +534,8 @@ impl Ppu {
                         let lo = bank[16 * tile as usize + lin as usize * 2] >> col & 0x1;
                         let hi = bank[16 * tile as usize + lin as usize * 2 + 1] >> col & 0x1;
                         let pal_idx = ((hi << 1) | lo) as usize;
+
+                        // transparent
                         if pal_idx == 0 {
                             continue;
                         }
@@ -582,6 +609,7 @@ impl Device for Ppu {
                     self.clear_buffer();
                     self.state = State::HBlank;
                     self.line.ly = 0;
+                    self.line.cycles = 0;
                 }
             }
             0xff41 => self.stat = data,

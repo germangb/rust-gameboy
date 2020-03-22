@@ -41,17 +41,6 @@ pub fn draw(ui: &Ui, app: &mut App) {
                 app.dmg = Some(dmg);
             }
         });
-
-        ui.menu(im_str!("Palette"), true, || {
-            for (i, pal) in dmg::ppu::palette::palettes().enumerate() {
-                if ui.small_button(&im_str!("#{}", i + 1)) {
-                    app.pal = pal;
-                    if let Some(dmg) = &mut app.dmg {
-                        dmg.mmu_mut().ppu_mut().set_palette(pal);
-                    }
-                }
-            }
-        });
     });
 }
 
@@ -91,7 +80,7 @@ fn load_rom(rom: &[u8], cgb: bool) -> Dmg {
         0x00 | 0x08 | 0x09 => Dmg::new(RomAndRam::from_bytes(rom), mode),
         0x01 | 0x02 | 0x03 => Dmg::new(Mbc1::from_bytes(rom), mode),
         0x0f | 0x10 | 0x11 | 0x12 | 0x13 => Dmg::new(Mbc3::from_bytes(rom), mode),
-        0x19..=0x1e => unimplemented!(),
+        0x19..=0x1e => Dmg::new(Mbc3::from_bytes(rom), mode),
         _ => Dmg::new(Mbc3::from_bytes(rom), mode),
     }
 }

@@ -58,6 +58,16 @@ pub fn draw(ui: &Ui, app: &mut App) {
                             app.display_scale = 4;
                         }
                     });
+                    ui.menu(im_str!("Palette"), true, || {
+                        for (i, pal) in dmg::ppu::palette::palettes().enumerate() {
+                            if ui.small_button(&im_str!("#{}", i + 1)) {
+                                app.pal = pal;
+                                if let Some(dmg) = &mut app.dmg {
+                                    dmg.mmu_mut().ppu_mut().set_palette(pal);
+                                }
+                            }
+                        }
+                    });
                 });
                 let texture = TextureId::from(app.texture as usize);
                 let scale = app.display_scale as f32;
