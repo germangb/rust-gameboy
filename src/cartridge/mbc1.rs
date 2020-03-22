@@ -33,7 +33,10 @@ impl Device for Mbc1 {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x3fff => *self.rom.get(addr as usize).unwrap_or(&0),
-            0x4000..=0x7fff => self.rom[0x4000 * self.rom_bank.max(1) + addr as usize - 0x4000],
+            0x4000..=0x7fff => *self
+                .rom
+                .get(0x4000 * self.rom_bank.max(1) + addr as usize - 0x4000)
+                .unwrap_or(&0),
             0xa000..=0xbfff => {
                 if self.ram_enable {
                     self.ram[self.ram_bank][addr as usize - 0xa000]

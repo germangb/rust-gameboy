@@ -177,25 +177,65 @@ impl Ppu {
         }
 
         self.cycles += cycles;
-        self.line.cycles += cycles;
 
-        if self.line.cycles > OAM + PIXEL + HBLANK {
-            if self.line.ly < 144 {
-                self.render_line(self.line.ly);
+        let mut line = self.line.ly;
+
+        match (self.state, self.next_state()) {
+            (State::OAM, State::Pixel) => {
+                self.state = State::Pixel;
             }
+            (State::Pixel, State::HBlank) => {
+                self.state = State::HBlank;
+                self.render_line(line);
 
-            self.line.cycles %= OAM + PIXEL + HBLANK;
-            self.line.ly += 1;
+                line += 1;
 
-            if self.line.ly == 154 {
-                self.line.ly = 0;
+                // hblank interrupt
+                if self.stat & 0x8 != 0 {
+                    self.int.borrow_mut().set(Flag::LCDStat)
+                }
             }
+            (State::HBlank, State::OAM) if line == 144 => {
+                self.state = State::VBlank;
+                self.swap_buffers();
 
-            // The gameboy permanently compares the value of the LYC and LY registers. When
-            // both values are identical, the coincident bit in the STAT register becomes
-            // set, and (if enabled) a STAT interrupt is requested.
+                // vblank interrupt
+                self.int.borrow_mut().set(Flag::VBlank);
+            }
+            (State::HBlank, State::OAM) | (State::VBlank, State::OAM) => {
+                self.state = State::OAM;
+
+                // OAM interrupt
+                if self.stat & 0x20 != 0 {
+                    self.int.borrow_mut().set(Flag::LCDStat);
+                }
+            }
+            (State::OAM, State::OAM)
+            | (State::Pixel, State::Pixel)
+            | (State::HBlank, State::HBlank) => { /* carry on */ }
+            (State::VBlank, State::VBlank) => {
+                let vb_line = self.cycles / (OAM + PIXEL + HBLANK);
+
+                if self.line.ly == 153 {
+                    if self.cycles >= OAM + PIXEL {
+                        line = 0;
+                    } else {
+                        line = 153;
+                    }
+                } else if self.line.ly != 0 {
+                    line = 144 + vb_line as u8;
+                }
+            }
+            (_from, _to) => panic!(),
+        }
+
+        // line interrupt
+        if line != self.line.ly {
+            self.line.ly = line;
+
+            // check new line interrupt
             if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
-                self.int.borrow_mut().set(Flag::LCDStat);
+                self.int.borrow_mut().set(Flag::LCDStat)
             }
         }
 
@@ -204,60 +244,40 @@ impl Ppu {
         } else {
             self.stat &= !0x4;
         }
+    }
 
+    fn next_state(&mut self) -> State {
         match self.state {
             State::OAM => {
                 if self.cycles >= OAM {
-                    self.state = State::Pixel;
                     self.cycles %= OAM;
+                    State::Pixel
+                } else {
+                    State::OAM
                 }
             }
             State::Pixel => {
                 if self.cycles >= PIXEL {
-                    self.state = State::HBlank;
                     self.cycles %= PIXEL;
-
-                    //if self.line.ly < 144 {
-                    //    self.render_line();
-                    //}
-
-                    if self.stat & 0x8 != 0 {
-                        self.int.borrow_mut().set(Flag::LCDStat);
-                    }
+                    State::HBlank
+                } else {
+                    State::Pixel
                 }
             }
             State::HBlank => {
                 if self.cycles >= HBLANK {
                     self.cycles %= HBLANK;
-
-                    if self.line.ly == 144 {
-                        self.swap_buffers();
-                        self.state = State::VBlank;
-                        self.int.borrow_mut().set(Flag::VBlank);
-
-                        if self.stat & 0x10 != 0 {
-                            self.int.borrow_mut().set(Flag::LCDStat);
-                        }
-                    } else {
-                        self.state = State::OAM;
-                        if self.stat & 0x20 != 0 {
-                            self.int.borrow_mut().set(Flag::LCDStat);
-                        }
-                    }
+                    State::OAM
+                } else {
+                    State::HBlank
                 }
             }
             State::VBlank => {
                 if self.cycles >= VBLANK {
-                    self.state = State::OAM;
                     self.cycles %= VBLANK;
-                    //self.line.ly = 0;
-
-                    if self.stat & 0x20 != 0 {
-                        self.int.borrow_mut().set(Flag::LCDStat);
-                    }
+                    State::OAM
                 } else {
-                    //let line_vb = self.cycles / (OAM + PIXEL + HBLANK);
-                    //self.line.ly = 144 + line_vb as u8;
+                    State::VBlank
                 }
             }
         }
