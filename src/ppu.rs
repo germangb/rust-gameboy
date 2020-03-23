@@ -216,12 +216,8 @@ impl Ppu {
             (State::VBlank, State::VBlank) => {
                 let vb_line = self.cycles / (OAM + PIXEL + HBLANK);
 
-                if self.line.ly == 153 {
-                    if self.cycles >= OAM + PIXEL {
-                        line = 0;
-                    } else {
-                        line = 153;
-                    }
+                if self.line.ly == 153 && self.cycles >= OAM + PIXEL {
+                    line = 0;
                 } else if self.line.ly != 0 {
                     line = 144 + vb_line as u8;
                 }
