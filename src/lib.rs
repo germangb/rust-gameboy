@@ -14,7 +14,7 @@ use crate::{
     cpu::Cpu,
     dev::Device,
     mmu::Mmu,
-    ppu::{HBLANK, OAM, PIXEL},
+    ppu::{HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES},
 };
 
 pub mod apu;
@@ -117,7 +117,7 @@ impl Dmg {
     }
 
     pub fn emulate_frame(&mut self) {
-        let frame_ticks = (OAM + PIXEL + HBLANK) * 154;
+        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 154;
         let mut cycles = 0;
         while cycles < frame_ticks {
             let cpu_cycles = self.cpu.step(&mut self.mmu);

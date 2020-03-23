@@ -1,6 +1,8 @@
 use crate::{dev::Device, interrupts::Interrupts};
 use std::{cell::RefCell, rc::Rc};
 
+pub trait AudioOutput {}
+
 pub struct Apu {
     #[allow(dead_code)]
     int: Rc<RefCell<Interrupts>>,

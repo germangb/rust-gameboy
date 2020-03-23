@@ -12,12 +12,16 @@ pub mod palette;
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub(crate) const HBLANK: usize = 201;
-pub(crate) const OAM: usize = 77;
-pub(crate) const PIXEL: usize = 169;
-pub(crate) const VBLANK: usize = (OAM + PIXEL + HBLANK) * 10;
+pub const HBLANK_CYCLES: usize = 201;
+pub const OAM_CYCLES: usize = 77;
+pub const PIXEL_CYCLES: usize = 169;
+pub const VBLANK_CYCLES: usize = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
 
 const PIXELS: usize = 160 * 144;
+
+pub trait VideoOutput {
+    fn render_line(&mut self, line: usize, pixels: &[Color; 160]);
+}
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -214,9 +218,9 @@ impl Ppu {
             | (State::Pixel, State::Pixel)
             | (State::HBlank, State::HBlank) => { /* carry on */ }
             (State::VBlank, State::VBlank) => {
-                let vb_line = self.cycles / (OAM + PIXEL + HBLANK);
+                let vb_line = self.cycles / (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES);
 
-                if self.line.ly == 153 && self.cycles >= OAM + PIXEL {
+                if self.line.ly == 153 && self.cycles >= OAM_CYCLES + PIXEL_CYCLES {
                     line = 0;
                 } else if self.line.ly != 0 {
                     line = 144 + vb_line as u8;
@@ -245,32 +249,32 @@ impl Ppu {
     fn next_state(&mut self) -> State {
         match self.state {
             State::OAM => {
-                if self.cycles >= OAM {
-                    self.cycles %= OAM;
+                if self.cycles >= OAM_CYCLES {
+                    self.cycles %= OAM_CYCLES;
                     State::Pixel
                 } else {
                     State::OAM
                 }
             }
             State::Pixel => {
-                if self.cycles >= PIXEL {
-                    self.cycles %= PIXEL;
+                if self.cycles >= PIXEL_CYCLES {
+                    self.cycles %= PIXEL_CYCLES;
                     State::HBlank
                 } else {
                     State::Pixel
                 }
             }
             State::HBlank => {
-                if self.cycles >= HBLANK {
-                    self.cycles %= HBLANK;
+                if self.cycles >= HBLANK_CYCLES {
+                    self.cycles %= HBLANK_CYCLES;
                     State::OAM
                 } else {
                     State::HBlank
                 }
             }
             State::VBlank => {
-                if self.cycles >= VBLANK {
-                    self.cycles %= VBLANK;
+                if self.cycles >= VBLANK_CYCLES {
+                    self.cycles %= VBLANK_CYCLES;
                     State::OAM
                 } else {
                     State::VBlank
