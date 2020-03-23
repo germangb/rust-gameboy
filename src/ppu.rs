@@ -12,15 +12,19 @@ pub mod palette;
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK_CYCLES: usize = 201;
-pub const OAM_CYCLES: usize = 77;
-pub const PIXEL_CYCLES: usize = 169;
+pub const HBLANK_CYCLES: usize = 207;
+pub const OAM_CYCLES: usize = 83;
+pub const PIXEL_CYCLES: usize = 175;
 pub const VBLANK_CYCLES: usize = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
 
 const PIXELS: usize = 160 * 144;
 
 pub trait VideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]);
+}
+
+impl VideoOutput for () {
+    fn render_line(&mut self, _: usize, _: &[[u8; 3]; 160]) {}
 }
 
 #[repr(u8)]
@@ -101,12 +105,14 @@ struct Line {
     cycles: usize,
 }
 
-pub struct Ppu {
+pub struct Ppu<V> {
+    output: V,
     mode: Mode,
     cycles: usize,
     palette: Palette,
-    buffer: [Color; PIXELS],
-    back_buffer: [Color; PIXELS],
+    //buffer: [Color; PIXELS],
+    //back_buffer: [Color; PIXELS],
+    buffer: [Color; 160],
     vram: VideoRam,
     oam: [u8; 0xa0],
     state: State,
@@ -134,8 +140,8 @@ pub struct Ppu {
     int: Rc<RefCell<Interrupts>>,
 }
 
-impl Ppu {
-    pub fn new(mode: Mode, int: Rc<RefCell<Interrupts>>) -> Self {
+impl<V> Ppu<V> {
+    pub fn new(mode: Mode, int: Rc<RefCell<Interrupts>>, output: V) -> Self {
         let scroll = Scroll { scy: 0, scx: 0 };
         let win = Window { wy: 0, wx: 0 };
         let line = Line {
@@ -156,10 +162,12 @@ impl Ppu {
             obp: [0xff; 0x40],
         };
         Self {
+            output,
             mode,
             palette,
-            buffer: [palette[0]; PIXELS],
-            back_buffer: [palette[0]; PIXELS],
+            //buffer: [palette[0]; PIXELS],
+            //back_buffer: [palette[0]; PIXELS],
+            buffer: [[0, 0, 0]; 160],
             cycles: 0,
             vram: VideoRam::new(),
             oam: [0; 0xa0],
@@ -175,6 +183,41 @@ impl Ppu {
         }
     }
 
+    /// Get color palette (GB mode only)
+    pub fn palette(&self) -> &Palette {
+        &self.palette
+    }
+
+    /// Set color palette (GB mode only)
+    pub fn set_palette(&mut self, pal: Palette) {
+        self.palette = pal;
+    }
+
+    /// Return the list of OAM entries.
+    pub fn oam_entries(&self) -> &[OamEntry] {
+        unsafe { slice::from_raw_parts(self.oam.as_ptr() as _, 40) }
+    }
+
+    /// Return the mutable list of OAM entries.
+    pub fn oam_entries_mut(&mut self) -> &mut [OamEntry] {
+        unsafe { slice::from_raw_parts_mut(self.oam.as_ptr() as _, 40) }
+    }
+
+    pub fn video_output(&self) -> &V {
+        &self.output
+    }
+
+    fn write_color_pal(pal: &mut [u8], mut idx: u8, data: u8) -> u8 {
+        pal[(idx & 0x3f) as usize] = data;
+        if idx & 0x80 != 0 {
+            idx += 1;
+            idx &= 0xbf;
+        }
+        idx
+    }
+}
+
+impl<V: VideoOutput> Ppu<V> {
     pub fn step(&mut self, cycles: usize) {
         if self.lcdc & 0x80 == 0 {
             return;
@@ -201,7 +244,6 @@ impl Ppu {
             }
             (State::HBlank, State::OAM) if line == 144 => {
                 self.state = State::VBlank;
-                self.swap_buffers();
 
                 // vblank interrupt
                 self.int.borrow_mut().set(Flag::VBlank);
@@ -283,26 +325,6 @@ impl Ppu {
         }
     }
 
-    pub fn vram(&self) -> &VideoRam {
-        &self.vram
-    }
-
-    pub fn vram_mut(&mut self) -> &mut VideoRam {
-        &mut self.vram
-    }
-
-    pub fn buffer(&self) -> &[Color; 160 * 144] {
-        &self.buffer
-    }
-
-    pub fn palette(&self) -> &Palette {
-        &self.palette
-    }
-
-    pub fn set_palette(&mut self, pal: Palette) {
-        self.palette = pal;
-    }
-
     fn bg_tile_map(&self) -> TileMap {
         if self.lcdc & 0x8 == 0x8 {
             TileMap::X9c00
@@ -340,15 +362,7 @@ impl Ppu {
         if obj_display {
             self.render_sprites(ly);
         }
-    }
-
-    fn swap_buffers(&mut self) {
-        let color = match self.mode {
-            Mode::GB => self.palette[0],
-            Mode::CGB => [0xff, 0xff, 0xff],
-        };
-        mem::replace(&mut self.buffer, self.back_buffer);
-        mem::replace(&mut self.back_buffer, [color; 160 * 144]);
+        self.output.render_line(ly as usize, &self.buffer);
     }
 
     fn clear_buffer(&mut self) {
@@ -356,8 +370,10 @@ impl Ppu {
             Mode::GB => self.palette[0],
             Mode::CGB => [0xff, 0xff, 0xff],
         };
-        mem::replace(&mut self.buffer, [color; 160 * 144]);
-        mem::replace(&mut self.back_buffer, [color; 160 * 144]);
+        mem::replace(&mut self.buffer, [color; 160]);
+        for i in 0..144 {
+            self.output.render_line(i, &self.buffer);
+        }
     }
 
     fn render_win(&mut self, ly: u8) {
@@ -375,7 +391,7 @@ impl Ppu {
             }
             let lcd_y = u16::from(ly - wy);
             let lcd_x = u16::from(pix - wx);
-            let pixel = 160 * ly as usize + (pix - 7) as usize;
+            let pixel = (pix - 7) as usize;
             if pixel >= PIXELS {
                 continue;
             }
@@ -409,7 +425,7 @@ impl Ppu {
             match self.mode {
                 Mode::GB => {
                     let col_idx = (gb_pal >> (2 * pal_idx as u8)) & 0x3;
-                    self.back_buffer[pixel] = self.palette[col_idx as usize];
+                    self.buffer[pixel] = self.palette[col_idx as usize];
                 }
                 Mode::CGB => {
                     let gbc_pal = (flags & 0x7) as usize;
@@ -419,7 +435,7 @@ impl Ppu {
                     let r = (0xff * (color & 0x1f) / 0x1f) as u8;
                     let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
                     let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
-                    self.back_buffer[pixel] = [r, g, b];
+                    self.buffer[pixel] = [r, g, b];
                 }
             }
         }
@@ -431,9 +447,8 @@ impl Ppu {
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
         for pixel in 0..160 {
-            let lcd_y = scy.wrapping_add(ly).wrapping_sub(0) as u16;
+            let lcd_y = scy.wrapping_add(ly) as u16;
             let lcd_x = (pixel as u8).wrapping_add(scx) as u16;
-            let pixel = 160 * ly as usize + pixel;
 
             let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
             let bank_0 = self.vram.bank_0();
@@ -469,7 +484,7 @@ impl Ppu {
             match self.mode {
                 Mode::GB => {
                     let col_idx = (gb_pal >> (2 * pal_idx as u8)) & 0x3;
-                    self.back_buffer[pixel] = self.palette[col_idx as usize];
+                    self.buffer[pixel] = self.palette[col_idx as usize];
                 }
                 Mode::CGB => {
                     let gbc_pal = (flags & 0x7) as usize;
@@ -479,35 +494,21 @@ impl Ppu {
                     let r = (0xff * (color & 0x1f) / 0x1f) as u8;
                     let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
                     let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
-                    self.back_buffer[pixel] = [r, g, b];
+                    self.buffer[pixel] = [r, g, b];
                 }
             }
         }
     }
 
-    /// Return the list of OAM entries.
-    pub fn oam_entries(&self) -> &[OamEntry] {
-        unsafe { slice::from_raw_parts(self.oam.as_ptr() as _, 40) }
-    }
-
-    /// Return the mutable list of OAM entries.
-    pub fn oam_entries_mut(&mut self) -> &mut [OamEntry] {
-        unsafe { slice::from_raw_parts_mut(self.oam.as_ptr() as _, 40) }
-    }
-
-    fn write_color_pal(pal: &mut [u8], mut idx: u8, data: u8) -> u8 {
-        pal[(idx & 0x3f) as usize] = data;
-        if idx & 0x80 != 0 {
-            idx += 1;
-            idx &= 0xbf;
-        }
-        idx
-    }
-
     fn render_sprites(&mut self, ly: u8) {
         let Pal { obp0, obp1, .. } = self.pal;
-        let entries = self.oam_entries().to_vec();
+        //let entries = self.oam_entries().to_vec();
         //entries.sort_by_key(|o| o.xpos);
+
+        // TODO workaround borrow checker avoid clone
+        let entries =
+            unsafe { slice::from_raw_parts(self.oam_entries().as_ptr(), self.oam_entries().len()) };
+
         for oam in entries {
             let tile = u16::from(oam.tile);
             let xpos = i16::from(oam.xpos);
@@ -527,56 +528,57 @@ impl Ppu {
                 8
             };
 
-            for sy in ypos - 16..ypos - sprite_mode {
-                if sy != ly as _ {
-                    continue;
-                }
-                for sx in xpos - 8..xpos {
-                    if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
-                        let pixel = 160 * sy as usize + sx as usize;
-                        let mut lin = (sy - (ypos - 16)) as u16;
-                        let mut col = 7 - (sx - (xpos - 8)) as u8;
-                        if x_flip {
-                            col = 7 - col
+            if (ly as i16) < ypos - 16 || (ly as i16) >= ypos - sprite_mode {
+                continue;
+            }
+
+            let sy = ly as i16;
+
+            for sx in xpos - 8..xpos {
+                if sx >= 0 && sx < 160 && sy >= 0 && sy < 144 {
+                    let pixel = sx as usize;
+                    let mut lin = (sy - (ypos - 16)) as u16;
+                    let mut col = 7 - (sx - (xpos - 8)) as u8;
+                    if x_flip {
+                        col = 7 - col
+                    }
+                    if y_flip {
+                        if sprite_mode == 8 {
+                            lin = 7 - lin;
+                        } else {
+                            lin = 15 - lin;
                         }
-                        if y_flip {
-                            if sprite_mode == 8 {
-                                lin = 7 - lin;
-                            } else {
-                                lin = 15 - lin;
+                    }
+
+                    let bank_0 = self.vram.bank_0();
+                    let bank_1 = self.vram.bank_1();
+                    let bank = if oam.flag & 0x8 == 0 { bank_0 } else { bank_1 };
+
+                    let lo = bank[16 * tile as usize + lin as usize * 2] >> col & 0x1;
+                    let hi = bank[16 * tile as usize + lin as usize * 2 + 1] >> col & 0x1;
+                    let pal_idx = ((hi << 1) | lo) as usize;
+
+                    // transparent
+                    if pal_idx == 0 {
+                        continue;
+                    }
+
+                    match self.mode {
+                        Mode::GB => {
+                            if behind_bg && self.buffer[pixel] != self.palette[0] {
+                                continue;
                             }
+                            let col_idx = (gb_pal >> (2 * pal_idx as u8)) & 0x3;
+                            self.buffer[pixel] = self.palette[col_idx as usize];
                         }
-
-                        let bank_0 = self.vram.bank_0();
-                        let bank_1 = self.vram.bank_1();
-                        let bank = if oam.flag & 0x8 == 0 { bank_0 } else { bank_1 };
-
-                        let lo = bank[16 * tile as usize + lin as usize * 2] >> col & 0x1;
-                        let hi = bank[16 * tile as usize + lin as usize * 2 + 1] >> col & 0x1;
-                        let pal_idx = ((hi << 1) | lo) as usize;
-
-                        // transparent
-                        if pal_idx == 0 {
-                            continue;
-                        }
-
-                        match self.mode {
-                            Mode::GB => {
-                                if behind_bg && self.back_buffer[pixel] != self.palette[0] {
-                                    continue;
-                                }
-                                let col_idx = (gb_pal >> (2 * pal_idx as u8)) & 0x3;
-                                self.back_buffer[pixel] = self.palette[col_idx as usize];
-                            }
-                            Mode::CGB => {
-                                let gbc_pal = &self.color_pal.obp[8 * gbc_pal..8 * gbc_pal + 8];
-                                let color: u16 = u16::from(gbc_pal[2 * pal_idx])
-                                    | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
-                                let r = (0xff * (color & 0x1f) / 0x1f) as u8;
-                                let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
-                                let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
-                                self.back_buffer[pixel] = [r, g, b];
-                            }
+                        Mode::CGB => {
+                            let gbc_pal = &self.color_pal.obp[8 * gbc_pal..8 * gbc_pal + 8];
+                            let color: u16 = u16::from(gbc_pal[2 * pal_idx])
+                                | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
+                            let r = (0xff * (color & 0x1f) / 0x1f) as u8;
+                            let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
+                            let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
+                            self.buffer[pixel] = [r, g, b];
                         }
                     }
                 }
@@ -585,7 +587,7 @@ impl Ppu {
     }
 }
 
-impl Device for Ppu {
+impl<V: VideoOutput> Device for Ppu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x8000..=0x9fff => self.vram.read(addr),
@@ -670,7 +672,7 @@ mod tests {
 
     #[test]
     fn vram() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB);
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
 
         mmu.write(0x8000, 1);
         mmu.write(0x9fff, 2);
@@ -681,7 +683,7 @@ mod tests {
 
     #[test]
     fn oam() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB);
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
 
         mmu.write(0xfe00, 1);
         mmu.write(0xfe9f, 2);
@@ -692,7 +694,7 @@ mod tests {
 
     #[test]
     fn registers() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB);
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
 
         mmu.write(0xff42, 1);
         mmu.write(0xff43, 2);

@@ -1,6 +1,13 @@
 use crate::{
-    apu::Apu, cartridge::Cartridge, dev::Device, interrupts::Interrupts, joypad::Joypad, ppu::Ppu,
-    timer::Timer, wram::WorkRam, Mode,
+    apu::Apu,
+    cartridge::Cartridge,
+    dev::Device,
+    interrupts::Interrupts,
+    joypad::Joypad,
+    ppu::{Ppu, VideoOutput},
+    timer::Timer,
+    wram::WorkRam,
+    Mode,
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -26,10 +33,10 @@ struct VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu {
+pub struct Mmu<V> {
     boot: u8,
     cartridge: Box<dyn Cartridge>,
-    ppu: Ppu,
+    ppu: Ppu<V>,
     timer: Timer,
     wram: WorkRam,
     joy: Joypad,
@@ -39,8 +46,8 @@ pub struct Mmu {
     int: Rc<RefCell<Interrupts>>,
 }
 
-impl Mmu {
-    pub fn new<C>(cartridge: C, mode: Mode) -> Self
+impl<V> Mmu<V> {
+    pub fn new<C>(cartridge: C, mode: Mode, output: V) -> Self
     where
         C: Cartridge + 'static,
     {
@@ -55,7 +62,7 @@ impl Mmu {
         Self {
             boot: 0x0,
             cartridge: Box::new(cartridge),
-            ppu: Ppu::new(mode, Rc::clone(&int)),
+            ppu: Ppu::new(mode, Rc::clone(&int), output),
             timer: Timer::new(Rc::clone(&int)),
             wram: WorkRam::new(),
             joy: Joypad::new(Rc::clone(&int)),
@@ -82,11 +89,11 @@ impl Mmu {
         &mut self.joy
     }
 
-    pub fn ppu(&self) -> &Ppu {
+    pub fn ppu(&self) -> &Ppu<V> {
         &self.ppu
     }
 
-    pub fn ppu_mut(&mut self) -> &mut Ppu {
+    pub fn ppu_mut(&mut self) -> &mut Ppu<V> {
         &mut self.ppu
     }
 
@@ -105,7 +112,9 @@ impl Mmu {
     pub fn apu_mut(&mut self) -> &mut Apu {
         &mut self.apu
     }
+}
 
+impl<V: VideoOutput> Mmu<V> {
     pub fn step(&mut self, cycles: usize) {
         self.ppu.step(cycles);
         self.timer.step(cycles);
@@ -125,7 +134,7 @@ impl Mmu {
     }
 }
 
-impl Device for Mmu {
+impl<V: VideoOutput> Device for Mmu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x000..=0x00ff if self.boot_rom_enabled() => {

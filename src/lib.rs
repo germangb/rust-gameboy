@@ -1,20 +1,20 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![warn(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
+// #![deny(dead_code)]
+// #![deny(unused_imports)]
+// #![deny(unused_must_use)]
+// #![deny(unused_variables)]
+// #![deny(unused_mut)]
+// #![deny(unused_imports)]
+// #![warn(clippy::style)]
+// #![deny(clippy::correctness)]
+// #![deny(clippy::complexity)]
+// #![deny(clippy::perf)]
 
 use crate::{
     cartridge::Cartridge,
     cpu::Cpu,
     dev::Device,
     mmu::Mmu,
-    ppu::{HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES},
+    ppu::{VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES},
 };
 
 pub mod apu;
@@ -36,21 +36,50 @@ pub enum Mode {
     CGB,
 }
 
-pub struct Dmg {
+pub struct Dmg<V> {
     mode: Mode,
     cpu: Cpu,
-    mmu: Box<Mmu>,
+    mmu: Box<Mmu<V>>,
     carry: usize,
 }
 
-impl Dmg {
-    pub fn new<C: Cartridge + 'static>(cartridge: C, mode: Mode) -> Self {
+impl<V> Dmg<V> {
+    pub fn new<C: Cartridge + 'static>(cartridge: C, mode: Mode, output: V) -> Self {
         Self {
             mode,
             cpu: Cpu::default(),
-            mmu: Box::new(Mmu::new(cartridge, mode)),
+            mmu: Box::new(Mmu::new(cartridge, mode, output)),
             carry: 0,
         }
+    }
+
+    pub fn mmu(&self) -> &Mmu<V> {
+        &self.mmu
+    }
+
+    pub fn mmu_mut(&mut self) -> &mut Mmu<V> {
+        &mut self.mmu
+    }
+
+    pub fn cpu(&self) -> &Cpu {
+        &self.cpu
+    }
+
+    pub fn cpu_mut(&mut self) -> &mut Cpu {
+        &mut self.cpu
+    }
+}
+
+impl<V: VideoOutput> Dmg<V> {
+    pub fn emulate_frame(&mut self) {
+        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 154;
+        let mut cycles = 0;
+        while cycles < frame_ticks {
+            let cpu_cycles = self.cpu.step(&mut self.mmu);
+            self.mmu.step(cpu_cycles);
+            cycles += cpu_cycles;
+        }
+        self.carry = cycles % frame_ticks;
     }
 
     pub fn boot(&mut self) {
@@ -114,32 +143,5 @@ impl Dmg {
         self.mmu.write(0xFF4B, 0x00); // WX
         self.mmu.write(0xFFFF, 0x00); // IE
         self.mmu.write(0xFF50, 0x01); // BOOT
-    }
-
-    pub fn emulate_frame(&mut self) {
-        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 154;
-        let mut cycles = 0;
-        while cycles < frame_ticks {
-            let cpu_cycles = self.cpu.step(&mut self.mmu);
-            self.mmu.step(cpu_cycles);
-            cycles += cpu_cycles;
-        }
-        self.carry = cycles % frame_ticks;
-    }
-
-    pub fn mmu(&self) -> &Mmu {
-        &self.mmu
-    }
-
-    pub fn mmu_mut(&mut self) -> &mut Mmu {
-        &mut self.mmu
-    }
-
-    pub fn cpu(&self) -> &Cpu {
-        &self.cpu
-    }
-
-    pub fn cpu_mut(&mut self) -> &mut Cpu {
-        &mut self.cpu
     }
 }
