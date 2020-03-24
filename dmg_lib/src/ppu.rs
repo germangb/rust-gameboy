@@ -1,7 +1,7 @@
 use crate::{
     dev::Device,
     interrupts::{Flag, Interrupts},
-    ppu::palette::{Color, Palette},
+    ppu::palette::Palette,
     vram::VideoRam,
     Mode,
 };
@@ -9,12 +9,14 @@ use std::{cell::RefCell, mem, rc::Rc, slice};
 
 pub mod palette;
 
+pub type Color = [u8; 3];
+
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK_CYCLES: usize = 207;
-pub const OAM_CYCLES: usize = 83;
-pub const PIXEL_CYCLES: usize = 175;
+pub const HBLANK_CYCLES: usize = 201;
+pub const OAM_CYCLES: usize = 77;
+pub const PIXEL_CYCLES: usize = 169;
 pub const VBLANK_CYCLES: usize = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
 
 const PIXELS: usize = 160 * 144;
@@ -205,6 +207,10 @@ impl<V> Ppu<V> {
 
     pub fn video_output(&self) -> &V {
         &self.output
+    }
+
+    pub fn video_output_mut(&mut self) -> &mut V {
+        &mut self.output
     }
 
     fn write_color_pal(pal: &mut [u8], mut idx: u8, data: u8) -> u8 {
@@ -672,7 +678,7 @@ mod tests {
 
     #[test]
     fn vram() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         mmu.write(0x8000, 1);
         mmu.write(0x9fff, 2);
@@ -683,7 +689,7 @@ mod tests {
 
     #[test]
     fn oam() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         mmu.write(0xfe00, 1);
         mmu.write(0xfe9f, 2);
@@ -694,7 +700,7 @@ mod tests {
 
     #[test]
     fn registers() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         mmu.write(0xff42, 1);
         mmu.write(0xff43, 2);

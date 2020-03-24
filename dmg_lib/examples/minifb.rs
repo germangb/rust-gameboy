@@ -1,37 +1,59 @@
-use dmg::{
+use dmg_lib::{
     cartridge::{Cartridge, Mbc1, Mbc3, ZeroRom},
     joypad::{
         Btn::*,
         Dir::*,
         Key::{Btn, Dir},
     },
-    ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
+    ppu::{
+        palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
+        VideoOutput,
+    },
     Dmg, Mode,
 };
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use std::{
+    io::Cursor,
     mem, thread,
     time::{Duration, Instant},
 };
 
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
-const ROM: &[u8] = include_bytes!("../roms/Dr. Mario (World).gb");
+const ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
+
+struct Output {
+    front: Vec<u32>,
+    back: Vec<u32>,
+}
+
+impl VideoOutput for Output {
+    fn render_line(&mut self, line: usize, pixels: &[[u8; 3]; 160]) {
+        for (i, [r, g, b]) in pixels.iter().enumerate() {
+            self.back[160 * line + i] = u32::from(*r) << 16 | u32::from(*g) << 8 | u32::from(*b);
+        }
+        if line == 143 {
+            std::mem::swap(&mut self.front, &mut self.back);
+        }
+    }
+}
 
 fn main() {
-    let cartridge = Mbc3::from_bytes(ROM);
+    let output = Output {
+        back: vec![0u32; 160 * 144],
+        front: vec![0u32; 160 * 144],
+    };
 
-    let mut dmg = Dmg::new(cartridge, Mode::GB);
+    let cart = Mbc3::from_bytes(ROM);
+    let mut dmg = Dmg::new(cart, Mode::GB, output, ());
     dmg.mmu_mut()
         .ppu_mut()
-        .set_palette(dmg::ppu::palette::NINTENDO_GAMEBOY_BLACK_ZERO);
+        .set_palette(NINTENDO_GAMEBOY_BLACK_ZERO);
     dmg.boot();
 
     let mut opt = WindowOptions::default();
     opt.scale = Scale::X4;
     opt.resize = true;
     let mut window = Window::new("Window", 160, 144, opt).unwrap();
-
-    let mut buffer = vec![0u32; 160 * 144];
 
     while window.is_open() {
         let joy = &[
@@ -71,12 +93,9 @@ fn main() {
         dmg.emulate_frame();
 
         unsafe {
-            let frame = dmg.mmu().ppu().buffer();
-            for (i, [r, g, b]) in frame.iter().enumerate() {
-                buffer[i] = u32::from(*r) << 16 | u32::from(*g) << 8 | u32::from(*b);
-            }
+            let output = dmg.mmu().ppu().video_output();
             window
-                .update_with_buffer(mem::transmute(&buffer[..]), 160, 144)
+                .update_with_buffer(mem::transmute(&output.front[..]), 160, 144)
                 .unwrap();
         }
 

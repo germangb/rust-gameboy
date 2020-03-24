@@ -1,10 +1,9 @@
 use crate::{
     dev::Device,
     interrupts::{Flag, Interrupts},
+    CLOCK,
 };
 use std::{cell::RefCell, rc::Rc};
-
-pub const SPEED: u64 = 4_194_304;
 
 pub struct Timer {
     int: Rc<RefCell<Interrupts>>,
@@ -38,7 +37,7 @@ impl Timer {
     pub fn step(&mut self, cycles: usize) {
         // DIV counter
         self.div_cycles += cycles as u64;
-        let cycles_per_tick = SPEED / 16_384 / 2;
+        let cycles_per_tick = CLOCK / 16_384 / 2;
 
         if self.div_cycles > cycles_per_tick {
             self.div_cycles %= cycles_per_tick;
@@ -51,7 +50,7 @@ impl Timer {
 
         // TIMA counter
         self.tima_cycles += cycles as u64;
-        let cycles_per_tick = SPEED / self.clock();
+        let cycles_per_tick = CLOCK / self.clock();
 
         if self.tima_cycles > cycles_per_tick {
             self.tima_cycles %= cycles_per_tick;

@@ -1,5 +1,5 @@
 use crate::{
-    apu::Apu,
+    apu::{Apu, AudioOutput},
     cartridge::Cartridge,
     dev::Device,
     interrupts::Interrupts,
@@ -33,21 +33,21 @@ struct VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu<V> {
+pub struct Mmu<V, A> {
     boot: u8,
     cartridge: Box<dyn Cartridge>,
     ppu: Ppu<V>,
     timer: Timer,
     wram: WorkRam,
     joy: Joypad,
-    apu: Apu,
+    apu: Apu<A>,
     hram: [u8; 0x7f],
     vram_dma: VRamDma,
     int: Rc<RefCell<Interrupts>>,
 }
 
-impl<V> Mmu<V> {
-    pub fn new<C>(cartridge: C, mode: Mode, output: V) -> Self
+impl<V, A> Mmu<V, A> {
+    pub fn new<C>(cartridge: C, mode: Mode, video_out: V, audio_out: A) -> Self
     where
         C: Cartridge + 'static,
     {
@@ -62,11 +62,11 @@ impl<V> Mmu<V> {
         Self {
             boot: 0x0,
             cartridge: Box::new(cartridge),
-            ppu: Ppu::new(mode, Rc::clone(&int), output),
+            ppu: Ppu::new(mode, Rc::clone(&int), video_out),
             timer: Timer::new(Rc::clone(&int)),
             wram: WorkRam::new(),
             joy: Joypad::new(Rc::clone(&int)),
-            apu: Apu::new(Rc::clone(&int)),
+            apu: Apu::new(audio_out),
             hram: [0; 0x7f],
             vram_dma,
             int,
@@ -105,20 +105,21 @@ impl<V> Mmu<V> {
         &mut self.wram
     }
 
-    pub fn apu(&self) -> &Apu {
+    pub fn apu(&self) -> &Apu<A> {
         &self.apu
     }
 
-    pub fn apu_mut(&mut self) -> &mut Apu {
+    pub fn apu_mut(&mut self) -> &mut Apu<A> {
         &mut self.apu
     }
 }
 
-impl<V: VideoOutput> Mmu<V> {
+impl<V: VideoOutput, A: AudioOutput> Mmu<V, A> {
     pub fn step(&mut self, cycles: usize) {
         self.ppu.step(cycles);
         self.timer.step(cycles);
         self.cartridge.step(cycles);
+        self.apu.step(cycles);
     }
 
     fn dma(&mut self, d: u8) {
@@ -134,7 +135,7 @@ impl<V: VideoOutput> Mmu<V> {
     }
 }
 
-impl<V: VideoOutput> Device for Mmu<V> {
+impl<V: VideoOutput, A: AudioOutput> Device for Mmu<V, A> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x000..=0x00ff if self.boot_rom_enabled() => {
@@ -262,7 +263,7 @@ mod tests {
 
     #[test]
     fn dma() {
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB);
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         mmu.write(0xff50, 1);
         mmu.write(0xff46, 0);

@@ -1,10 +1,10 @@
 static ROM: &[u8] = include_bytes!("roms/10-print.gb");
 
-use dmg::{cartridge::RomAndRam, dev::Device, mmu::Mmu, ppu::palette::GRAYSCALE, Mode};
+use dmg_lib::{cartridge::RomAndRam, dev::Device, mmu::Mmu, ppu::palette::GRAYSCALE, Mode};
 
 #[test]
 fn checksum() {
-    let mmu = Mmu::new(RomAndRam::from_bytes(ROM), Mode::GB);
+    let mmu = Mmu::new(RomAndRam::from_bytes(ROM), Mode::GB, (), ());
 
     let mut res = 0x19u8;
     for addr in 0x134..=0x14d {

@@ -1,4 +1,5 @@
 use crate::{
+    apu::AudioOutput,
     dev::Device,
     mmu::Mmu,
     ppu::VideoOutput,
@@ -64,34 +65,34 @@ impl Cpu {
         self.halt
     }
 
-    fn fetch<V: VideoOutput>(&mut self, mmu: &Mmu<V>) -> u8 {
+    fn fetch<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &Mmu<V, A>) -> u8 {
         let b = mmu.read(self.reg.pc);
         self.reg.pc += 1;
         b
     }
 
-    fn fetch_word<V: VideoOutput>(&mut self, mmu: &Mmu<V>) -> u16 {
+    fn fetch_word<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &Mmu<V, A>) -> u16 {
         let lo = mmu.read(self.reg.pc) as u16;
         let hi = mmu.read(self.reg.pc + 1) as u16;
         self.reg.pc += 2;
         (hi << 8) | lo
     }
 
-    fn fetch_signed<V: VideoOutput>(&mut self, mmu: &Mmu<V>) -> i8 {
+    fn fetch_signed<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &Mmu<V, A>) -> i8 {
         let n: i8 = unsafe { std::mem::transmute(self.fetch(mmu)) };
         n
     }
 
     // Pushes word into the stack
     // Decrements SP by 2
-    fn stack_push<V: VideoOutput>(&mut self, nn: u16, mmu: &mut Mmu<V>) {
+    fn stack_push<V: VideoOutput, A: AudioOutput>(&mut self, nn: u16, mmu: &mut Mmu<V, A>) {
         self.reg.sp -= 2;
         mmu.write_word(self.reg.sp, nn);
     }
 
     // Pops word from the stack
     // Increments SP by 2
-    fn stack_pop<V: VideoOutput>(&mut self, mmu: &Mmu<V>) -> u16 {
+    fn stack_pop<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &Mmu<V, A>) -> u16 {
         let r = mmu.read_word(self.reg.sp);
         self.reg.sp += 2;
         r
@@ -389,7 +390,7 @@ impl Cpu {
     // Pushes present address onto stack.
     // Jump to address $000 + n
     // n = 00,$08,$10,$18,$20,$28,$30,$38
-    fn rst_n<V: VideoOutput>(&mut self, n: u8, mmu: &mut Mmu<V>) {
+    fn rst_n<V: VideoOutput, A: AudioOutput>(&mut self, n: u8, mmu: &mut Mmu<V, A>) {
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = n as u16;
     }
@@ -399,7 +400,7 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn call_c_n<V: VideoOutput>(&mut self, c: bool, mmu: &mut Mmu<V>) -> bool {
+    fn call_c_n<V: VideoOutput, A: AudioOutput>(&mut self, c: bool, mmu: &mut Mmu<V, A>) -> bool {
         let n = self.fetch_word(mmu);
         if c {
             self.stack_push(self.reg.pc, mmu);
@@ -409,7 +410,7 @@ impl Cpu {
     }
 
     // Push address of next instruction onto the stack and then jump to address n.
-    fn call_n<V: VideoOutput>(&mut self, mmu: &mut Mmu<V>) {
+    fn call_n<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) {
         let n = self.fetch_word(mmu);
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = n;
@@ -420,7 +421,7 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn jp_c_n<V: VideoOutput>(&mut self, c: bool, mmu: &mut Mmu<V>) -> bool {
+    fn jp_c_n<V: VideoOutput, A: AudioOutput>(&mut self, c: bool, mmu: &mut Mmu<V, A>) -> bool {
         let n = self.fetch_word(mmu);
         if c {
             self.reg.pc = n;
@@ -429,7 +430,7 @@ impl Cpu {
     }
 
     // Add n to current address and jump tp it.
-    fn jr_c<V: VideoOutput>(&mut self, c: bool, mmu: &mut Mmu<V>) -> bool {
+    fn jr_c<V: VideoOutput, A: AudioOutput>(&mut self, c: bool, mmu: &mut Mmu<V, A>) -> bool {
         let n = self.fetch_signed(mmu);
         if c {
             let pc = i32::from(self.reg.pc) + i32::from(n);
@@ -440,7 +441,7 @@ impl Cpu {
 }
 
 impl Cpu {
-    pub fn step<V: VideoOutput>(&mut self, mmu: &mut Mmu<V>) -> usize {
+    pub fn step<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
         let int = self.int(mmu);
         let c = if int != 0 {
             int
@@ -452,7 +453,7 @@ impl Cpu {
         c * 4
     }
 
-    fn int<V: VideoOutput>(&mut self, mmu: &mut Mmu<V>) -> usize {
+    fn int<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
         let ie = mmu.read(0xffff);
         let if_ = mmu.read(0xff0f);
         let tr = (ie & if_).trailing_zeros() as u8;
@@ -468,12 +469,12 @@ impl Cpu {
         4
     }
 
-    fn int_v<V: VideoOutput>(&mut self, v: u16, mmu: &mut Mmu<V>) {
+    fn int_v<V: VideoOutput, A: AudioOutput>(&mut self, v: u16, mmu: &mut Mmu<V, A>) {
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = v;
     }
 
-    fn exec<V: VideoOutput>(&mut self, mmu: &mut Mmu<V>) -> usize {
+    fn exec<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
         let opcode = self.fetch(mmu);
         let mut branch = false;
 
@@ -1414,7 +1415,7 @@ mod test {
     #[test]
     fn stack() {
         let mut cpu = Cpu::default();
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         cpu.reg.sp = 0xfffc;
 
@@ -1429,7 +1430,7 @@ mod test {
     #[ignore]
     fn interrupts() {
         let cpu = Cpu::default();
-        let mut mmu = Mmu::new(ZeroRom, Mode::GB, ());
+        let mut mmu = Mmu::new(ZeroRom, Mode::GB, (), ());
 
         mmu.write(0xff50, 1);
         mmu.write(0xffff, 0x10); // joypad

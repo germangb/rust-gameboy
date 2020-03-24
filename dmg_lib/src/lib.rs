@@ -10,6 +10,7 @@
 // #![deny(clippy::perf)]
 
 use crate::{
+    apu::AudioOutput,
     cartridge::Cartridge,
     cpu::Cpu,
     dev::Device,
@@ -30,34 +31,51 @@ pub mod timer;
 pub mod vram;
 pub mod wram;
 
+pub const CLOCK: u64 = 4_194_304;
+
+/// convert clock cycles to nanoseconds
+pub const fn cycles_to_nano(cycles: u64) -> u64 {
+    cycles * 1_000_000_000 / CLOCK
+}
+
+/// Convert nanoseconds to clock cycles
+pub const fn nano_to_cycles(nano: u64) -> u64 {
+    nano * CLOCK / 1_000_000_000
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Mode {
     GB,
     CGB,
 }
 
-pub struct Dmg<V> {
+pub struct Dmg<V, A> {
     mode: Mode,
     cpu: Cpu,
-    mmu: Box<Mmu<V>>,
+    mmu: Box<Mmu<V, A>>,
     carry: usize,
 }
 
-impl<V> Dmg<V> {
-    pub fn new<C: Cartridge + 'static>(cartridge: C, mode: Mode, output: V) -> Self {
+impl<V, A> Dmg<V, A> {
+    pub fn new<C: Cartridge + 'static>(
+        cartridge: C,
+        mode: Mode,
+        video_out: V,
+        audio_out: A,
+    ) -> Self {
         Self {
             mode,
             cpu: Cpu::default(),
-            mmu: Box::new(Mmu::new(cartridge, mode, output)),
+            mmu: Box::new(Mmu::new(cartridge, mode, video_out, audio_out)),
             carry: 0,
         }
     }
 
-    pub fn mmu(&self) -> &Mmu<V> {
+    pub fn mmu(&self) -> &Mmu<V, A> {
         &self.mmu
     }
 
-    pub fn mmu_mut(&mut self) -> &mut Mmu<V> {
+    pub fn mmu_mut(&mut self) -> &mut Mmu<V, A> {
         &mut self.mmu
     }
 
@@ -70,7 +88,7 @@ impl<V> Dmg<V> {
     }
 }
 
-impl<V: VideoOutput> Dmg<V> {
+impl<V: VideoOutput, A: AudioOutput> Dmg<V, A> {
     pub fn emulate_frame(&mut self) {
         let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 154;
         let mut cycles = 0;

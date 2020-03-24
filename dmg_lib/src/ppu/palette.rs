@@ -1,4 +1,5 @@
-pub type Color = [u8; 3];
+use crate::ppu::Color;
+
 pub type Palette = [Color; 4];
 
 macro_rules! palette {
