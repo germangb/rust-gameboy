@@ -8,7 +8,7 @@ use crate::{
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-static CYCLES: [usize; 256] = [
+static CYCLES: [u64; 256] = [
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
     2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
     1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
@@ -19,7 +19,7 @@ static CYCLES: [usize; 256] = [
     3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4, 3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
 ];
 
-static CB_CYCLES: [usize; 256] = [
+static CB_CYCLES: [u64; 256] = [
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
@@ -441,7 +441,7 @@ impl Cpu {
 }
 
 impl Cpu {
-    pub fn step<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
+    pub fn step<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> u64 {
         let int = self.int(mmu);
         let c = if int != 0 {
             int
@@ -453,7 +453,7 @@ impl Cpu {
         c * 4
     }
 
-    fn int<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
+    fn int<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> u64 {
         let ie = mmu.read(0xffff);
         let if_ = mmu.read(0xff0f);
         let tr = (ie & if_).trailing_zeros() as u8;
@@ -474,9 +474,18 @@ impl Cpu {
         self.reg.pc = v;
     }
 
-    fn exec<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> usize {
+    fn exec<V: VideoOutput, A: AudioOutput>(&mut self, mmu: &mut Mmu<V, A>) -> u64 {
         let opcode = self.fetch(mmu);
         let mut branch = false;
+
+        // if self.reg.pc > 16500 {
+        //     log::info!(
+        //         "pc = {}, op = {:02x} data = {:02x}",
+        //         self.reg.pc - 1,
+        //         opcode,
+        //         mmu.read(self.reg.pc)
+        //     );
+        // }
 
         match opcode {
             // ADD A,n

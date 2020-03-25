@@ -1,10 +1,11 @@
 use dmg_lib::{
-    cartridge::{Mbc3, ZeroRom},
+    cartridge::{Mbc1, Mbc3, Mbc5, ZeroRom},
     joypad::{Btn, Dir, Key},
-    ppu::palette::NINTENDO_GAMEBOY_BLACK_ZERO,
+    ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
     Dmg, Mode,
 };
 use dmg_sdl2::{audio::Sdl2AudioOutput, video::Sdl2VideoOutput};
+use log::info;
 use sdl2::{
     audio::AudioSpecDesired,
     event::{Event, WindowEvent},
@@ -17,8 +18,11 @@ use std::{
 };
 
 const SCALE: u32 = 4;
+const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 fn main() {
+    env_logger::init();
+
     let sdl = sdl2::init().unwrap();
     let mut event_pump = sdl.event_pump().unwrap();
     let video = sdl.video().unwrap();
@@ -35,16 +39,19 @@ fn main() {
 
     let audio = sdl.audio().unwrap();
 
-    let rom = include_bytes!("../../dmg_lib/roms/Tetris-USA.gb");
+    let rom = include_bytes!("../../dmg_lib/roms/gbhc.gbc");
     let mut dmg = Dmg::new(
-        Mbc3::from_bytes(&rom[..]),
-        Mode::GB,
+        Mbc5::from_bytes(&rom[..]),
+        Mode::CGB,
         Sdl2VideoOutput::from_canvas(canvas),
         Sdl2AudioOutput::new(&audio).unwrap(),
     );
+    dmg.mmu_mut().ppu_mut().set_palette(PALETTE);
     dmg.boot();
 
     'mainLoop: loop {
+        let time = Instant::now();
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Window {
@@ -67,6 +74,9 @@ fn main() {
                     Scancode::Right => dmg.mmu_mut().joypad_mut().press(Key::Dir(Dir::Right)),
                     Scancode::Up => dmg.mmu_mut().joypad_mut().press(Key::Dir(Dir::Up)),
                     Scancode::Down => dmg.mmu_mut().joypad_mut().press(Key::Dir(Dir::Down)),
+                    Scancode::R => {
+                        info!("{:#?}", dmg.cpu());
+                    }
                     _ => {}
                 },
                 Event::KeyUp {
@@ -86,11 +96,7 @@ fn main() {
                 _ => {}
             }
         }
-        let time = Instant::now();
 
-        dmg.mmu_mut()
-            .ppu_mut()
-            .set_palette(NINTENDO_GAMEBOY_BLACK_ZERO);
         dmg.emulate_frame();
         dmg.mmu_mut().ppu_mut().video_output_mut().present();
 

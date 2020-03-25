@@ -14,10 +14,10 @@ pub type Color = [u8; 3];
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK_CYCLES: usize = 201;
-pub const OAM_CYCLES: usize = 77;
-pub const PIXEL_CYCLES: usize = 169;
-pub const VBLANK_CYCLES: usize = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
+pub const HBLANK_CYCLES: u64 = 207;
+pub const OAM_CYCLES: u64 = 83;
+pub const PIXEL_CYCLES: u64 = 175;
+pub const VBLANK_CYCLES: u64 = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
 
 const PIXELS: usize = 160 * 144;
 
@@ -104,13 +104,12 @@ struct ColorPal {
 struct Line {
     ly: u8,
     lyc: u8,
-    cycles: usize,
 }
 
 pub struct Ppu<V> {
     output: V,
     mode: Mode,
-    cycles: usize,
+    cycles: u64,
     palette: Palette,
     //buffer: [Color; PIXELS],
     //back_buffer: [Color; PIXELS],
@@ -146,11 +145,7 @@ impl<V> Ppu<V> {
     pub fn new(mode: Mode, int: Rc<RefCell<Interrupts>>, output: V) -> Self {
         let scroll = Scroll { scy: 0, scx: 0 };
         let win = Window { wy: 0, wx: 0 };
-        let line = Line {
-            ly: 0,
-            lyc: 0,
-            cycles: 0,
-        };
+        let line = Line { ly: 0, lyc: 0 };
         let pal = Pal {
             bgp: 0,
             obp0: 0,
@@ -160,15 +155,14 @@ impl<V> Ppu<V> {
         let color_pal = ColorPal {
             bgpi: 0,
             obpi: 0,
-            bgp: [0xff; 0x40],
-            obp: [0xff; 0x40],
+            // initialize colors to black
+            bgp: [0x00; 0x40],
+            obp: [0x00; 0x40],
         };
         Self {
             output,
             mode,
             palette,
-            //buffer: [palette[0]; PIXELS],
-            //back_buffer: [palette[0]; PIXELS],
             buffer: [[0, 0, 0]; 160],
             cycles: 0,
             vram: VideoRam::new(),
@@ -224,7 +218,7 @@ impl<V> Ppu<V> {
 }
 
 impl<V: VideoOutput> Ppu<V> {
-    pub fn step(&mut self, cycles: usize) {
+    pub fn step(&mut self, cycles: u64) {
         if self.lcdc & 0x80 == 0 {
             return;
         }
@@ -234,13 +228,12 @@ impl<V: VideoOutput> Ppu<V> {
         let mut line = self.line.ly;
 
         match (self.state, self.next_state()) {
-            (State::OAM, State::Pixel) => {
-                self.state = State::Pixel;
-            }
+            (State::OAM, State::Pixel) => self.state = State::Pixel,
             (State::Pixel, State::HBlank) => {
                 self.state = State::HBlank;
                 self.render_line(line);
 
+                // update line
                 line += 1;
 
                 // hblank interrupt
@@ -268,13 +261,15 @@ impl<V: VideoOutput> Ppu<V> {
             (State::VBlank, State::VBlank) => {
                 let vb_line = self.cycles / (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES);
 
-                if self.line.ly == 153 && self.cycles >= OAM_CYCLES + PIXEL_CYCLES {
+                if self.line.ly == 153 && self.cycles >= OAM_CYCLES + PIXEL_CYCLES / 2 {
+                    // not setting the line counter causes some top-row-glitches on games that rely
+                    // on this interrupt for effects (link's awakening & Batman)
                     line = 0;
                 } else if self.line.ly != 0 {
                     line = 144 + vb_line as u8;
                 }
             }
-            (_from, _to) => panic!(),
+            _ => panic!(),
         }
 
         // line interrupt
@@ -391,10 +386,7 @@ impl<V: VideoOutput> Ppu<V> {
         let gb_pal = bgp;
         let win_tile_map = self.win_tile_map();
         let bg_win_tile_data = self.bg_win_tile_data();
-        for pix in wx..=166 {
-            if pix < 7 {
-                continue;
-            }
+        for pix in wx.max(7)..=166 {
             let lcd_y = u16::from(ly - wy);
             let lcd_x = u16::from(pix - wx);
             let pixel = (pix - 7) as usize;
@@ -422,9 +414,16 @@ impl<V: VideoOutput> Ppu<V> {
                 TileData::X8800 => {
                     let tile: i8 = unsafe { mem::transmute(tile) };
                     let tile = (tile as i16 + 128) as u16;
-                    let lo = self.read(0x8800 + 16 * tile + lin * 2) >> col & 0x1;
-                    let hi = self.read(0x8800 + 16 * tile + lin * 2 + 1) >> col & 0x1;
+                    let offset = 0x800 + 16 * tile as usize + lin as usize * 2;
+                    let lo = tile_data_bank[offset] >> col & 0x1;
+                    let hi = tile_data_bank[offset + 1] >> col & 0x1;
                     ((hi << 1) | lo) as usize
+                    // let tile: i8 = unsafe { mem::transmute(tile) };
+                    // let tile = (tile as i16 + 128) as u16;
+                    // let lo = self.read(0x8800 + 16 * tile + lin * 2) >> col &
+                    // 0x1; let hi = self.read(0x8800 + 16 *
+                    // tile + lin * 2 + 1) >> col & 0x1;
+                    // ((hi << 1) | lo) as usize
                 }
             };
 
@@ -458,31 +457,39 @@ impl<V: VideoOutput> Ppu<V> {
 
             let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
             let bank_0 = self.vram.bank_0();
-            let bank_1 = self.vram.bank_1();
+            let bank_1 = self.vram.bank_1(); // CGB only (tile flags)
+
             let (tile, flags) = match bg_tile_map {
                 TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
                 TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
             };
+
             let mut col = 7 - (lcd_x & 0x7) as u8;
             let mut lin = lcd_y & 0x7;
+            // Flip tiles (CGB only)
             if flags & 0x20 != 0 {
                 col = 7 - col
             }
             if flags & 0x40 != 0 {
                 lin = 7 - lin
             }
+
+            // On CGB mode the tile data may be stored in either bank. In GB mode, on the
+            // first one, as the second one is not used.
             let tile_data_bank = if flags & 0x8 != 0 { bank_1 } else { bank_0 };
             let pal_idx = match bg_win_tile_data {
                 TileData::X8000 => {
-                    let lo = tile_data_bank[16 * tile as usize + lin as usize * 2] >> col & 0x1;
-                    let hi = tile_data_bank[16 * tile as usize + lin as usize * 2 + 1] >> col & 0x1;
+                    let offset = 16 * tile as usize + lin as usize * 2;
+                    let lo = tile_data_bank[offset] >> col & 0x1;
+                    let hi = tile_data_bank[offset + 1] >> col & 0x1;
                     ((hi << 1) | lo) as usize
                 }
                 TileData::X8800 => {
                     let tile: i8 = unsafe { mem::transmute(tile) };
                     let tile = (tile as i16 + 128) as u16;
-                    let lo = self.read(0x8800 + 16 * tile + lin * 2) >> col & 0x1;
-                    let hi = self.read(0x8800 + 16 * tile + lin * 2 + 1) >> col & 0x1;
+                    let offset = 0x800 + 16 * tile as usize + lin as usize * 2;
+                    let lo = tile_data_bank[offset] >> col & 0x1;
+                    let hi = tile_data_bank[offset + 1] >> col & 0x1;
                     ((hi << 1) | lo) as usize
                 }
             };
@@ -637,7 +644,6 @@ impl<V: VideoOutput> Device for Ppu<V> {
                     self.clear_buffer();
                     self.state = State::HBlank;
                     self.line.ly = 0;
-                    self.line.cycles = 0;
                 }
             }
             0xff41 => self.stat = data,
@@ -649,6 +655,8 @@ impl<V: VideoOutput> Device for Ppu<V> {
                 // value between 0 through 153. The values between 144 and 153
                 // indicate the V-Blank period. Writing will reset the counter.
                 self.line.ly = 0;
+                self.cycles = 0;
+                self.state = State::OAM;
             }
             0xff45 => self.line.lyc = data,
             0xff4a => self.win.wy = data,

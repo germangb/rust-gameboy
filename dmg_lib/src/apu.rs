@@ -1,4 +1,5 @@
-use crate::{cycles_to_nano, dev::Device, nano_to_cycles};
+use crate::dev::Device;
+use log::info;
 
 pub type Sample = i16;
 
@@ -16,33 +17,9 @@ impl AudioOutput for () {
     fn clear(&mut self, _: usize) {}
 }
 
-const THRESHOLD: u64 = nano_to_cycles(1_000_000_000);
-//const PI2: f64 = std::f64::consts::PI * 2.0;
-const SAMPLING: u64 = 44100;
 const BUFFER_SIZE: usize = 44100 * 4;
 
-#[derive(Debug)]
-enum Ch1State {
-    Off,
-    Play {
-        out: u64,
-        samples: u64,
-        nr10: u8,
-        nr11: u8,
-        nr12: u8,
-        nr13: u8,
-        nr14: u8,
-    },
-    PlayTimer {},
-}
-
-#[derive(Debug)]
-enum Ch2State {
-    Off,
-    Play {},
-    PlayTimer {},
-}
-
+#[allow(dead_code)]
 pub struct Apu<A> {
     output: A,
     buffer: Box<[Sample; BUFFER_SIZE]>,
@@ -57,13 +34,11 @@ pub struct Apu<A> {
     nr12: u8,
     nr13: u8,
     nr14: u8,
-    ch1_state: Ch1State,
     // Sound Channel 2 - Tone
     nr21: u8,
     nr22: u8,
     nr23: u8,
     nr24: u8,
-    ch2_state: Ch2State,
     // Sound Channel 3 - Wave Output
     nr30: u8,
     nr31: u8,
@@ -105,12 +80,10 @@ impl<A> Apu<A> {
             nr12: 0,
             nr13: 0,
             nr14: 0,
-            ch1_state: Ch1State::Off,
             nr21: 0,
             nr22: 0,
             nr23: 0,
             nr24: 0,
-            ch2_state: Ch2State::Off,
             nr30: 0,
             nr31: 0,
             nr32: 0,
@@ -129,61 +102,7 @@ impl<A> Apu<A> {
 }
 
 impl<A: AudioOutput> Apu<A> {
-    pub fn step(&mut self, cycles: usize) {
-        let cycles = cycles as u64;
-        match self.ch1_state {
-            Ch1State::Off => {}
-            Ch1State::PlayTimer {} => {}
-            Ch1State::Play {
-                mut out,
-                mut samples,
-                nr10,
-                nr11,
-                nr12,
-                nr13,
-                nr14,
-            } => {
-                let nr14_hi = nr14 as u16 & 0x7;
-                let x = nr14_hi << 8 | (nr13 as u16);
-                let freq = 131072.0 / (2048.0 - (x as f64));
-                let periode_samples = (SAMPLING as f64 / freq) as u64;
-                let max = (nr12 >> 4) as f64 / 15.0;
-                let env = max * (nr12 & 0x7) as f64 * SAMPLING as f64 / 64.0 * 10.0;
-                if out < THRESHOLD {
-                    let s = cycles_to_nano(THRESHOLD) * SAMPLING / 1_000_000_000;
-                    for i in 0..s {
-                        let s = samples + i;
-                        let amp = 1.0 - s as f64 / env;
-                        let pat = nr11 >> 6;
-                        let cos = match pat {
-                            0b00 if s % periode_samples > periode_samples * 125 / 1000 => 1.0,
-                            0b01 if s % periode_samples > periode_samples / 4 => 1.0,
-                            0b10 if s % periode_samples > periode_samples / 2 => 1.0,
-                            0b11 if s % periode_samples > periode_samples * 2 / 3 => 1.0,
-                            _ => -1.0,
-                        };
-                        let wav = cos * (std::i16::MAX as f64 - 1.0) * amp.max(0.0).min(1.0);
-                        self.buffer[i as usize] = wav as i16;
-                    }
-                    self.output.queue(0, &self.buffer[..s as usize]);
-                    out += THRESHOLD;
-                    samples += s;
-                } else {
-                    out -= cycles;
-                }
-
-                self.ch1_state = Ch1State::Play {
-                    out,
-                    samples,
-                    nr10,
-                    nr11,
-                    nr12,
-                    nr13,
-                    nr14,
-                }
-            }
-        }
-    }
+    pub fn step(&mut self, _cycles: u64) {}
 }
 
 impl<A: AudioOutput> Device for Apu<A> {
@@ -192,24 +111,18 @@ impl<A: AudioOutput> Device for Apu<A> {
             0xff10 => self.nr10,
             0xff11 => self.nr11,
             0xff12 => self.nr12,
-            0xff13 => {
-                self.nr13 /* NR13 - read only */
-            }
+            0xff13 => self.nr13,
             0xff14 => self.nr14,
 
             0xff16 => self.nr21,
             0xff17 => self.nr22,
-            0xff18 => {
-                self.nr23 /* NR23 - read only */
-            }
+            0xff18 => self.nr23,
             0xff19 => self.nr24,
 
             0xff1a => self.nr30,
             0xff1b => self.nr31,
             0xff1c => self.nr32,
-            0xff1d => {
-                self.nr33 /* NR33 - read only */
-            }
+            0xff1d => self.nr33,
             0xff1e => self.nr34,
             0xff30..=0xff3f => self.wave_ram[addr as usize - 0xff30],
 
@@ -229,34 +142,10 @@ impl<A: AudioOutput> Device for Apu<A> {
         match addr {
             // Channel 1 sweep
             0xff10 => self.nr10 = data,
-            0xff11 => {
-                eprintln!("NR11 = {:08b}", data);
-                self.nr11 = data;
-            }
-            0xff12 => {
-                eprintln!("NR12 = {:08b}", data);
-                self.nr12 = data;
-            }
-            0xff13 => {
-                eprintln!("NR13 = {:08b}", data);
-                self.nr13 = data;
-            }
-            0xff14 => {
-                eprintln!("---\nNR14 = {:08b}\n---", data);
-                self.nr14 = data;
-                self.ch1_state = Ch1State::Play {
-                    out: 0,
-                    samples: 0,
-                    nr10: self.nr10,
-                    nr11: self.nr11,
-                    nr12: self.nr12,
-                    nr13: self.nr13,
-                    nr14: self.nr14,
-                };
-                self.output.off(0);
-                self.output.clear(0);
-                self.output.on(0);
-            }
+            0xff11 => self.nr11 = data,
+            0xff12 => self.nr12 = data,
+            0xff13 => self.nr13 = data,
+            0xff14 => self.nr14 = data,
 
             // Channel 2 - Tone
             0xff16 => self.nr21 = data,
@@ -282,7 +171,7 @@ impl<A: AudioOutput> Device for Apu<A> {
             0xff25 => self.nr51 = data,
             0xff26 => {
                 self.nr52 = data;
-                println!("NR52 = {:08b}", data);
+                info!("NR52 = {:08b}", data);
 
                 if data & 0x80 != 0 {
                     self.output.on(0);

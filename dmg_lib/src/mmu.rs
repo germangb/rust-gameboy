@@ -1,10 +1,11 @@
 use crate::{
     apu::{Apu, AudioOutput},
     cartridge::Cartridge,
+    cpu::Cpu,
     dev::Device,
     interrupts::Interrupts,
     joypad::Joypad,
-    ppu::{Ppu, VideoOutput},
+    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES, VBLANK_CYCLES},
     timer::Timer,
     wram::WorkRam,
     Mode,
@@ -34,6 +35,7 @@ struct VRamDma {
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
 pub struct Mmu<V, A> {
+    mode: Mode,
     boot: u8,
     cartridge: Box<dyn Cartridge>,
     ppu: Ppu<V>,
@@ -44,6 +46,11 @@ pub struct Mmu<V, A> {
     hram: [u8; 0x7f],
     vram_dma: VRamDma,
     int: Rc<RefCell<Interrupts>>,
+    // FF4D - KEY1 - CGB Mode Only - Prepare Speed Switch
+    //
+    // Bit 7: Current Speed     (0=Normal, 1=Double) (Read Only)
+    // Bit 0: Prepare Speed Switch (0=No, 1=Prepare) (Read/Write)
+    key1: u8,
 }
 
 impl<V, A> Mmu<V, A> {
@@ -60,6 +67,7 @@ impl<V, A> Mmu<V, A> {
             hdma5: 0,
         };
         Self {
+            mode,
             boot: 0x0,
             cartridge: Box::new(cartridge),
             ppu: Ppu::new(mode, Rc::clone(&int), video_out),
@@ -70,6 +78,7 @@ impl<V, A> Mmu<V, A> {
             hram: [0; 0x7f],
             vram_dma,
             int,
+            key1: 0,
         }
     }
 
@@ -115,7 +124,31 @@ impl<V, A> Mmu<V, A> {
 }
 
 impl<V: VideoOutput, A: AudioOutput> Mmu<V, A> {
-    pub fn step(&mut self, cycles: usize) {
+    pub fn frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
+        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 144 + VBLANK_CYCLES;
+
+        let mut cycles = carry;
+        let mut cpu_rem = 0;
+        while cycles < frame_ticks {
+            let cpu_cycles = cpu.step(self);
+
+            if self.key1 & 0x80 != 0 {
+                // Double speed mode running at twice the clock speed
+                let cpu_cycles = cpu_cycles + cpu_rem;
+                self.step(cpu_cycles / 2);
+                cpu_rem = cpu_cycles % 2;
+                cycles += cpu_cycles / 2;
+            } else {
+                self.step(cpu_rem + cpu_cycles);
+                cycles += cpu_cycles;
+            }
+        }
+        // return carry. This value should be passed as carry argument on the next call
+        // to this method.
+        cycles % frame_ticks
+    }
+
+    pub fn step(&mut self, cycles: u64) {
         self.ppu.step(cycles);
         self.timer.step(cycles);
         self.cartridge.step(cycles);
@@ -138,7 +171,11 @@ impl<V: VideoOutput, A: AudioOutput> Mmu<V, A> {
 impl<V: VideoOutput, A: AudioOutput> Device for Mmu<V, A> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x000..=0x00ff if self.boot_rom_enabled() => {
+            0x000..=0x0900 if self.boot_rom_enabled() && self.mode == Mode::CGB => {
+                include_bytes!("../roms/[BIOS] Nintendo Game Boy Color Boot ROM (World).gbc")
+                    [addr as usize]
+            }
+            0x000..=0x00ff if self.boot_rom_enabled() && self.mode == Mode::GB => {
                 include_bytes!("../roms/dmg_boot.bin")[addr as usize]
             }
             0x0000..=0x7fff => self.cartridge.read(addr),
@@ -171,9 +208,13 @@ impl<V: VideoOutput, A: AudioOutput> Device for Mmu<V, A> {
                 // HDMA
                 0xff51..=0xff54 => 0xff,
                 0xff55 => {
-                    eprintln!("read hdmi5");
-                    0x80
+                    //log::info!("HDMA5 read");
+                    0xff
                 }
+
+                // KEY1
+                0xff4d => self.key1,
+
                 0xff70 => self.wram.read(addr),
                 _ => {
                     // unhandled address
@@ -226,17 +267,30 @@ impl<V: VideoOutput, A: AudioOutput> Device for Mmu<V, A> {
 
                     let src = (u16::from(hdma1) << 8) | u16::from(hdma2 & 0xf0);
                     let dst = 0x8000 | (u16::from(hdma3 & 0x1f) << 8) | u16::from(hdma4 & 0xf0);
-                    let len = (u16::from(data & 0x7f) + 1) * 32;
+                    let len = (u16::from(data & 0x7f) + 1) * 16;
 
                     let src = src..src + len;
                     let dst = dst..dst + len;
 
                     for (src, dst) in src.zip(dst) {
-                        eprintln!("src={:x}, dst={:x}", src, dst);
                         let src = self.read(src);
                         self.write(dst, src);
                     }
                 }
+
+                // KEY1
+                0xff4d => {
+                    println!("key1 = {:x}", data);
+                    self.key1 &= 0x80;
+                    self.key1 |= data & 0x1;
+
+                    if self.key1 & 0x1 != 0 {
+                        self.key1 |= 0x80
+                    } else {
+                        self.key1 &= !0x80
+                    }
+                }
+
                 0xff70 => self.wram.write(addr, data),
                 _ => {
                     // unhandled address

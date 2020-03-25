@@ -1,21 +1,16 @@
-// #![deny(dead_code)]
-// #![deny(unused_imports)]
-// #![deny(unused_must_use)]
-// #![deny(unused_variables)]
-// #![deny(unused_mut)]
-// #![deny(unused_imports)]
-// #![warn(clippy::style)]
-// #![deny(clippy::correctness)]
-// #![deny(clippy::complexity)]
-// #![deny(clippy::perf)]
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![warn(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 
 use crate::{
-    apu::AudioOutput,
-    cartridge::Cartridge,
-    cpu::Cpu,
-    dev::Device,
-    mmu::Mmu,
-    ppu::{VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES},
+    apu::AudioOutput, cartridge::Cartridge, cpu::Cpu, dev::Device, mmu::Mmu, ppu::VideoOutput,
 };
 
 pub mod apu;
@@ -53,7 +48,7 @@ pub struct Dmg<V, A> {
     mode: Mode,
     cpu: Cpu,
     mmu: Box<Mmu<V, A>>,
-    carry: usize,
+    carry: u64,
 }
 
 impl<V, A> Dmg<V, A> {
@@ -90,14 +85,7 @@ impl<V, A> Dmg<V, A> {
 
 impl<V: VideoOutput, A: AudioOutput> Dmg<V, A> {
     pub fn emulate_frame(&mut self) {
-        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 154;
-        let mut cycles = 0;
-        while cycles < frame_ticks {
-            let cpu_cycles = self.cpu.step(&mut self.mmu);
-            self.mmu.step(cpu_cycles);
-            cycles += cpu_cycles;
-        }
-        self.carry = cycles % frame_ticks;
+        self.carry = self.mmu.frame(&mut self.cpu, self.carry);
     }
 
     pub fn boot(&mut self) {

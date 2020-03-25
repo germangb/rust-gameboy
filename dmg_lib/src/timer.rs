@@ -34,9 +34,9 @@ impl Timer {
         }
     }
 
-    pub fn step(&mut self, cycles: usize) {
+    pub fn step(&mut self, cycles: u64) {
         // DIV counter
-        self.div_cycles += cycles as u64;
+        self.div_cycles += cycles;
         let cycles_per_tick = CLOCK / 16_384 / 2;
 
         if self.div_cycles > cycles_per_tick {

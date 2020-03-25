@@ -77,7 +77,7 @@ pub enum CGB {
 
 pub trait Cartridge: Device {
     #[allow(unused_variables)]
-    fn step(&mut self, cycles: usize) {}
+    fn step(&mut self, cycles: u64) {}
 
     /// Return the ROM size.
     fn rom_size(&self) -> RomSize {
