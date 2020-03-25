@@ -64,6 +64,11 @@ impl Device for Mbc5 {
                 self.ram_bank = (data & 0xf) as usize;
                 log::info!("ram_bank = {}", self.ram_bank);
             }
+            0xa000..=0xbfff => {
+                if self.ram_enabled {
+                    self.ram[self.ram_bank][addr as usize - 0xa000] = data;
+                }
+            }
             _ => {
                 log::info!("({:04x}) = {:02x}", addr, data);
             }

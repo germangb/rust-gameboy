@@ -114,6 +114,7 @@ pub struct Ppu<V> {
     //buffer: [Color; PIXELS],
     //back_buffer: [Color; PIXELS],
     buffer: [Color; 160],
+    fore: [bool; 160],
     vram: VideoRam,
     oam: [u8; 0xa0],
     state: State,
@@ -164,6 +165,8 @@ impl<V> Ppu<V> {
             mode,
             palette,
             buffer: [[0, 0, 0]; 160],
+            fore: [false; 160],
+
             cycles: 0,
             vram: VideoRam::new(),
             oam: [0; 0xa0],
@@ -370,6 +373,7 @@ impl<V: VideoOutput> Ppu<V> {
         let color = match self.mode {
             Mode::GB => self.palette[0],
             Mode::CGB => [0xff, 0xff, 0xff],
+            Mode::SGB => unimplemented!(),
         };
         mem::replace(&mut self.buffer, [color; 160]);
         for i in 0..144 {
@@ -442,6 +446,7 @@ impl<V: VideoOutput> Ppu<V> {
                     let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
                     self.buffer[pixel] = [r, g, b];
                 }
+                Mode::SGB => unimplemented!(),
             }
         }
     }
@@ -508,7 +513,9 @@ impl<V: VideoOutput> Ppu<V> {
                     let g = (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8;
                     let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
                     self.buffer[pixel] = [r, g, b];
+                    self.fore[pixel] = pal_idx != 0;
                 }
+                Mode::SGB => unimplemented!(),
             }
         }
     }
@@ -585,6 +592,9 @@ impl<V: VideoOutput> Ppu<V> {
                             self.buffer[pixel] = self.palette[col_idx as usize];
                         }
                         Mode::CGB => {
+                            if behind_bg && self.fore[pixel] {
+                                continue;
+                            }
                             let gbc_pal = &self.color_pal.obp[8 * gbc_pal..8 * gbc_pal + 8];
                             let color: u16 = u16::from(gbc_pal[2 * pal_idx])
                                 | u16::from(gbc_pal[2 * pal_idx + 1]) << 8;
@@ -593,6 +603,7 @@ impl<V: VideoOutput> Ppu<V> {
                             let b = (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8;
                             self.buffer[pixel] = [r, g, b];
                         }
+                        Mode::SGB => unimplemented!(),
                     }
                 }
             }

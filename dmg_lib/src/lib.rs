@@ -41,6 +41,7 @@ pub const fn nano_to_cycles(nano: u64) -> u64 {
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Mode {
     GB,
+    SGB,
     CGB,
 }
 

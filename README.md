@@ -8,14 +8,6 @@ You need to provide your own boot rom.
 
 ## Tests
 
-Running tests using cargo:
-
-```bash
-$ cargo test # can take up to 1 min to complete
-```
-
-The following CPU tests will be run:
-
 | Test | Pass |
 | --- | :---: |
 | `01-special.gb` | 👍 |
@@ -34,3 +26,8 @@ The following CPU tests will be run:
 
 | Rom | Works | Comments |
 | --- | --- | --- |
+
+## Resources
+
+- https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
+- https://gekkio.fi/files/gb-docs/gbctr.pdf

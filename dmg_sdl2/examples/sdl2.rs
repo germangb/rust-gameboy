@@ -39,7 +39,7 @@ fn main() {
 
     let audio = sdl.audio().unwrap();
 
-    let rom = include_bytes!("../../dmg_lib/roms/gbhc.gbc");
+    let rom = include_bytes!("../../dmg_lib/roms/Cannon Fodder (Europe) (En,Fr,De,Es,It).gbc");
     let mut dmg = Dmg::new(
         Mbc5::from_bytes(&rom[..]),
         Mode::CGB,
