@@ -1,10 +1,25 @@
-# `DMG Emulator`
+# `DMG & CGB Emulator`
 
-![](assets/zelda.gif)
+![](assets/zelda_dmg.gif)
+![](assets/zelda_color.gif)
+
+Yet another Game Boy emulator with support for GB and CGB games as well as SGB palettes.
+
+## Features
+
+| Feature        | Support | Notes
+| ---            | :---:   | ---
+| GB             | 👍       | Works on most games I tested (see compatibility table below)
+| Color GB (CGB) | 👍       | Not fully tested (see compatibility table below)
+| Super GB (SGB) |         |
+| Sound          |         |
+| Cycle accuracy |         | Outside of the current scope
+
+If you encounter a game not currentl listed in the table below that doesn't run properly, please open an issue with the title.
 
 ## Building
 
-You need to provide your own boot rom.
+`TODO`
 
 ## Tests
 
