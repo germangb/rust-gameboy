@@ -1,6 +1,8 @@
 # `YAGBE`
 **Y**et **A**nother **G**ame **B**oy **E**mulator.
 
+![](assets/demo.gif)
+
 # Scope
 
 The scope of this repo is not to be a fully feature standalone emulator, but rather to provide a set of primitives
@@ -9,8 +11,8 @@ contains two emulator as reference, one native (backed by SDL), and another that
 
 ## Project Structure
 
-- `dmg-lib/` Main emulation crate.
-- `dmg-boot/` Internal use. See Boot ROMs section below.
+- `dmg-lib/` Emulator crate.
+- `dmg-boot/` Internally used to manage the boot ROMs. See the Boot ROMs section below.
 - `dmg-driver/`
     * `sdl2/` SDL2-backed video and audio backend.
     * `wasm/` WebAssembly & JS backend using the `wasm_bindgen` and `web_sys` crates.
