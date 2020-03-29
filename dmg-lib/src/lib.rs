@@ -1,21 +1,17 @@
-//#![deny(dead_code)]
-//#![deny(unused_imports)]
-//#![deny(unused_must_use)]
-//#![deny(unused_variables)]
-//#![deny(unused_mut)]
-//#![deny(unused_imports)]
-//#![deny(clippy::style)]
-//#![deny(clippy::correctness)]
-//#![deny(clippy::complexity)]
-//#![deny(clippy::perf)]
-use cartridge::Cartridge;
-use cpu::Cpu;
-use dev::Device;
-use mmu::Mmu;
-use ppu::palette::Palette;
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 
-pub use apu::AudioOutput;
-pub use ppu::VideoOutput;
+use crate::{cartridge::Cartridge, cpu::Cpu, dev::Device, mmu::Mmu, ppu::palette::Palette};
+
+pub use crate::{apu::AudioOutput, ppu::VideoOutput};
 
 pub mod apu;
 pub mod cartridge;

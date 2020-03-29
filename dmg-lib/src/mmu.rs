@@ -5,7 +5,7 @@ use crate::{
     dev::Device,
     interrupts::Interrupts,
     joypad::Joypad,
-    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_CYCLES, VBLANK_CYCLES},
+    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
     timer::Timer,
     wram::WorkRam,
     Mode,
@@ -41,7 +41,6 @@ struct VRamDma {
     hdma2: u8,
     hdma3: u8,
     hdma4: u8,
-    hdma5: u8,
 }
 
 // 0000-3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
@@ -88,7 +87,6 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
             hdma2: 0,
             hdma3: 0,
             hdma4: 0,
-            hdma5: 0,
         };
         let ppu = Ppu::with_mode_and_video(mode, video_out);
         let timer = Timer::default();
@@ -171,7 +169,8 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     }
 
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
-        let frame_ticks = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 144 + VBLANK_CYCLES;
+        let frame_ticks =
+            (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) * 144 + VBLANK_CYCLES;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;
@@ -196,6 +195,8 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         cycles % frame_ticks
     }
 
+    // Advance the mapped components by the given amount of cycles of the internal
+    // 4MHz clock.
     fn step(&mut self, cycles: u64) {
         if let Some(int) = self.joy.take_int() {
             self.int.set(int);
@@ -219,9 +220,16 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     // procedure into HRAM, and use this procedure to start the transfer from inside
     // HRAM, and wait until the transfer has finished:
     fn oam_dma(&mut self, d: u8) {
-        for addr in 0..=0x9f {
-            let src = u16::from(d) << 8 | (addr as u16);
-            let dst = 0xfe00 | (addr as u16);
+        let src = u16::from(d) << 8;
+        let dst = 0xfe00;
+        let len = 0x9f;
+
+        #[cfg(feature = "logging")]
+        log::info!(target: "mmu", "OAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#02x}", src, dst, len);
+
+        for addr in 0..=len {
+            let src = src | (addr as u16);
+            let dst = dst | (addr as u16);
             self.write(dst, self.read(src));
         }
     }
@@ -235,9 +243,14 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         let hdma2 = self.vram_dma.hdma2;
         let hdma3 = self.vram_dma.hdma3;
         let hdma4 = self.vram_dma.hdma4;
+
         let src = (u16::from(hdma1) << 8) | u16::from(hdma2 & 0xf0);
         let dst = 0x8000 | (u16::from(hdma3 & 0x1f) << 8) | u16::from(hdma4 & 0xf0);
         let len = (u16::from(hdma5 & 0x7f) + 1) * 16;
+
+        #[cfg(feature = "logging")]
+        log::info!(target: "mmu", "VRAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#04x}", src, dst, len);
+
         let src = src..src + len;
         let dst = dst..dst + len;
         for (src, dst) in src.zip(dst) {
@@ -249,15 +262,19 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
 
 impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
     fn read(&self, addr: u16) -> u8 {
+        #[cfg(feature = "boot")]
+        use dmg_boot::{cgb, gb};
+
         match addr {
             #[cfg(feature = "boot")]
-            addr if !self.boot && self.mode == Mode::CGB && dmg_boot::is_cgb_addr(addr) => {
-                dmg_boot::BOOT_ROM_CGB[addr as usize]
+            addr if !self.boot && self.mode == Mode::CGB && cgb::is_boot(addr) => {
+                cgb::ROM[addr as usize]
             }
             #[cfg(feature = "boot")]
-            addr if !self.boot && self.mode == Mode::GB && dmg_boot::is_gb_addr(addr) => {
-                dmg_boot::BOOT_ROM_GB[addr as usize]
+            addr if !self.boot && self.mode == Mode::GB && gb::is_boot(addr) => {
+                gb::ROM[addr as usize]
             }
+
             0x0000..=0x7fff => self.cartridge.read(addr),
             0x8000..=0x9fff => self.ppu.read(addr),
             0xa000..=0xbfff => self.cartridge.read(addr),
@@ -293,8 +310,15 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
+        #[cfg(feature = "boot")]
+        use dmg_boot::{cgb, gb};
+
         match addr {
-            0x000..=0x00ff if !self.boot => { /* read only boot rom */ }
+            #[cfg(feature = "boot")]
+            addr if !self.boot && self.mode == Mode::CGB && cgb::is_boot(addr) => {}
+            #[cfg(feature = "boot")]
+            addr if !self.boot && self.mode == Mode::GB && gb::is_boot(addr) => {}
+
             0x0000..=0x7fff => self.cartridge.write(addr, data),
             0x8000..=0x9fff => self.ppu.write(addr, data),
             0xa000..=0xbfff => self.cartridge.write(addr, data),
@@ -317,8 +341,10 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 }
                 0xff46 => self.oam_dma(data),
                 0xff50 => {
+                    #[cfg(feature = "logging")]
+                    log::info!(target: "mmu", "BOOT register = {:#02x}", data);
+
                     if !self.boot {
-                        log::info!("BOOT register : (ff50) = {:x}", data);
                         self.boot = data & 0x1 != 0;
                     }
                 }
@@ -331,7 +357,9 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 // KEY1
                 0xff4d => {
                     if data & 0x1 != 0 {
-                        log::info!("Switching to double speed mode");
+                        #[cfg(feature = "logging")]
+                        log::info!(target: "mmu", "Double speed mode enabled");
+
                         self.speed = Speed::X2;
                     }
                 }

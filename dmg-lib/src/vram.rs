@@ -17,12 +17,40 @@ impl Default for VideoRam {
 }
 
 impl VideoRam {
-    pub fn bank_0(&self) -> &[u8; 0x2000] {
-        &self.vram[0]
+    /// Return the contents of the VBK (VRAM bank select) register.
+    pub fn vbk(&self) -> u8 {
+        self.vbk
     }
 
-    pub fn bank_1(&self) -> &[u8; 0x2000] {
-        &self.vram[1]
+    /// Return the currently mapped bank (according to the VBK register).
+    pub fn active(&self) -> &[u8; VRAM_SIZE] {
+        let bank = self.vbk & 0x1;
+        self.bank(bank as usize)
+    }
+
+    /// Return the currently mapped bank (according to the VBK register) as
+    /// mutable.
+    pub fn active_mut(&mut self) -> &mut [u8; VRAM_SIZE] {
+        let bank = self.vbk & 0x1;
+        self.bank_mut(bank as usize)
+    }
+
+    /// Get the contents of the VRAM memory banks.
+    ///
+    /// # Panic
+    /// Panics if `bank` > 1
+    pub fn bank(&self, bank: usize) -> &[u8; VRAM_SIZE] {
+        assert!(bank < 2);
+        &self.vram[bank]
+    }
+
+    /// Get the contents of the VRAM memory banks as mutable.
+    ///
+    /// # Panic
+    /// Panics if `bank` > 1
+    pub fn bank_mut(&mut self, bank: usize) -> &mut [u8; VRAM_SIZE] {
+        assert!(bank < 2);
+        &mut self.vram[bank]
     }
 }
 

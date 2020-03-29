@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7bded7db-cc91-408a-a61d-4b7854e31a20" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
+  <component name="GradleLocalSettings">
+    <option name="projectSyncType">
+      <map>
+        <entry key="$USER_HOME$/Descargas/zopa/solution_german" value="PREVIEW" />
+        <entry key="$USER_HOME$/Projects/zopa" value="PREVIEW" />
+      </map>
+    </option>
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="VJrIagmt" />
+  </component>
+  <component name="ProjectId" id="1YzWS3M2VOsOvUg1uuS5APwsAYh" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/dmg-wasm" />
+    <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
+    <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/dmg-sdl2/src/bin" />
+      <recent name="$PROJECT_DIR$/tests/roms" />
+      <recent name="$PROJECT_DIR$/tests" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/tests" />
+    </key>
+  </component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="cargo test" />
+      <command value="cargo +nightly fmt" />
+      <command value="cargo clippy" />
+      <command value="cargo --package dmg-wasm build" />
+    </option>
+  </component>
+  <component name="RunManager" selected="Bash.wasm-pack build">
+    <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
+      <module name="dmg" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="INTERPRETER_PATH" value="/bin/bash" />
+      <option name="PROJECT_INTERPRETER" value="false" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/dmg-wasm" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SCRIPT_NAME" value="build.sh" />
+      <option name="PARAMETERS" value="" />
+      <envs>
+        <env name="RUST_LOG" value="info" />
+        <env name="DMG_BOOT_ROM_GB" value="$PROJECT_DIR$/../boot_roms/rom.gb" />
+        <env name="DMG_BOOT_ROM_CGB" value="$PROJECT_DIR$/../boot_roms/rom.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2" />
+    </configuration>
+    <configuration name="Run check_rom" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="run --package dmg-tools --bin check_rom" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Run sdl2" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="run --package dmg-sdl2 --bin sdl2" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs>
+        <env name="RUST_LOG" value="info" />
+        <env name="DMG_BOOT_ROM_GB" value="$PROJECT_DIR$/../boot_roms/rom.gb" />
+        <env name="DMG_BOOT_ROM_CGB" value="$PROJECT_DIR$/../boot_roms/rom.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="+nightly" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="+nightly fmt" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs>
+        <env name="RUST_LOG" value="info" />
+        <env name="DMG_BOOT_ROM_GB" value="$PROJECT_DIR$/../boot_roms/rom.gb" />
+        <env name="DMG_BOOT_ROM_CGB" value="$PROJECT_DIR$/../boot_roms/rom.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="build-wasm" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="build --package dmg-wasm " />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs>
+        <env name="RUST_LOG" value="info" />
+        <env name="DMG_BOOT_ROM_GB" value="$PROJECT_DIR$/../boot_roms/rom.gb" />
+        <env name="DMG_BOOT_ROM_CGB" value="$PROJECT_DIR$/../boot_roms/rom.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="clippy" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="clippy" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs>
+        <env name="RUST_LOG" value="info" />
+        <env name="DMG_BOOT_ROM_GB" value="$PROJECT_DIR$/../boot_roms/rom.gb" />
+        <env name="DMG_BOOT_ROM_CGB" value="$PROJECT_DIR$/../boot_roms/rom.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Bash.wasm-pack build" />
+      <item itemvalue="Cargo Command.+nightly" />
+      <item itemvalue="Cargo Command.Run sdl2" />
+      <item itemvalue="Cargo Command.clippy" />
+      <item itemvalue="Cargo Command.build-wasm" />
+      <item itemvalue="Cargo Command.Run check_rom" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo Command.Run sdl2" />
+        <item itemvalue="Cargo Command.+nightly" />
+        <item itemvalue="Cargo Command.build-wasm" />
+        <item itemvalue="Cargo Command.clippy" />
+        <item itemvalue="Cargo Command.Run check_rom" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+    <option name="version" value="2" />
+  </component>
+  <component name="ServiceViewManager">
+    <option name="showServicesTree" value="false" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585499552345">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552345" />
+    <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583947528331">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1583947528331" />
+    <state x="793" y="341" width="911" height="390" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1585303063330">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="793" y="341" width="911" height="390" key="#com.intellij.fileTypes.FileTypeChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1585303063330" />
+    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser" timestamp="1585442362570">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1585442362570" />
+    <state x="818" y="273" width="624" height="526" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1585433447176">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="818" y="273" width="624" height="526" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585433447176" />
+    <state x="697" y="265" width="515" height="542" key="EnvironmentVariablesDialog" timestamp="1585499514065">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="697" y="265" width="515" height="542" key="EnvironmentVariablesDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585499514065" />
+    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl" timestamp="1585239223742">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
+    <state width="1651" height="273" key="GridCell.Tab.0.bottom" timestamp="1585499552428">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1651" height="273" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
+    <state width="1651" height="273" key="GridCell.Tab.0.center" timestamp="1585499552428">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1651" height="273" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
+    <state width="1651" height="273" key="GridCell.Tab.0.left" timestamp="1585499552428">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1651" height="273" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
+    <state width="1651" height="273" key="GridCell.Tab.0.right" timestamp="1585499552428">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1651" height="273" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
+    <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="449" y="171" key="SettingsEditor/0.27.1920.1020@0.27.1920.1020" timestamp="1585239038418" />
+    <state x="624" y="245" width="672" height="677" key="run.anything.popup" timestamp="1585228298247">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585228298247" />
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1585497716794">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585497716794" />
+  </component>
+</project>

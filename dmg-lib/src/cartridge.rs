@@ -21,6 +21,7 @@ fn ram_banks(banks: u8) -> usize {
         0x00 => 0,
         0x01 | 0x02 => 1,
         0x03 => 4,
+        0x04 => 16,
         _ => panic!(),
     }
 }

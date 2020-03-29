@@ -1,6 +1,18 @@
+# rust
 /target
+*.lock
+
+# roms
 *.gb
 *.gbc
-roms
+
+# wasm project
+dmg-wasm/pkg/
+dmg-wasm/www/dist
+dmg-wasm/www/node_modules
+
+# vim
 *.swp
-.idea
+
+# rom directory
+dmg-lib/roms

@@ -1,14 +1,5 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![deny(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
-use crate::video::CanvasVideoOutput;
+use crate::{camera::WebCameraSensor, video::CanvasVideoOutput};
+use dmg_camera::PoketCamera;
 use dmg_lib::{
     cartridge::Mbc3,
     joypad::{
@@ -23,20 +14,21 @@ use dmg_lib::{
 use wasm_bindgen::prelude::*;
 
 pub mod audio;
+pub mod camera;
 pub mod video;
 
 type Mbc = Mbc3;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-static ROM: &[u8] = include_bytes!("../../dmg-lib/roms/pht-pz.gbc");
+static ROM: &[u8] = include_bytes!("../../dmg-lib/roms/pocket.gb");
 
-const MODE: Mode = Mode::CGB;
+const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<Mbc, CanvasVideoOutput, ()>);
+pub struct Dmg(dmg_lib::Dmg<PoketCamera<WebCameraSensor>, CanvasVideoOutput, ()>);
 
 #[wasm_bindgen]
 pub fn init_log() {
@@ -45,12 +37,12 @@ pub fn init_log() {
 
 #[wasm_bindgen]
 impl Dmg {
-    pub fn with_video(video: CanvasVideoOutput) -> Self {
+    pub fn with_video_and_sensor(video: CanvasVideoOutput, sensor: WebCameraSensor) -> Self {
         let dmg = Builder::default()
             .with_mode(MODE)
             .with_palette(PALETTE)
             .with_video(video)
-            .with_cartridge(Mbc::from_bytes(ROM))
+            .with_cartridge(PoketCamera::with_sensor(sensor))
             .build();
         Self(dmg)
     }

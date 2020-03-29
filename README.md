@@ -1,8 +1,5 @@
 # `DMG & CGB Emulator`
 
-![](assets/zelda_dmg.gif)
-![](assets/zelda_color.gif)
-
 Yet another Game Boy emulator with support for GB and CGB games as well as SGB palettes.
 
 ## Features

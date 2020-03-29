@@ -11,7 +11,7 @@ pub struct CanvasVideoOutput {
 
 #[wasm_bindgen]
 impl CanvasVideoOutput {
-    pub fn with_ctx(ctx: web_sys::CanvasRenderingContext2d) -> Self {
+    pub fn with_context(ctx: web_sys::CanvasRenderingContext2d) -> Self {
         Self {
             ctx,
             buf: [0; BUFFER],

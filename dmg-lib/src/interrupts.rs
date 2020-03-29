@@ -3,7 +3,7 @@ use crate::dev::Device;
 #[repr(u8)]
 pub enum Flag {
     VBlank = 0x1,
-    LCDStat = 0x2,
+    LCDCStat = 0x2,
     Timer = 0x4,
     Serial = 0x8,
     Joypad = 0x10,
@@ -75,14 +75,14 @@ mod tests {
 
         int.set(VBlank);
         assert_eq!(0b00001, int.read(0xff0f));
-        int.set(LCDStat);
+        int.set(LCDCStat);
         assert_eq!(0b00011, int.read(0xff0f));
         int.set(Timer);
         assert_eq!(0b00111, int.read(0xff0f));
         int.reset(VBlank);
         int.set(Serial);
         assert_eq!(0b01110, int.read(0xff0f));
-        int.reset(LCDStat);
+        int.reset(LCDCStat);
         int.set(Joypad);
         assert_eq!(0b11100, int.read(0xff0f));
         int.reset(Timer);

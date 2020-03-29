@@ -6,8 +6,6 @@ use crate::{
     ppu::VideoOutput,
     reg::{Flag::*, Registers},
 };
-#[cfg(feature = "serialize")]
-use serde::{Deserialize, Serialize};
 
 static CYCLES: [u64; 256] = [
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, 0, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
@@ -32,7 +30,6 @@ static CB_CYCLES: [u64; 256] = [
 ];
 
 #[derive(Debug)]
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Cpu {
     reg: Registers,
     ime: bool,
@@ -496,9 +493,13 @@ impl Cpu {
         if !self.ime || tr > 4 {
             return 0;
         }
+        self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
         self.ime = false;
         mmu.write(0xff0f, if_ & !(1 << tr));
-        self.int_v([0x40, 0x48, 0x50, 0x58, 0x60][tr as usize], mmu);
+
+        #[cfg(feature = "logging")]
+        log::info!(target: "cpu", "Disabling all interrupts (IME = 0)");
+
         4
     }
 
@@ -507,6 +508,9 @@ impl Cpu {
         v: u16,
         mmu: &mut Mmu<C, V, A>,
     ) {
+        #[cfg(feature = "logging")]
+        log::info!(target: "cpu", "CALL interrupt vector {:#02x}", v);
+
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = v;
     }
@@ -517,15 +521,6 @@ impl Cpu {
     ) -> u64 {
         let opcode = self.fetch(mmu);
         let mut branch = false;
-
-        // if self.reg.pc > 16500 {
-        //     log::info!(
-        //         "pc = {}, op = {:02x} data = {:02x}",
-        //         self.reg.pc - 1,
-        //         opcode,
-        //         mmu.read(self.reg.pc)
-        //     );
-        // }
 
         match opcode {
             // ADD A,n
@@ -938,6 +933,7 @@ impl Cpu {
                     0xd1 => self.reg.set_de(r),
                     0xe1 => self.reg.set_hl(r),
                     0xf1 => self.reg.set_af(r & 0xfff0),
+                    // BUG
                     _ => panic!(),
                 }
             }
@@ -972,6 +968,9 @@ impl Cpu {
             0xc9 => self.reg.pc = self.stack_pop(mmu),
             // RETI
             0xd9 => {
+                #[cfg(feature = "logging")]
+                log::info!(target: "cpu", "RETI");
+
                 self.ime = true;
                 self.reg.pc = self.stack_pop(mmu);
             }
@@ -1015,9 +1014,24 @@ impl Cpu {
             0x00 => {} // NOP
             //0x10 => unimplemented!("0x10 - STOP 0 - not implemented"), // STOP 0
             0x10 => {}
-            0x76 => self.halt = true,
-            0xf3 => self.ime = false,
-            0xfb => self.ime = true,
+            0x76 => {
+                #[cfg(feature = "logging")]
+                log::info!(target: "cpu", "HALT");
+
+                self.halt = true
+            }
+            0xf3 => {
+                #[cfg(feature = "logging")]
+                log::info!(target: "cpu", "IME = 0");
+
+                self.ime = false
+            }
+            0xfb => {
+                #[cfg(feature = "logging")]
+                log::info!(target: "cpu", "IME = 1");
+
+                self.ime = true
+            }
             0xcb => {
                 let cb = self.fetch(mmu);
                 match cb {
@@ -1418,72 +1432,26 @@ impl Cpu {
             }
 
             0xd3 | 0xdb | 0xdd | 0xe3 | 0xe4 | 0xeb..=0xed | 0xf4 | 0xfc | 0xfd => {
+                #[cfg(feature = "logging")]
+                log::error!(target: "cpu", "Reached undefined OPCODE {:#02x}", opcode);
+
                 panic!("Undefined opcode = 0x{:02x}", opcode)
             }
         }
 
+        // conditional instructions
+        #[rustfmt::skip]
         let cycles = match opcode {
-            0x20 | 0x30 | 0x28 | 0x38 => {
-                if branch {
-                    3
-                } else {
-                    1
-                }
-            }
-            0xc0 | 0xd0 | 0xc8 | 0xd8 => {
-                if branch {
-                    5
-                } else {
-                    2
-                }
-            }
-            0xc2 | 0xd2 | 0xca | 0xda => {
-                if branch {
-                    4
-                } else {
-                    3
-                }
-            }
-            0xc4 | 0xd4 | 0xcc | 0xdc => {
-                if branch {
-                    6
-                } else {
-                    3
-                }
-            }
+            // JR
+            0x20 | 0x30 | 0x28 | 0x38 => if branch { 3 } else { 1 }
+            // RET
+            0xc0 | 0xd0 | 0xc8 | 0xd8 => if branch { 5 } else { 2 }
+            // JP
+            0xc2 | 0xd2 | 0xca | 0xda => if branch { 4 } else { 3 }
+            // CALL
+            0xc4 | 0xd4 | 0xcc | 0xdc => if branch { 6 } else { 3 }
             _ => CYCLES[opcode as usize],
         };
         cycles.max(1)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{cpu::Cpu, dev::Device, mmu::Mmu, Mode};
-
-    #[test]
-    fn stack() {
-        let mut cpu = Cpu::default();
-        let mut mmu = Mmu::with_cartridge_video_audio((), Mode::GB, (), ());
-
-        cpu.reg.sp = 0xfffc;
-
-        cpu.stack_push(0x1234, &mut mmu);
-        cpu.stack_push(0xabcd, &mut mmu);
-
-        assert_eq!(0xabcd, cpu.stack_pop(&mut mmu));
-        assert_eq!(0x1234, cpu.stack_pop(&mut mmu));
-    }
-
-    #[test]
-    #[ignore]
-    fn interrupts() {
-        let cpu = Cpu::default();
-        let mut mmu = Mmu::with_cartridge_video_audio((), Mode::GB, (), ());
-
-        mmu.write(0xff50, 1);
-        mmu.write(0xffff, 0x10); // joypad
-
-        assert_eq!(0, cpu.reg().pc)
     }
 }

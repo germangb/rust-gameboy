@@ -11,19 +11,17 @@ pub mod palette;
 
 pub type Color = [u8; 3];
 
-// For when the display in CGB mode is disabled
-const WHITE: Color = [0xff, 0xff, 0xff];
-const BLACK: Color = [0x00, 0x00, 0x00];
-
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
 // lasts 4560 clks. A complete screen refresh occurs every 70224 clks.)
-pub const HBLANK_CYCLES: u64 = 207;
-pub const OAM_CYCLES: u64 = 83;
-pub const PIXEL_CYCLES: u64 = 175;
-pub const VBLANK_CYCLES: u64 = (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES) * 10;
+pub const HBLANK_CYCLES: u64 = 51 * 4;
+pub const OAM_CYCLES: u64 = 20 * 4;
+pub const PIXEL_TRANSFER_CYCLES: u64 = 43 * 4;
+pub const VBLANK_CYCLES: u64 = (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) * 10;
 
 const OAM_SIZE: usize = 0xa0;
+const PAL_SIZE: usize = 0x40;
+const WHITE: Color = [0xff, 0xff, 0xff];
 
 pub trait VideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]);
@@ -99,8 +97,8 @@ pub struct ColorPal {
     // incremented in that case.
     bgpi: u8,
     obpi: u8,
-    pub bgp: [u8; 0x40],
-    pub obp: [u8; 0x40],
+    pub bgp: [u8; PAL_SIZE],
+    pub obp: [u8; PAL_SIZE],
 }
 
 #[repr(C)]
@@ -158,13 +156,13 @@ impl<V: VideoOutput> Ppu<V> {
             bgpi: 0,
             obpi: 0,
             // initialize colors to black
-            bgp: [0x00; 0x40],
-            obp: [0x00; 0x40],
+            bgp: [0x00; PAL_SIZE],
+            obp: [0x00; PAL_SIZE],
         };
         let vram = VideoRam::default();
         let lcdc = 0x00;
         let stat = 0x00;
-        let buffer = [BLACK; 160];
+        let buffer = [WHITE; 160];
         let index = [0; 160];
         let oam = [0; OAM_SIZE];
         let state = State::HBlank;
@@ -233,26 +231,29 @@ impl<V: VideoOutput> Ppu<V> {
     }
 
     pub(crate) fn step(&mut self, cycles: u64, int: &mut Interrupts) {
-        if self.lcdc & 0x80 == 0 {
-            return;
-        }
-
         self.cycles += cycles;
 
         let mut line = self.line.ly;
 
         match (self.state, self.next_state()) {
-            (State::OAM, State::PixelTransfer) => self.state = State::PixelTransfer,
+            (State::OAM, State::PixelTransfer) => {
+                self.state = State::PixelTransfer;
+                // self.render_line(line, 0, self.cycles as usize);
+            }
             (State::PixelTransfer, State::HBlank) => {
                 self.state = State::HBlank;
-                self.render_line(line);
+                self.render_line(line, 0, 160);
+                self.output.render_line(line as usize, &self.buffer);
 
                 // update line
                 line += 1;
 
                 // hblank interrupt
                 if self.stat & 0x8 != 0 {
-                    int.set(Flag::LCDStat)
+                    int.set(Flag::LCDCStat);
+
+                    #[cfg(feature = "logging")]
+                    log::info!(target: "ppu", "LCDC Status (HBLANK) interrupt requested");
                 }
             }
             (State::HBlank, State::OAM) if line == 144 => {
@@ -260,30 +261,40 @@ impl<V: VideoOutput> Ppu<V> {
 
                 // LCD STAT vblank interrupt
                 if self.stat & 0x10 != 0 {
-                    int.set(Flag::LCDStat);
+                    int.set(Flag::LCDCStat);
+
+                    #[cfg(feature = "logging")]
+                    log::info!(target: "ppu", "LCDC Status (VBLANK) interrupt requested");
                 }
 
                 // vblank interrupt
                 int.set(Flag::VBlank);
+
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "VBLANK interrupt requested");
             }
             (State::HBlank, State::OAM) | (State::VBlank, State::OAM) => {
                 self.state = State::OAM;
 
                 // OAM interrupt
                 if self.stat & 0x20 != 0 {
-                    int.set(Flag::LCDStat);
+                    int.set(Flag::LCDCStat);
                 }
             }
-            (State::OAM, State::OAM)
-            | (State::PixelTransfer, State::PixelTransfer)
-            | (State::HBlank, State::HBlank) => { /* carry on */ }
+            (State::PixelTransfer, State::PixelTransfer) => {
+                // TODO Pixel FIFO
+                // let offset = self.cycles - cycles;
+                // self.render_line(line, offset as usize, cycles as usize);
+            }
+            (State::OAM, State::OAM) | (State::HBlank, State::HBlank) => { /* carry on */ }
             (State::VBlank, State::VBlank) => {
-                if self.line.ly == 153 && self.cycles >= OAM_CYCLES + PIXEL_CYCLES / 2 {
+                if self.line.ly == 153 && self.cycles >= OAM_CYCLES + PIXEL_TRANSFER_CYCLES / 2 {
                     // not setting the line counter causes some top-row-glitches on games that rely
                     // on this interrupt for effects (link's awakening & Batman)
                     line = 0;
                 } else if self.line.ly != 0 {
-                    let vb_line = self.cycles / (OAM_CYCLES + PIXEL_CYCLES + HBLANK_CYCLES);
+                    let vb_line =
+                        self.cycles / (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES);
 
                     line = 144 + vb_line as u8;
                 }
@@ -297,7 +308,15 @@ impl<V: VideoOutput> Ppu<V> {
 
             // check new line interrupt
             if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
-                int.set(Flag::LCDStat)
+                int.set(Flag::LCDCStat);
+
+                #[cfg(feature = "logging")]
+                log::info!(
+                    target: "ppu",
+                    "LCDC Status (LYC=LY) interrupt requested. LY = {} LYC = {}",
+                    self.line.ly,
+                    self.line.lyc
+                );
             }
         }
 
@@ -322,8 +341,8 @@ impl<V: VideoOutput> Ppu<V> {
                 }
             }
             State::PixelTransfer => {
-                if self.cycles >= PIXEL_CYCLES {
-                    self.cycles %= PIXEL_CYCLES;
+                if self.cycles >= PIXEL_TRANSFER_CYCLES {
+                    self.cycles %= PIXEL_TRANSFER_CYCLES;
                     State::HBlank
                 } else {
                     State::PixelTransfer
@@ -381,18 +400,22 @@ impl<V: VideoOutput> Ppu<V> {
         }
     }
 
-    fn render_line(&mut self, ly: u8) {
+    fn render_line(&mut self, ly: u8, offset: usize, len: usize) {
+        if self.lcdc & 0x80 == 0 {
+            return;
+        }
+
         let bg = self.lcdc & 0x1 != 0;
         let obj = self.lcdc & 0x2 != 0;
         let win = self.lcdc & 0x20 != 0;
         match self.mode {
             Mode::GB => {
                 if bg {
-                    self.render_bg(ly);
+                    self.render_bg(ly, offset, len);
                 }
             }
             Mode::CGB => {
-                self.render_bg(ly);
+                self.render_bg(ly, offset, len);
             }
         }
         if win {
@@ -401,8 +424,6 @@ impl<V: VideoOutput> Ppu<V> {
         if obj {
             self.render_sprites(ly);
         }
-        let ly = ly as usize;
-        self.output.render_line(ly, &self.buffer);
     }
 
     fn clear_buffer(&mut self) {
@@ -431,8 +452,8 @@ impl<V: VideoOutput> Ppu<V> {
             let pixel = (pix - 7) as usize;
 
             let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
-            let bank_0 = self.vram.bank_0();
-            let bank_1 = self.vram.bank_1();
+            let bank_0 = self.vram.bank(0);
+            let bank_1 = self.vram.bank(1);
             let (tile, flags) = match win_tile_map {
                 TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
                 TileMap::X9800 => (bank_0[0x1800 + tile_map_idx], bank_1[0x1800 + tile_map_idx]),
@@ -478,18 +499,18 @@ impl<V: VideoOutput> Ppu<V> {
         }
     }
 
-    fn render_bg(&mut self, ly: u8) {
+    fn render_bg(&mut self, ly: u8, offset: usize, len: usize) {
         let Pal { bgp: gb_pal, .. } = self.pal;
         let bg_tile_map = self.bg_tile_map();
         let bg_win_tile_data = self.bg_win_tile_data();
         let Scroll { scy, scx } = self.scroll;
-        for pixel in 0..160 {
+        for pixel in offset..(offset + len).min(160) {
             let lcd_y = scy.wrapping_add(ly) as u16;
             let lcd_x = (pixel as u8).wrapping_add(scx) as u16;
 
             let tile_map_idx = (32u16 * (lcd_y / 8) + (lcd_x / 8)) as usize;
-            let bank_0 = self.vram.bank_0();
-            let bank_1 = self.vram.bank_1(); // CGB only (tile flags)
+            let bank_0 = self.vram.bank(0);
+            let bank_1 = self.vram.bank(1); // CGB only (tile flags)
 
             let (tile, flags) = match bg_tile_map {
                 TileMap::X9c00 => (bank_0[0x1c00 + tile_map_idx], bank_1[0x1c00 + tile_map_idx]),
@@ -591,8 +612,8 @@ impl<V: VideoOutput> Ppu<V> {
                         lin = obj_h - lin - 1;
                     }
 
-                    let bank_0 = self.vram.bank_0();
-                    let bank_1 = self.vram.bank_1();
+                    let bank_0 = self.vram.bank(0);
+                    let bank_1 = self.vram.bank(1);
                     let obj_bank = if oam.flag & 0x8 == 0 { bank_0 } else { bank_1 };
 
                     let offset = 16 * tile as usize + lin as usize * 2;
@@ -671,14 +692,10 @@ impl<V: VideoOutput> Device for Ppu<V> {
             0x8000..=0x9fff => self.vram.write(addr, data),
             0xfe00..=0xfe9f => self.oam[addr as usize - 0xfe00] = data,
             0xff40 => {
-                self.lcdc = data;
-                log::info!(
-                    "lcdc = {:#08b}, ly = {}, lyc = {}",
-                    data,
-                    self.line.ly,
-                    self.line.lyc
-                );
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "LCDC = {:#08b}", data);
 
+                self.lcdc = data;
                 if self.lcdc & 0x80 == 0 {
                     self.clear_buffer();
                     self.state = State::HBlank;
@@ -688,12 +705,9 @@ impl<V: VideoOutput> Device for Ppu<V> {
             0xff41 => {
                 self.stat &= 0x3;
                 self.stat |= data & 0xfc;
-                log::info!(
-                    "stat = {:#08b}, ly = {}, lyc = {}",
-                    self.stat,
-                    self.line.ly,
-                    self.line.lyc
-                );
+
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "STAT = {:#08b}", data);
             }
             0xff42 => self.scroll.scy = data,
             0xff43 => self.scroll.scx = data,
@@ -707,14 +721,31 @@ impl<V: VideoOutput> Device for Ppu<V> {
                 self.state = State::OAM;
             }
             0xff45 => {
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "LYC = {}", data);
+
                 self.line.lyc = data;
-                log::info!("lyc = {}, ly = {}", self.line.lyc, self.line.ly);
             }
             0xff4a => self.win.wy = data,
             0xff4b => self.win.wx = data,
-            0xff47 => self.pal.bgp = data,
-            0xff48 => self.pal.obp0 = data,
-            0xff49 => self.pal.obp1 = data,
+            0xff47 => {
+                self.pal.bgp = data;
+
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "BGP = {:#02x}", data);
+            }
+            0xff48 => {
+                self.pal.obp0 = data;
+
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "OBP0 = {:#02x}", data);
+            }
+            0xff49 => {
+                self.pal.obp1 = data;
+
+                #[cfg(feature = "logging")]
+                log::info!(target: "ppu", "OBP1 = {:#02x}", data);
+            }
             0xff4f => self.vram.write(addr, data),
             0xff68 => self.color_pal.bgpi = data,
             0xff69 => {
