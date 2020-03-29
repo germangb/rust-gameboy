@@ -36,17 +36,18 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/dmg-wasm" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/dmg-driver/wasm" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/dmg-driver/wasm" />
+      <recent name="$PROJECT_DIR$/tests" />
+    </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/dmg-sdl2/src/bin" />
       <recent name="$PROJECT_DIR$/tests/roms" />
-      <recent name="$PROJECT_DIR$/tests" />
-    </key>
-    <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/tests" />
     </key>
   </component>
@@ -58,7 +59,7 @@
       <command value="cargo --package dmg-wasm build" />
     </option>
   </component>
-  <component name="RunManager" selected="Bash.wasm-pack build">
+  <component name="RunManager" selected="Cargo Command.Run emulator">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -89,9 +90,9 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Run sdl2" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+    <configuration name="Run emulator" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run --package dmg-sdl2 --bin sdl2" />
+      <option name="command" value="run --package dmg-driver-sdl2 --bin emulator" />
       <option name="allFeatures" value="false" />
       <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
@@ -164,17 +165,17 @@
     <list>
       <item itemvalue="Bash.wasm-pack build" />
       <item itemvalue="Cargo Command.+nightly" />
-      <item itemvalue="Cargo Command.Run sdl2" />
+      <item itemvalue="Cargo Command.Run emulator" />
       <item itemvalue="Cargo Command.clippy" />
       <item itemvalue="Cargo Command.build-wasm" />
       <item itemvalue="Cargo Command.Run check_rom" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Cargo Command.Run sdl2" />
+        <item itemvalue="Cargo Command.Run emulator" />
         <item itemvalue="Cargo Command.+nightly" />
-        <item itemvalue="Cargo Command.build-wasm" />
         <item itemvalue="Cargo Command.clippy" />
+        <item itemvalue="Cargo Command.build-wasm" />
         <item itemvalue="Cargo Command.Run check_rom" />
       </list>
     </recent_temporary>
@@ -187,10 +188,10 @@
     <option name="showServicesTree" value="false" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585499552345">
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585502091336">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552345" />
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585502091336" />
     <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583947528331">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -215,22 +216,22 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1651" height="273" key="GridCell.Tab.0.bottom" timestamp="1585499552428">
+    <state width="1651" height="327" key="GridCell.Tab.0.bottom" timestamp="1585502091410">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1651" height="273" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
-    <state width="1651" height="273" key="GridCell.Tab.0.center" timestamp="1585499552428">
+    <state width="1651" height="327" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1585502091410" />
+    <state width="1651" height="327" key="GridCell.Tab.0.center" timestamp="1585502091409">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1651" height="273" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
-    <state width="1651" height="273" key="GridCell.Tab.0.left" timestamp="1585499552428">
+    <state width="1651" height="327" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1585502091409" />
+    <state width="1651" height="327" key="GridCell.Tab.0.left" timestamp="1585502091409">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1651" height="273" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
-    <state width="1651" height="273" key="GridCell.Tab.0.right" timestamp="1585499552428">
+    <state width="1651" height="327" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1585502091409" />
+    <state width="1651" height="327" key="GridCell.Tab.0.right" timestamp="1585502091410">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1651" height="273" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1585499552428" />
+    <state width="1651" height="327" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1585502091410" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -239,9 +240,9 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585228298247" />
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1585497716794">
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1585502016084">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585497716794" />
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585502016084" />
   </component>
 </project>

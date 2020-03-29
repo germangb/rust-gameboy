@@ -1,25 +1,26 @@
 use dmg_lib::ppu::{Color, VideoOutput};
 use wasm_bindgen::prelude::*;
+use web_sys::CanvasRenderingContext2d;
 
-const BUFFER: usize = 160 * 144 * 4;
+const BUFFER_SIZE: usize = 160 * 144 * 4;
 
 #[wasm_bindgen]
-pub struct CanvasVideoOutput {
-    ctx: web_sys::CanvasRenderingContext2d,
-    buf: [u8; BUFFER],
+pub struct WasmVideoOutput {
+    ctx: CanvasRenderingContext2d,
+    buf: [u8; BUFFER_SIZE],
 }
 
 #[wasm_bindgen]
-impl CanvasVideoOutput {
-    pub fn with_context(ctx: web_sys::CanvasRenderingContext2d) -> Self {
+impl WasmVideoOutput {
+    pub fn with_context(ctx: CanvasRenderingContext2d) -> Self {
         Self {
             ctx,
-            buf: [0; BUFFER],
+            buf: [0; BUFFER_SIZE],
         }
     }
 }
 
-impl VideoOutput for CanvasVideoOutput {
+impl VideoOutput for WasmVideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
         let offset = 160 * 4 * line;
         for (i, [r, g, b]) in pixels.iter().enumerate() {

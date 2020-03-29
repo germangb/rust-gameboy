@@ -43,3 +43,4 @@ If you encounter a game not currentl listed in the table below that doesn't run 
 
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 - https://gekkio.fi/files/gb-docs/gbctr.pdf
+- https://github.com/gbdev/awesome-gbdev

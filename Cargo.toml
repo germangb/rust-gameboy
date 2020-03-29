@@ -1,3 +1,3 @@
 [workspace]
-members = ["dmg-lib", "dmg-sdl2", "dmg-wasm", "dmg-boot", "dmg-tools", "dmg-camera"]
+members = ["dmg-lib", "dmg-driver/sdl2", "dmg-driver/wasm", "dmg-wasm", "dmg-boot", "dmg-tools", "dmg-camera"]
 

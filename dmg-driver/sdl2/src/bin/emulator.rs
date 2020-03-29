@@ -1,12 +1,22 @@
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 use dmg_camera::{CameraSensor, PoketCamera, SENSOR_HEIGHT, SENSOR_WIDTH};
+use dmg_driver_sdl2::{audio::Sdl2AudioOutput, video::Sdl2VideoOutput};
 use dmg_lib::{
     apu::AudioOutput,
-    cartridge::{Cartridge, Mbc5},
+    cartridge::{Cartridge, Mbc3},
     joypad::{Btn, Dir, Key},
     ppu::palette::{Palette, *},
     Builder, Dmg, Mode,
 };
-use dmg_sdl2::{audio::Sdl2AudioOutput, video::Sdl2VideoOutput};
 use image::DynamicImage;
 use sdl2::{
     event::{Event, WindowEvent},
@@ -17,7 +27,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use dmg_lib::cartridge::Mbc3;
 
 const MODE: Mode = Mode::CGB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
@@ -47,7 +56,8 @@ fn cartridge() -> impl Cartridge {
         .map(DynamicImage::into_luma)
         .expect("Error loading image");
     PoketCamera::with_sensor(Sensor { image, offset: 0 });
-    static ROM: &[u8] = include_bytes!("../../../dmg-lib/roms/Pokemon - Yellow Version (UE) [C][!].gbc");
+    static ROM: &[u8] =
+        include_bytes!("../../../../dmg-lib/roms/Pokemon - Yellow Version (UE) [C][!].gbc");
 
     Mbc3::from_bytes(ROM)
 }
@@ -55,9 +65,8 @@ fn cartridge() -> impl Cartridge {
 fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> {
     let video = sdl.video().unwrap();
     let canvas = video
-        .window("DMG - SDL2", 160 * SCALE, 144 * SCALE)
+        .window("DMG", 160 * SCALE, 144 * SCALE)
         .position_centered()
-        .resizable()
         .build()
         .expect("Error creating SDL window")
         .into_canvas()

@@ -167,15 +167,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dmg-lib"
-version = "0.1.0"
-dependencies = [
- "dmg-boot",
- "log",
-]
-
-[[package]]
-name = "dmg-sdl2"
+name = "dmg-driver-sdl2"
 version = "0.1.0"
 dependencies = [
  "dmg-camera",
@@ -184,6 +176,24 @@ dependencies = [
  "image",
  "log",
  "sdl2",
+]
+
+[[package]]
+name = "dmg-driver-wasm"
+version = "0.1.0"
+dependencies = [
+ "dmg-camera",
+ "dmg-lib",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "dmg-lib"
+version = "0.1.0"
+dependencies = [
+ "dmg-boot",
+ "log",
 ]
 
 [[package]]
@@ -200,6 +210,7 @@ version = "0.1.0"
 dependencies = [
  "console_log",
  "dmg-camera",
+ "dmg-driver-wasm",
  "dmg-lib",
  "log",
  "wasm-bindgen",

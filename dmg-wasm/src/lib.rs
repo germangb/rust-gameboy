@@ -1,43 +1,39 @@
-use crate::{camera::WebCameraSensor, video::CanvasVideoOutput};
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 use dmg_camera::PoketCamera;
+use dmg_driver_wasm::{poket_camera::WasmCameraSensor, ppu::WasmVideoOutput};
 use dmg_lib::{
-    cartridge::Mbc3,
-    joypad::{
-        Btn::*,
-        Dir::*,
-        Key,
-        Key::{Btn, Dir},
-    },
+    joypad::{Btn, Dir, Key},
     ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
     Builder, Mode,
 };
-use wasm_bindgen::prelude::*;
-
-pub mod audio;
-pub mod camera;
-pub mod video;
-
-type Mbc = Mbc3;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-static ROM: &[u8] = include_bytes!("../../dmg-lib/roms/pocket.gb");
 
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 /// WebAssembly-enabled emulator.
-#[wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<PoketCamera<WebCameraSensor>, CanvasVideoOutput, ()>);
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub struct Dmg(dmg_lib::Dmg<PoketCamera<WasmCameraSensor>, WasmVideoOutput, ()>);
 
-#[wasm_bindgen]
+#[wasm_bindgen::prelude::wasm_bindgen]
 pub fn init_log() {
     console_log::init_with_level(log::Level::Debug).expect("Error initializing log");
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen::prelude::wasm_bindgen]
 impl Dmg {
-    pub fn with_video_and_sensor(video: CanvasVideoOutput, sensor: WebCameraSensor) -> Self {
+    pub fn with_video_and_sensor(video: WasmVideoOutput, sensor: WasmCameraSensor) -> Self {
         let dmg = Builder::default()
             .with_mode(MODE)
             .with_palette(PALETTE)
@@ -68,14 +64,14 @@ impl Dmg {
 
 fn map_code_to_key(code: &str) -> Option<Key> {
     match code {
-        "KeyZ" => Some(Btn(A)),
-        "KeyX" => Some(Btn(B)),
-        "Enter" => Some(Btn(Start)),
-        "ShiftRight" => Some(Btn(Select)),
-        "ArrowLeft" => Some(Dir(Left)),
-        "ArrowRight" => Some(Dir(Right)),
-        "ArrowUp" => Some(Dir(Up)),
-        "ArrowDown" => Some(Dir(Down)),
+        "KeyZ" => Some(Key::Btn(Btn::A)),
+        "KeyX" => Some(Key::Btn(Btn::B)),
+        "Enter" => Some(Key::Btn(Btn::Start)),
+        "ShiftRight" => Some(Key::Btn(Btn::Select)),
+        "ArrowLeft" => Some(Key::Dir(Dir::Left)),
+        "ArrowRight" => Some(Key::Dir(Dir::Right)),
+        "ArrowUp" => Some(Key::Dir(Dir::Up)),
+        "ArrowDown" => Some(Key::Dir(Dir::Down)),
         _ => None,
     }
 }
