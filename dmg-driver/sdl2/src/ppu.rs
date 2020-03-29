@@ -1,4 +1,4 @@
-use dmg_lib::ppu::{Color, VideoOutput};
+use dmg_lib::ppu::{palette::Color, VideoOutput};
 use sdl2::{
     pixels::PixelFormatEnum,
     render::{TextureAccess, WindowCanvas},

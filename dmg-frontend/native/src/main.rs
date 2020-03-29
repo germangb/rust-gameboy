@@ -8,6 +8,18 @@
 #![deny(clippy::correctness)]
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
+
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
+
+use sdl2::{
+    event::{Event, WindowEvent},
+    keyboard::Scancode,
+    Sdl,
+};
+
 use dmg_driver_sdl2::{apu::Sdl2AudioOutput, ppu::Sdl2VideoOutput};
 use dmg_lib::{
     apu::AudioOutput,
@@ -16,22 +28,13 @@ use dmg_lib::{
     ppu::palette::{Palette, *},
     Builder, Dmg, Mode,
 };
-use sdl2::{
-    event::{Event, WindowEvent},
-    keyboard::Scancode,
-    Sdl,
-};
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
 
-const SCALE: u32 = 2;
-const MODE: Mode = Mode::CGB;
+const SCALE: u32 = 4;
+const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> {
-    static ROM: &[u8] = include_bytes!("../roms/Pokemon - Yellow Version (UE) [C][!].gbc");
+    static ROM: &[u8] = include_bytes!("../roms/Dr. Mario (World).gb");
 
     let video = sdl.video().unwrap();
     let canvas = video

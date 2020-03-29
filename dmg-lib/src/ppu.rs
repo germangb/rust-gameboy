@@ -1,15 +1,13 @@
 use crate::{
     dev::Device,
-    interrupts::{Flag, Interrupts},
-    ppu::palette::Palette,
+    interrupts::Flag,
+    ppu::palette::{Color, Palette},
     vram::VideoRam,
     Mode,
 };
 use std::{mem, slice};
 
 pub mod palette;
-
-pub type Color = [u8; 3];
 
 // Mode 0 is present between 201-207 clks, 2 about 77-83 clks, and 3 about
 // 169-175 clks. A complete cycle through these states takes 456 clks. VBlank
@@ -21,14 +19,13 @@ pub const VBLANK_CYCLES: u64 = (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCL
 
 const OAM_SIZE: usize = 0xa0;
 const PAL_SIZE: usize = 0x40;
-const WHITE: Color = [0xff, 0xff, 0xff];
 
 pub trait VideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]);
 }
 
 impl VideoOutput for () {
-    fn render_line(&mut self, _: usize, _: &[[u8; 3]; 160]) {}
+    fn render_line(&mut self, _: usize, _: &[Color; 160]) {}
 }
 
 #[repr(u8)]
@@ -95,17 +92,17 @@ pub struct ColorPal {
     // Auto Increment Bit is set then the index is automatically incremented after each <write> to
     // FF69. Auto Increment has no effect when <reading> from FF69, so the index must be manually
     // incremented in that case.
-    bgpi: u8,
-    obpi: u8,
+    pub bgpi: u8,
+    pub obpi: u8,
     pub bgp: [u8; PAL_SIZE],
     pub obp: [u8; PAL_SIZE],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct Line {
-    ly: u8,
-    lyc: u8,
+pub struct Line {
+    pub ly: u8,
+    pub lyc: u8,
 }
 
 pub struct Ppu<V: VideoOutput> {
@@ -139,6 +136,9 @@ pub struct Ppu<V: VideoOutput> {
     win: Window,
     pal: Pal,
     color_pal: ColorPal,
+    // Interrupt requests
+    vblank_int: Option<Flag>,
+    lcdc_int: Option<Flag>,
 }
 
 impl<V: VideoOutput> Ppu<V> {
@@ -162,7 +162,7 @@ impl<V: VideoOutput> Ppu<V> {
         let vram = VideoRam::default();
         let lcdc = 0x00;
         let stat = 0x00;
-        let buffer = [WHITE; 160];
+        let buffer = [[0xff, 0xff, 0xff]; 160];
         let index = [0; 160];
         let oam = [0; OAM_SIZE];
         let state = State::HBlank;
@@ -183,7 +183,21 @@ impl<V: VideoOutput> Ppu<V> {
             win,
             pal,
             color_pal,
+            vblank_int: None,
+            lcdc_int: None,
         }
+    }
+
+    pub fn take_vblank_int(&mut self) -> Option<Flag> {
+        self.vblank_int.take()
+    }
+
+    pub fn take_lcdc_int(&mut self) -> Option<Flag> {
+        self.lcdc_int.take()
+    }
+
+    pub fn line(&self) -> &Line {
+        &self.line
     }
 
     /// Get color palette (GB mode only)
@@ -230,7 +244,7 @@ impl<V: VideoOutput> Ppu<V> {
         &self.color_pal
     }
 
-    pub(crate) fn step(&mut self, cycles: u64, int: &mut Interrupts) {
+    pub(crate) fn step(&mut self, cycles: u64) {
         self.cycles += cycles;
 
         let mut line = self.line.ly;
@@ -250,7 +264,7 @@ impl<V: VideoOutput> Ppu<V> {
 
                 // hblank interrupt
                 if self.stat & 0x8 != 0 {
-                    int.set(Flag::LCDCStat);
+                    self.request_lcdc();
 
                     #[cfg(feature = "logging")]
                     log::info!(target: "ppu", "LCDC Status (HBLANK) interrupt requested");
@@ -261,14 +275,14 @@ impl<V: VideoOutput> Ppu<V> {
 
                 // LCD STAT vblank interrupt
                 if self.stat & 0x10 != 0 {
-                    int.set(Flag::LCDCStat);
+                    self.request_lcdc();
 
                     #[cfg(feature = "logging")]
                     log::info!(target: "ppu", "LCDC Status (VBLANK) interrupt requested");
                 }
 
                 // vblank interrupt
-                int.set(Flag::VBlank);
+                self.request_vblank();
 
                 #[cfg(feature = "logging")]
                 log::info!(target: "ppu", "VBLANK interrupt requested");
@@ -278,7 +292,7 @@ impl<V: VideoOutput> Ppu<V> {
 
                 // OAM interrupt
                 if self.stat & 0x20 != 0 {
-                    int.set(Flag::LCDCStat);
+                    self.request_lcdc();
                 }
             }
             (State::PixelTransfer, State::PixelTransfer) => {
@@ -308,7 +322,7 @@ impl<V: VideoOutput> Ppu<V> {
 
             // check new line interrupt
             if self.stat & 0x40 != 0 && self.line.ly == self.line.lyc {
-                int.set(Flag::LCDCStat);
+                self.request_lcdc();
 
                 #[cfg(feature = "logging")]
                 log::info!(
@@ -328,6 +342,14 @@ impl<V: VideoOutput> Ppu<V> {
 
         self.stat &= 0xfc;
         self.stat |= self.state as u8;
+    }
+
+    fn request_vblank(&mut self) {
+        self.vblank_int = Some(Flag::VBlank);
+    }
+
+    fn request_lcdc(&mut self) {
+        self.lcdc_int = Some(Flag::LCDCStat);
     }
 
     fn next_state(&mut self) -> State {
@@ -429,7 +451,7 @@ impl<V: VideoOutput> Ppu<V> {
     fn clear_buffer(&mut self) {
         let color = match self.mode {
             Mode::GB => self.palette[0],
-            Mode::CGB => WHITE,
+            Mode::CGB => [0xff, 0xff, 0xff],
         };
         mem::replace(&mut self.buffer, [color; 160]);
         for i in 0..144 {

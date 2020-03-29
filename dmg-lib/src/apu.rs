@@ -181,12 +181,9 @@ impl<A: AudioOutput> Device for Apu<A> {
             0xff25 => self.nr51 = data,
             0xff26 => {
                 self.nr52 = data;
-                #[cfg(feature = "logging")]
-                log::info!("NR52 = {:08b}", data);
 
-                if data & 0x80 != 0 {
-                    self.output.on(0);
-                }
+                #[cfg(feature = "logging")]
+                log::info!(target: "apu", "NR52 = {:08b}", data);
             }
             _ => panic!(),
         }

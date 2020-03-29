@@ -1,4 +1,4 @@
-use dmg_lib::ppu::{Color, VideoOutput};
+use dmg_lib::ppu::{palette::Color, VideoOutput};
 use wasm_bindgen::prelude::*;
 use web_sys::CanvasRenderingContext2d;
 

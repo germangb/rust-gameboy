@@ -1,6 +1,7 @@
-use dmg_camera::CameraSensor;
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlVideoElement};
+
+use dmg_camera::CameraSensor;
 
 #[wasm_bindgen]
 pub struct WasmCameraSensor {

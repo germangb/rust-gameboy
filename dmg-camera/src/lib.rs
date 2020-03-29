@@ -2,8 +2,13 @@ use dmg_lib::{cartridge::Cartridge, dev::Device};
 
 pub static ROM: &[u8] = include_bytes!(env!("DMG_CAMERA_ROM"));
 
-pub const SENSOR_WIDTH: usize = 128;
-pub const SENSOR_HEIGHT: usize = 112;
+pub const SENSOR_W: usize = 128;
+pub const SENSOR_H: usize = 112;
+
+/// Trait to provide raw image data.
+pub trait CameraSensor {
+    fn capture(&mut self, buffer: &mut [[u8; SENSOR_W]; SENSOR_H]);
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Mode {
@@ -48,14 +53,10 @@ pub struct Cam {
     pub a006: [u8; 0x30],
 }
 
-pub trait CameraSensor {
-    fn capture(&mut self, buffer: &mut [[u8; SENSOR_WIDTH]; SENSOR_HEIGHT]);
-}
-
 pub struct PoketCamera<S: CameraSensor> {
     mode: Mode,
     sensor: S,
-    buf: [[u8; SENSOR_WIDTH]; SENSOR_HEIGHT],
+    buf: [[u8; SENSOR_W]; SENSOR_H],
     rom_bank: usize,
     ram: Vec<[u8; 0x2000]>,
     ram_bank: usize,
@@ -66,7 +67,7 @@ pub struct PoketCamera<S: CameraSensor> {
 impl<S: CameraSensor> PoketCamera<S> {
     pub fn with_sensor(sensor: S) -> Self {
         let mode = Mode::Ram;
-        let buffer = [[0; SENSOR_WIDTH]; SENSOR_HEIGHT];
+        let buffer = [[0; SENSOR_W]; SENSOR_H];
         let rom_bank = 0;
         let ram = vec![[0; 0x2000]; 16];
         let ram_bank = 0;
@@ -116,7 +117,7 @@ impl<S: CameraSensor> PoketCamera<S> {
                 let row = i % 8; // tile pixel index
                 let col = 7 - (j % 8);
 
-                const TILE_MAP_WIDTH: usize = SENSOR_WIDTH / 8;
+                const TILE_MAP_WIDTH: usize = SENSOR_W / 8;
 
                 let tile_offset = 0x0100 + 16 * TILE_MAP_WIDTH * tile_i + 16 * tile_j;
                 let tile_hi_offset = tile_offset + 2 * row;

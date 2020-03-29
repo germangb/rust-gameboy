@@ -29,4 +29,5 @@ navigator.mediaDevices.getUserMedia({ video: { with: 128, height: 112 }, audio: 
 
         window.requestAnimationFrame(update)
     })
+    .catch(err => console.error("Webcam access required."))
 

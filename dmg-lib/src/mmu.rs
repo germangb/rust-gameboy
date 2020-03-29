@@ -5,10 +5,10 @@ use crate::{
     dev::Device,
     interrupts::Interrupts,
     joypad::Joypad,
-    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
+    ppu::{Ppu, VideoOutput},
     timer::Timer,
     wram::WorkRam,
-    Mode,
+    Mode, CLOCK,
 };
 
 // return value for the HDMA5 register some games expect all the bits to be set,
@@ -169,12 +169,11 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     }
 
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
-        let frame_ticks =
-            (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) * 144 + VBLANK_CYCLES;
+        const FRAME_CYCLES: u64 = CLOCK / 60;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;
-        while cycles < frame_ticks {
+        while cycles < FRAME_CYCLES {
             let cpu_cycles = cpu.step(self);
 
             match self.speed {
@@ -192,7 +191,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         }
         // return carry. This value should be passed as carry argument on the next call
         // to this method.
-        cycles % frame_ticks
+        cycles % FRAME_CYCLES
     }
 
     // Advance the mapped components by the given amount of cycles of the internal
@@ -201,10 +200,21 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         if let Some(int) = self.joy.take_int() {
             self.int.set(int);
         }
-        self.ppu.step(cycles, &mut self.int);
-        self.timer.step(cycles, &mut self.int);
+        self.ppu.step(cycles);
+        self.timer.step(cycles);
         self.cartridge.step(cycles);
         self.apu.step(cycles);
+
+        // request generated interrupts
+        if let Some(flag) = self.ppu.take_vblank_int() {
+            self.int.set(flag);
+        }
+        if let Some(flag) = self.ppu.take_lcdc_int() {
+            self.int.set(flag);
+        }
+        if let Some(flag) = self.timer.take_timer_int() {
+            self.int.set(flag);
+        }
     }
 
     // Writing to this register launches a DMA transfer from ROM or RAM to OAM

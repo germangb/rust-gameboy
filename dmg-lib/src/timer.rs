@@ -1,8 +1,6 @@
-use crate::{
-    dev::Device,
-    interrupts::{Flag, Interrupts},
-    CLOCK,
-};
+use crate::{dev::Device, interrupts::Flag, CLOCK};
+
+const DIV: u64 = 16_384;
 
 pub struct Timer {
     div: u8,
@@ -17,6 +15,8 @@ pub struct Timer {
     tac: u8,
     div_cycles: u64,
     tima_cycles: u64,
+    // Interrupt requests
+    timer_int: Option<Flag>,
 }
 
 impl Default for Timer {
@@ -28,15 +28,16 @@ impl Default for Timer {
             tac: 0,
             div_cycles: 0,
             tima_cycles: 0,
+            timer_int: None,
         }
     }
 }
 
 impl Timer {
-    pub(crate) fn step(&mut self, cycles: u64, int: &mut Interrupts) {
+    pub(crate) fn step(&mut self, cycles: u64) {
         // DIV counter
         self.div_cycles += cycles;
-        let cycles_per_tick = CLOCK / 16_384 / 2;
+        let cycles_per_tick = CLOCK / DIV;
 
         if self.div_cycles > cycles_per_tick {
             self.div_cycles %= cycles_per_tick;
@@ -56,9 +57,17 @@ impl Timer {
             self.tima = self.tima.wrapping_add(1);
             if self.tima == 0 {
                 self.tima = self.tma;
-                int.set(Flag::Timer);
+                self.request_timer();
             }
         }
+    }
+
+    pub fn take_timer_int(&mut self) -> Option<Flag> {
+        self.timer_int.take()
+    }
+
+    fn request_timer(&mut self) {
+        self.timer_int = Some(Flag::Timer);
     }
 
     fn clock(&self) -> u64 {
