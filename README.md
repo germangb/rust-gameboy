@@ -35,15 +35,12 @@ contains two emulator as reference, one native (backed by SDL), and another that
 
 # Boot ROMs
 
-The boot ROM is a small program that runs at the beginning of the emulation to initialize the state of the console.
+The boot ROM is a small program that runs at the beginning of the emulation to initialize the state of the console. In GB, it doesn't do much, but in CGB it can [add color to non-CGB games].
 
-The `dmg-lib` crate can be built with a feature flag (`--features boot`) to include the boot ROM from both GB and CGB.
-In GB emulation mode, the boot doesn't do much, but in CGB it can be used to [add color to non-CGB games].
+The `dmg-lib` crate can be built with a feature flag to include the boot ROMs of both the GB and CGB.
+You must provide your own ROMs in environment variables.
 
 [add color to non-CGB games]: https://www.reddit.com/r/nintendo/comments/43hzdo/til_the_color_palette_of_the_game_boy_color_can/
-
-If you own both boot ROMs, you must define them in two environment variables, and enable the `boot` feature flag in the
-dmg-lib dependency. If you don't already own them, they can easily be found online.
 
 ```bash
 export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
@@ -62,10 +59,12 @@ Then, in your Cargo.toml
 features = ["boot"]
 ```
 
-> **NOTE:** The build process performs some shallow validations on the provided ROMS, but there is not guarantee that, if
-> the provided ROMS are not correct, the crate will not buid.
+> **NOTE:** The build process performs some shallow validations on the provided ROMS, but there is not guarantee that,
+> if they're not correct, the crate will not buid.
 
 ## Features
+
+### Emulation
 
 | Feature        | Support | Notes
 | -------------- | :-----: | ---
@@ -77,8 +76,7 @@ features = ["boot"]
 | Serial         |         |
 | Peripherals    | ✔️       | See Peripherals section below.
 
-
-## Peripherals
+### Peripherals
 
 | Peripheral      | Requirements                | Notes 
 | ---             | ---                         | ---
@@ -111,6 +109,10 @@ features = ["boot"]
 
 | Rom | Works | Comments
 | --- | ----- | ---
+
+## License
+
+`TODO`
 
 ## Resources
 
