@@ -1,7 +1,8 @@
 # `YAGBE`
 **Y**et **A**nother **G**ame **B**oy **E**mulator.
 
-![](assets/demo.gif)
+![](assets/mario.gif)
+![](assets/zelda.gif)
 
 # Scope
 
