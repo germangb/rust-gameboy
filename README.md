@@ -11,37 +11,38 @@ contains two emulator as reference, one native (backed by SDL), and another that
 
 ## Project Structure
 
-- `dmg-lib/` Emulator crate.
-- `dmg-boot/` Internally used to manage the boot ROMs. See the Boot ROMs section below.
+- `dmg-lib/ ...................` Emulator crate.
+- `dmg-boot/ ..................` Internally used to manage the boot ROMs.
+- `dmg-peripherals ............`
+    * `camera .................` GameBoy Camera emulation.
 - `dmg-driver/`
-    * `sdl2/` SDL2-backed video and audio backend.
-    * `wasm/` WebAssembly & JS backend using the `wasm_bindgen` and `web_sys` crates.
-    * `gl/` OpenGL Texture-backed video backend.
+    * `sdl2/ ..................` SDL2-backed video and audio backend.
+    * `wasm/ ..................` WebAssembly & JS backend using the `wasm_bindgen` and `web_sys` crates.
+    * `gl/ ....................` OpenGL Texture-backed video backend.
 - `dmg-frontend/`
-    * `native/` Example native emulator frontend.
-    * `web/` Example web-based emulator frontend.
-- `dmg-peripherals`
-    * `camera` Camera emulation.
+    * `native/ ................` Example native emulator frontend.
+    * `web/ ...................` Example web-based GameBoy Camera emulation.
 - `dmg-tools`
-    * `src/bin/check_rom.rs` CLI tool to validate ROMs.
+    * `src/bin/check_rom.rs ...` Standalone CLI tools.
 
 # Boot ROMs
 
-The `dmg-lib` crate can be built with a feature flag (`--features boot`) to include the BOOT rom from both GB and CGB.
-In GB emulation the boot rom is definitely not necessary, but in CGB it can be used to select one of the predefined
-palette built into the ROM \[ref: [palette]\]
+The boot ROM is a small program that runs at the beginning of the emulation to initialize the state of the console.
 
-[palette]: https://www.reddit.com/r/nintendo/comments/43hzdo/til_the_color_palette_of_the_game_boy_color_can/
+The `dmg-lib` crate can be built with a feature flag (`--features boot`) to include the boot ROM from both GB and CGB.
+In GB emulation mode, the boot doesn't do much, but in CGB it can be used to [add color to non-CGB games].
 
-If you own the boot roms, you must define them in two environment variables, and enable the `boot` feature flag in the
-dmg-lib dependency:
+[add color to non-CGB games]: https://www.reddit.com/r/nintendo/comments/43hzdo/til_the_color_palette_of_the_game_boy_color_can/
+
+If you own both boot ROMs, you must define them in two environment variables, and enable the `boot` feature flag in the
+dmg-lib dependency. If you don't already own them, they can easily be found online.
 
 ```bash
 export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
 export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
 ```
 
-In addition, if you want to support some of the peripherals listed below, you must also provide their own ROM if they
+Additionally, if you want to support some of the peripherals listed below, you must also provide their own ROM if they
 require one.
 
 Then, in your Cargo.toml
@@ -73,9 +74,7 @@ features = ["boot"]
 
 | Peripheral      | Requirements                | Notes 
 | ---             | ---                         | ---
-| Game Boy Camera | `DMG_PERIPHERAL_CAMERA_ROM` | You must implement the `CameraSensor` trait to provide your own images. See [`dmg-driver/wasm/src/poket_camera.rs`] for an example.
-
-[`dmg-driver/wasm/src/poket_camera.rs`]: dmg-driver/wasm/src/poket_camera.rs
+| Game Boy Camera | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own ROM in the env variable.
 
 ## Tests
 
