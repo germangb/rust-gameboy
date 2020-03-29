@@ -55,6 +55,7 @@ impl Device for Mbc3 {
                         Mode::Rtc => self.rtc[self.rtc_select],
                     }
                 } else {
+                    #[cfg(feature = "logging")]
                     log::warn!("READ while RAM and TIMER disabled ({:04x})", addr);
                     0
                 }
@@ -68,6 +69,7 @@ impl Device for Mbc3 {
             0x0000..=0x1fff => {
                 let enabled = data & 0xf == 0xa;
                 if enabled != self.ram_timer_enabled {
+                    #[cfg(feature = "logging")]
                     log::info!("RAM and TIMER enable = {:x} = {}", data, enabled);
                 }
                 self.ram_timer_enabled = enabled;
@@ -107,6 +109,7 @@ impl Device for Mbc3 {
                         Mode::Rtc => self.rtc[self.rtc_select] = data,
                     }
                 } else {
+                    #[cfg(feature = "logging")]
                     log::warn!(
                         "WRITE while RAM and TIMER disabled ({:04x}) <- {:02x}",
                         addr,

@@ -53,6 +53,7 @@ impl Device for Interrupts {
             0xff0f => self.if_ = data,
             0xffff => {
                 if self.ie != data {
+                    #[cfg(feature = "logging")]
                     log::info!("IE <- {:#08b}", data);
                 }
                 self.ie = data

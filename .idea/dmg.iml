@@ -57,11 +57,26 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/wasm/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/wasm/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/wasm/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/gl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/gl/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/gl/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/gl/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/native/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/native/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/native/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/native/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/dmg-sdl2/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg-driver/gl/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/wasm/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg-frontend/native/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg-frontend/web/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-gl/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-lib/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-sdl2/target" />

@@ -37,7 +37,7 @@ impl Device for Mbc5 {
                     0
                 }
             }
-            addr => {
+            _ => {
                 #[cfg(feature = "logging")]
                 log::error!(target: "mbc5", "READ from undefined location {:#04x}", addr);
                 panic!()
@@ -88,7 +88,7 @@ impl Device for Mbc5 {
                     log::warn!(target: "mbc5", "RAM WRITE is disabled");
                 }
             }
-            addr => {
+            _ => {
                 #[cfg(feature = "logging")]
                 log::error!(target: "mbc5", "WRITE to undefined location {:#04x}", addr);
                 panic!()

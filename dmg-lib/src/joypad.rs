@@ -59,9 +59,12 @@ impl Joypad {
         // produced both when pressing or releasing a key.
         if self.btn != btn || self.dir != dir {
             self.int = Some(Flag::Joypad);
-            log::info!("BTN = {:02x}", btn);
-            log::info!("DIR = {:02x}", dir);
-            log::info!("JOYPAD Interrupt requested");
+            #[cfg(feature = "logging")]
+            {
+                log::info!("BTN = {:02x}", btn);
+                log::info!("DIR = {:02x}", dir);
+                log::info!("JOYPAD Interrupt requested");
+            }
         }
 
         self.btn = btn;

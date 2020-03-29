@@ -9,12 +9,13 @@
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
 use dmg_camera::PoketCamera;
-use dmg_driver_wasm::{poket_camera::WasmCameraSensor, ppu::WasmVideoOutput};
 use dmg_lib::{
     joypad::{Btn, Dir, Key},
     ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
     Builder, Mode,
 };
+
+pub use dmg_driver_wasm::{poket_camera::WasmCameraSensor, ppu::WasmVideoOutput};
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

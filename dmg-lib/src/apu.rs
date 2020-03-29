@@ -1,5 +1,4 @@
 use crate::{dev::Device, CLOCK};
-use log::info;
 
 // TODO
 const BUFFER_SIZE: usize = 0;
@@ -182,7 +181,8 @@ impl<A: AudioOutput> Device for Apu<A> {
             0xff25 => self.nr51 = data,
             0xff26 => {
                 self.nr52 = data;
-                info!("NR52 = {:08b}", data);
+                #[cfg(feature = "logging")]
+                log::info!("NR52 = {:08b}", data);
 
                 if data & 0x80 != 0 {
                     self.output.on(0);

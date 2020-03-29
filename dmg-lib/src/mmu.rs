@@ -56,7 +56,7 @@ struct VRamDma {
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
 pub struct Mmu<C: Cartridge, V: VideoOutput, A: AudioOutput> {
-    #[cfg_attr(feature = "boot", allow(dead_code))]
+    #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
     cartridge: C,

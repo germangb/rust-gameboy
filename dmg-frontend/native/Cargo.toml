@@ -1,5 +1,5 @@
 [package]
-name = "dmg-driver-sdl2"
+name = "dmg-frontend-native"
 version = "0.1.0"
 authors = ["german gomez <germangb42@gmail.com>"]
 edition = "2018"
@@ -7,5 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dmg-lib = { path = "../../dmg-lib" }
-sdl2 = "0.33"
+sdl2 = "0.33.0"
+env_logger = "0.7.1"
+
+[dependencies.dmg-lib]
+path = "../../dmg-lib"
+features = ["boot"]
+
+[dependencies.dmg-driver-sdl2]
+path = "../../dmg-driver/sdl2"

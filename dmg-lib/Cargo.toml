@@ -11,6 +11,6 @@ log = { version = "0.4.8", optional = true }
 dmg-boot = { path = "../dmg-boot", optional = true }
 
 [features]
-default = ["boot", "logging"]
+default = []
 boot = ["dmg-boot"]
 logging = ["log"]
