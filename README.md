@@ -25,6 +25,25 @@ contains two emulator as reference, one native (backed by SDL), and another that
     - **web/** Example web-based GameBoy Camera emulation.
 - **dmg-tools/**
     - **src/bin/check_rom.rs** Standalone CLI tools.
+    
+### Features
+
+| Feature        | Support | Notes
+| -------------- | :-----: | ---
+| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
+| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
+| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
+| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
+| Sound          |         |
+| Serial         |         |
+| Peripherals    | ✔️       | See Peripherals section below.
+
+### Peripherals
+
+| Peripheral      | Requirements                | Notes 
+| ---             | ---                         | ---
+| Game Boy Camera | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own ROM in the env variable.
+
 
 # Boot ROMs
 
@@ -54,26 +73,6 @@ features = ["boot"]
 
 > **NOTE:** The build process performs some shallow validations on the provided ROMS, but there is not guarantee that,
 > if they're not correct, the crate will not buid.
-
-## Features
-
-### Emulation
-
-| Feature        | Support | Notes
-| -------------- | :-----: | ---
-| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
-| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
-| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
-| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
-| Sound          |         |
-| Serial         |         |
-| Peripherals    | ✔️       | See Peripherals section below.
-
-### Peripherals
-
-| Peripheral      | Requirements                | Notes 
-| ---             | ---                         | ---
-| Game Boy Camera | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own ROM in the env variable.
 
 ## Tests
 
