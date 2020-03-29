@@ -7,21 +7,25 @@ The scope of this repo is not to be a fully feature standalone emulator, but rat
 (component emulation, serialization, etc) that may be used to build emulators and tools. The `dmg-frontend` module
 contains two emulator as reference, one native (backed by SDL), and another that runs on the web (using WebAssembly).
 
-## Features
+## Project Structure
 
-| Feature        | Support | Notes
-| -------------- | :-----: | ---
-| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
-| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
-| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
-| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
-| Sound          |         |
-| Serial         |         |
-| Peripherals    | ✔️       | See Peripherals section below.
+- `dmg-lib/` Main emulation crate.
+- `dmg-boot/` Internal use. See Boot ROMs section below.
+- `dmg-driver/`
+    * `sdl2/` SDL2-backed video and audio backend.
+    * `wasm/` WebAssembly & JS backend using the `wasm_bindgen` and `web_sys` crates.
+    * `gl/` OpenGL Texture-backed video backend.
+- `dmg-frontend/`
+    * `native/` Example native emulator frontend.
+    * `web/` Example web-based emulator frontend.
+- `dmg-peripherals`
+    * `camera` Camera emulation.
+- `dmg-tools`
+    * `src/bin/check_rom.rs` CLI tool to validate ROMs.
 
 # Boot ROMs
 
-The `dmg-lib` crate can be build with a feature flag (`--features boot`) to include the BOOT rom from both GB and CGB.
+The `dmg-lib` crate can be built with a feature flag (`--features boot`) to include the BOOT rom from both GB and CGB.
 In GB emulation the boot rom is definitely not necessary, but in CGB it can be used to select one of the predefined
 palette built into the ROM \[ref: [palette]\]
 
@@ -47,8 +51,21 @@ Then, in your Cargo.toml
 features = ["boot"]
 ```
 
-The build process performs some shallow validations on the provided ROMS, but there is not guarantee that, if the
-provided ROMS are not correct, the crate will not buid.
+> **NOTE:** The build process performs some shallow validations on the provided ROMS, but there is not guarantee that, if
+> the provided ROMS are not correct, the crate will not buid.
+
+## Features
+
+| Feature        | Support | Notes
+| -------------- | :-----: | ---
+| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
+| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
+| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
+| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
+| Sound          |         |
+| Serial         |         |
+| Peripherals    | ✔️       | See Peripherals section below.
+
 
 ## Peripherals
 
