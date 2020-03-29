@@ -1,12 +1,23 @@
-# `YAGBE (Yet Another Game Boy Emulator`)
-
-Yet another Game Boy emulator.
+# `YAGBE`
+**Y**et **A**nother **G**ame **B**oy **E**mulator.
 
 # Scope
 
 The scope of this repo is not to be a fully feature standalone emulator, but rather to provide a set of primitives
 (component emulation, serialization, etc) that may be used to build emulators and tools. The `dmg-frontend` module
 contains two emulator as reference, one native (backed by SDL), and another that runs on the web (using WebAssembly).
+
+## Features
+
+| Feature        | Support | Notes
+| -------------- | :-----: | ---
+| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
+| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
+| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
+| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
+| Sound          |         |
+| Serial         |         |
+| Peripherals    | ✔️       | See Peripherals section below.
 
 # Boot ROMs
 
@@ -38,20 +49,6 @@ features = ["boot"]
 
 The build process performs some shallow validations on the provided ROMS, but there is not guarantee that, if the
 provided ROMS are not correct, the crate will not buid.
-
-## Features
-
-| Feature        | Support | Notes
-| -------------- | :-----: | ---
-| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
-| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
-| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
-| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
-| Sound          |         |
-| Serial         |         |
-| Peripherals    | ✔️       | See Peripherals section below.
-
-If you encounter a game not currentl listed in the table below that doesn't run properly, please open an issue with the title.
 
 ## Peripherals
 
