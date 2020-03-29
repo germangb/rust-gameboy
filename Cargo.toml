@@ -1,12 +1,19 @@
 [workspace]
 members = [
+    # core and tools
     "dmg-lib",
     "dmg-boot",
     "dmg-tools",
-    "dmg-camera",
+
+    # peripherals
+    "dmg-peripheral/camera",
+
+    # drivers
     "dmg-driver/sdl2",
     "dmg-driver/wasm",
     "dmg-driver/gl",
+
+    # frontends
     "dmg-frontend/native",
     "dmg-frontend/web",
 ]

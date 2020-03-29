@@ -64,13 +64,6 @@ name = "dmg-boot"
 version = "0.1.0"
 
 [[package]]
-name = "dmg-camera"
-version = "0.1.0"
-dependencies = [
- "dmg-lib",
-]
-
-[[package]]
 name = "dmg-driver-gl"
 version = "0.1.0"
 
@@ -86,8 +79,8 @@ dependencies = [
 name = "dmg-driver-wasm"
 version = "0.1.0"
 dependencies = [
- "dmg-camera",
  "dmg-lib",
+ "dmg-peripheral-camera",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -107,9 +100,9 @@ name = "dmg-frontend-web"
 version = "0.1.0"
 dependencies = [
  "console_log",
- "dmg-camera",
  "dmg-driver-wasm",
  "dmg-lib",
+ "dmg-peripheral-camera",
  "log",
  "wasm-bindgen",
  "web-sys",
@@ -122,6 +115,13 @@ version = "0.1.0"
 dependencies = [
  "dmg-boot",
  "log",
+]
+
+[[package]]
+name = "dmg-peripheral-camera"
+version = "0.1.0"
+dependencies = [
+ "dmg-lib",
 ]
 
 [[package]]

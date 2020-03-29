@@ -69,6 +69,10 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-frontend/web/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-peripheral/camera/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-peripheral/camera/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-peripheral/camera/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-peripheral/camera/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/dmg-sdl2/target" />
@@ -79,6 +83,7 @@
       <excludeFolder url="file://$MODULE_DIR$/dmg-frontend/web/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-gl/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-lib/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg-peripheral/camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-tools/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-wasm/target" />

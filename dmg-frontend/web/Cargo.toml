@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dmg-lib = { path = "../../dmg-lib", features = ["boot"] }
-dmg-camera = { path = "../../dmg-camera" }
+dmg-peripheral-camera = { path = "../../dmg-peripheral/camera" }
 dmg-driver-wasm = { path = "../../dmg-driver/wasm" }
 
 wasm-bindgen = "0.2.59"
