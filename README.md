@@ -11,19 +11,19 @@ contains two emulator as reference, one native (backed by SDL), and another that
 
 ## Project Structure
 
-- `dmg-lib/ ...................` Emulator crate.
-- `dmg-boot/ ..................` Internally used to manage the boot ROMs.
-- `dmg-peripherals ............`
-    * `camera .................` GameBoy Camera emulation.
+- `dmg-lib/ ................... Emulator crate.`
+- `dmg-boot/ .................. Internally used to manage the boot ROMs.`
+- `dmg-peripherals`
+    * `camera ................. GameBoy Camera emulation.`
 - `dmg-driver/`
-    * `sdl2/ ..................` SDL2-backed video and audio backend.
-    * `wasm/ ..................` WebAssembly & JS backend using the `wasm_bindgen` and `web_sys` crates.
-    * `gl/ ....................` OpenGL Texture-backed video backend.
+    * `sdl2/ .................. SDL2-backed video and audio backend.`
+    * `wasm/ .................. WebAssembly & JS backend.`
+    * `gl/ .................... OpenGL Texture-backed video backend.`
 - `dmg-frontend/`
-    * `native/ ................` Example native emulator frontend.
-    * `web/ ...................` Example web-based GameBoy Camera emulation.
+    * `native/ ................ Example native emulator frontend.`
+    * `web/ ................... Example web-based GameBoy Camera emulation.`
 - `dmg-tools`
-    * `src/bin/check_rom.rs ...` Standalone CLI tools.
+    * `src/bin/check_rom.rs ... Standalone CLI tools.`
 
 # Boot ROMs
 
