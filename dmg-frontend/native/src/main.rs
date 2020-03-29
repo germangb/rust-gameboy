@@ -29,13 +29,14 @@ use dmg_lib::{
     Builder, Dmg, Mode,
 };
 
-const SCALE: u32 = 4;
+static ROM: &[u8] =
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+
+const SCALE: u32 = 1;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> {
-    static ROM: &[u8] = include_bytes!("../roms/Dr. Mario (World).gb");
-
     let video = sdl.video().unwrap();
     let canvas = video
         .window("DMG", 160 * SCALE, 144 * SCALE)

@@ -9,14 +9,12 @@
 #![deny(clippy::complexity)]
 #![deny(clippy::perf)]
 
+use apu::AudioOutput;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use dev::Device;
 use mmu::Mmu;
-use ppu::palette::Palette;
-
-pub use apu::AudioOutput;
-pub use ppu::VideoOutput;
+use ppu::{palette::Palette, VideoOutput};
 
 pub mod apu;
 pub mod cartridge;
@@ -32,7 +30,7 @@ pub mod vram;
 pub mod wram;
 
 /// Main clock frequency.
-pub const CLOCK: u64 = 4_194_304;
+const CLOCK: u64 = 4_194_304;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Mode {
