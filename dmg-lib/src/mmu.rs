@@ -210,7 +210,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         self.ppu.step(cycles);
         self.timer.step(cycles);
         self.cartridge.step(cycles);
-        self.apu.step(cycles);
+        //self.apu.step(cycles);
 
         // request generated interrupts
         if let Some(flag) = self.ppu.take_vblank_int() {

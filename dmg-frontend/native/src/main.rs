@@ -49,11 +49,13 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> 
     let cartridge = Mbc3::from_bytes(ROM);
     //let cartridge = PoketCamera::with_sensor(());
 
+    let audio = sdl.audio().unwrap();
+
     let mut dmg = Builder::default()
         .with_mode(MODE)
         .with_palette(PALETTE)
         .with_video(video)
-        .with_audio(RodioAudioOutput::new())
+        .with_audio(Sdl2AudioOutput::new(&audio).unwrap())
         .with_cartridge(cartridge)
         .build();
 

@@ -3,6 +3,7 @@ use std::sync::mpsc::{Receiver, Sender, SyncSender};
 
 const SAMPLING: u64 = 44100;
 const CYCLES_PER_SAMPLE: u64 = CLOCK / SAMPLING;
+const BUFFER_SIZE: u64 = 1024;
 
 pub trait AudioOutput {
     fn queue(&mut self, samples: &[i16]);
@@ -59,12 +60,13 @@ struct Ch4 {
 #[allow(dead_code)]
 pub struct Apu<A: AudioOutput> {
     cycles: u64,
+    state: u64,
 
     out: A,
     out_sample: u64,
 
     // Buffer to hold a frame worth of samples (RATE / 60)
-    buf: Box<[i16; 1024]>,
+    buf: Box<[i16; BUFFER_SIZE as usize]>,
     buf_samples: u64,
 
     ch1: Option<Ch1>,
@@ -118,11 +120,12 @@ impl<A: AudioOutput> Apu<A> {
     pub fn with_audio(output: A) -> Self {
         Self {
             cycles: 0,
+            state: 1,
 
             out: output,
             out_sample: 0,
 
-            buf: Box::new([0; 1024]),
+            buf: Box::new([0; BUFFER_SIZE as usize]),
             buf_samples: 0,
 
             ch1: None,
@@ -274,14 +277,17 @@ impl<A: AudioOutput> Apu<A> {
     }
 
     pub fn flush(&mut self) {
-        const SAMPLES_PER_FRAME: u64 = 735 + 200;
+        let over = self.state * 0;
+        self.state = 1 - self.state;
 
-        while self.buf_samples < SAMPLES_PER_FRAME {
+
+        let frame_samples = SAMPLING / 60 + over;
+        while self.buf_samples < frame_samples {
             self.step(4);
         }
 
-        self.out.queue(&self.buf[..SAMPLES_PER_FRAME as usize]);
-        self.buf_samples %= SAMPLES_PER_FRAME;
+        self.out.queue(&self.buf[..frame_samples as usize]);
+        self.buf_samples = 0;
     }
 }
 
