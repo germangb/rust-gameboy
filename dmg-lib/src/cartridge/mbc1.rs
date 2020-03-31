@@ -34,7 +34,7 @@ impl Mbc1 {
 impl Device for Mbc1 {
     fn read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000..=0x3fff => *self.rom.get(addr as usize).unwrap_or(&0),
+            0x0000..=0x3fff => *self.rom.get(addr as usize).unwrap_or(&0xff),
             0x4000..=0x7fff => {
                 let rom_bank = self.rom_bank.max(1);
                 *self

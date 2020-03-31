@@ -18,7 +18,7 @@ impl Rom {
 impl Device for Rom {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
-            addr @ 0x0000..=0x7fff => *self.rom.get(addr).unwrap_or(&0),
+            addr @ 0x0000..=0x7fff => *self.rom.get(addr).unwrap_or(&0xff),
             addr @ 0xa000..=0xbfff => self.ram[addr - 0xa000],
             _ => panic!(),
         }

@@ -1,11 +1,13 @@
-use dmg_lib::apu::{AudioOutput, Sample};
+use dmg_lib::apu::AudioOutput;
 use sdl2::{
     audio::{AudioQueue, AudioSpecDesired},
     AudioSubsystem,
 };
 
 pub struct Sdl2AudioOutput {
-    channels: [AudioQueue<i16>; 1],
+    frame: u64,
+    queue: AudioQueue<i16>,
+    buf: Vec<i16>,
 }
 
 impl Sdl2AudioOutput {
@@ -15,26 +17,49 @@ impl Sdl2AudioOutput {
             channels: Some(1),
             samples: None,
         };
+
+        let queue = audio.open_queue(None, &spec)?;
+        queue.resume();
+
+        println!("{:#?}", queue.spec());
+
         Ok(Self {
-            channels: [audio.open_queue(None, &spec)?],
+            frame: 0,
+            queue,
+            buf: Vec::with_capacity(4096),
         })
     }
 }
 
 impl AudioOutput for Sdl2AudioOutput {
-    fn queue(&mut self, channel: usize, samples: &[Sample]) {
-        self.channels[channel].queue(samples);
-    }
+    fn queue(&mut self, samples: &[i16]) {
+        self.frame += 1;
+        self.buf.extend_from_slice(samples);
 
-    fn on(&mut self, channel: usize) {
-        self.channels[channel].resume();
-    }
+        let frame = self.frame;
+        let sec = frame as f64 / 60.0;
+        println!("---");
+        println!(
+            "NEW audio frame {} ({:.02} seconds elapsed)",
+            self.frame, sec
+        );
+        println!(
+            "buf size: {} ({:.02} seconds)",
+            self.buf.len(),
+            self.buf.len() as f64 / 44100.0
+        );
 
-    fn off(&mut self, channel: usize) {
-        self.channels[channel].pause();
-    }
+        let queued = self.queue.size();
+        let sec = queued as f64 / 44100.0;
+        println!("queued samples {} ({:.02} seconds)", queued, sec);
 
-    fn clear(&mut self, channel: usize) {
-        self.channels[channel].clear();
+        if self.frame == 60 {
+            let samples = self.buf.len();
+            let sec = self.buf.len() as f64 / 44100.0;
+            println!("queued {} samples ({:.02} seconds)", samples, sec);
+            self.queue.queue(&self.buf[..]);
+            self.buf.clear();
+            self.frame = 0;
+        }
     }
 }

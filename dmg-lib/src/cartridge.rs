@@ -69,7 +69,7 @@ impl Device for () {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x143 => 0xc0,
-            _ => 0,
+            _ => 0xff,
         }
     }
 

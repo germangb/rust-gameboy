@@ -10,6 +10,10 @@ pub trait CameraSensor {
     fn capture(&mut self, buffer: &mut [[u8; SENSOR_W]; SENSOR_H]);
 }
 
+impl CameraSensor for () {
+    fn capture(&mut self, buffer: &mut [[u8; 128]; 112]) {}
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Mode {
     Ram,

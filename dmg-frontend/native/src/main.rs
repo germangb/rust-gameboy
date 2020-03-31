@@ -1,14 +1,3 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![deny(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
-
 use std::{
     thread,
     time::{Duration, Instant},
@@ -20,46 +9,59 @@ use sdl2::{
     Sdl,
 };
 
+use dmg_driver_rodio::apu::RodioAudioOutput;
 use dmg_driver_sdl2::{apu::Sdl2AudioOutput, ppu::Sdl2VideoOutput};
 use dmg_lib::{
     apu::AudioOutput,
-    cartridge::{Cartridge, Mbc3},
+    cartridge::{Cartridge, Mbc3, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::palette::{Palette, *},
     Builder, Dmg, Mode,
 };
+use dmg_peripheral_camera::PoketCamera;
+use sdl2::{
+    audio::{AudioCallback, AudioDevice, AudioStatus},
+    render::TextureAccess::Target,
+};
+use std::sync::mpsc::{Receiver, Sender};
 
 static ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+    include_bytes!("../roms/Tetris-USA.gb");
 
-const SCALE: u32 = 1;
+const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> {
     let video = sdl.video().unwrap();
-    let canvas = video
+    let window = video
         .window("DMG", 160 * SCALE, 144 * SCALE)
         .position_centered()
         .build()
-        .expect("Error creating SDL window")
+        .expect("Error creating SDL window");
+
+    let canvas = window
         .into_canvas()
         .build()
         .expect("Error creating SDL canvas");
+    let video = Sdl2VideoOutput::from_canvas(canvas);
 
-    let audio = sdl.audio().expect("SDL audio error");
+    let cartridge = Mbc3::from_bytes(ROM);
+    //let cartridge = PoketCamera::with_sensor(());
 
-    Builder::default()
+    let mut dmg = Builder::default()
         .with_mode(MODE)
         .with_palette(PALETTE)
-        .with_video(Sdl2VideoOutput::from_canvas(canvas))
-        .with_audio(Sdl2AudioOutput::new(&audio).expect("SDL audio output error"))
-        .with_cartridge(Mbc3::from_bytes(ROM))
-        .build()
+        .with_video(video)
+        .with_audio(RodioAudioOutput::new())
+        .with_cartridge(cartridge)
+        .build();
+
+    dmg
 }
 
 fn main() {
-    env_logger::init();
+    //env_logger::init();
 
     let sdl = sdl2::init().unwrap();
 

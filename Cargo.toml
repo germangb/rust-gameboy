@@ -12,6 +12,7 @@ members = [
     "dmg-driver/sdl2",
     "dmg-driver/wasm",
     "dmg-driver/gl",
+    "dmg-driver/rodio",
 
     # frontends
     "dmg-frontend/native",

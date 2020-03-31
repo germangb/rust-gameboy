@@ -5,7 +5,7 @@ use crate::{
     dev::Device,
     interrupts::Interrupts,
     joypad::Joypad,
-    ppu::{Ppu, VideoOutput},
+    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
     timer::Timer,
     wram::WorkRam,
     Mode, CLOCK,
@@ -56,6 +56,7 @@ struct VRamDma {
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
 pub struct Mmu<C: Cartridge, V: VideoOutput, A: AudioOutput> {
+    count: usize,
     #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
@@ -97,6 +98,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         let speed = Speed::X1;
         let hram = [0; HRAM_SIZE];
         Self {
+            count: 0,
             mode,
             boot: false,
             cartridge,
@@ -169,7 +171,9 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     }
 
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
-        const FRAME_CYCLES: u64 = CLOCK / 60;
+        const FRAME_CYCLES: u64 =
+            144 * (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) + VBLANK_CYCLES;
+        //CLOCK / 60;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;
@@ -189,6 +193,9 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
                 }
             }
         }
+
+        self.apu.flush();
+
         // return carry. This value should be passed as carry argument on the next call
         // to this method.
         cycles % FRAME_CYCLES
