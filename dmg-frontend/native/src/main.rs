@@ -9,35 +9,30 @@ use sdl2::{
     Sdl,
 };
 
-use dmg_driver_rodio::apu::RodioAudioOutput;
-use dmg_driver_sdl2::{apu::Sdl2AudioOutput, ppu::Sdl2VideoOutput};
+use dmg_driver_rodio::apu::RodioSamples;
+use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
 use dmg_lib::{
-    apu::{Apu, AudioOutput},
+    apu::{Apu, Samples},
     cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Key},
-    ppu::palette::{Palette, *},
+    ppu::{
+        palette::{Palette, *},
+        VideoOutput,
+    },
     Builder, Dmg, Mode,
-};
-use dmg_peripheral_camera::PoketCamera;
-use sdl2::{
-    audio::{AudioCallback, AudioDevice, AudioStatus},
-    render::TextureAccess::Target,
-};
-use std::sync::{
-    mpsc::{Receiver, Sender},
-    Arc, Mutex,
 };
 
 static ROM: &[u8] =
-    include_bytes!("../roms/Star Wars (E).gb");
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
 const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> {
-    let video = sdl.video().unwrap();
-    let window = video
+fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput> {
+    let window = sdl
+        .video()
+        .unwrap()
         .window("DMG", 160 * SCALE, 144 * SCALE)
         .position_centered()
         .build()
@@ -47,48 +42,14 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> 
         .into_canvas()
         .build()
         .expect("Error creating SDL canvas");
-    let video = Sdl2VideoOutput::from_canvas(canvas);
 
-    let cartridge = Mbc3::from_bytes(ROM);
-    //let cartridge = PoketCamera::with_sensor(());
-
-    let mut dmg = Builder::default()
+    Builder::default()
         .with_mode(MODE)
         .with_palette(PALETTE)
-        .with_video(video)
-        .with_audio(())
-        .with_cartridge(cartridge)
-        .build();
-
-    struct Callback {
-        apu: Arc<Mutex<Apu<()>>>,
-    }
-
-    impl AudioCallback for Callback {
-        type Channel = i16;
-
-        fn callback(&mut self, samples: &mut [Self::Channel]) {
-            let mut apu = self.apu.lock().unwrap();
-            for sample in samples.iter_mut() {
-                *sample = apu.next_sample();
-            }
-        }
-    }
-
-    let audio = sdl.audio().unwrap();
-
-    let audio_spec = sdl2::audio::AudioSpecDesired {
-        freq: Some(44100),
-        channels: Some(1),
-        samples: None,
-    };
-    let device = audio.open_playback(None, &audio_spec, |spec| {
-        Callback { apu: dmg.mmu().apu().clone() }
-    }).unwrap();
-
-    device.resume();
-    std::mem::forget(device);
-    dmg
+        .with_video(Sdl2VideoOutput::from_canvas(canvas))
+        .with_cartridge(Mbc5::from_bytes(ROM))
+        .skip_boot()
+        .build()
 }
 
 fn main() {
@@ -98,6 +59,12 @@ fn main() {
 
     let mut event_pump = sdl.event_pump().unwrap();
     let mut dmg = emulator(sdl);
+
+    let device = rodio::default_output_device().unwrap();
+    let queue = rodio::Sink::new(&device);
+
+    queue.append(RodioSamples::new(dmg.mmu().apu().samples()));
+    queue.play();
 
     'mainLoop: loop {
         let time = Instant::now();
@@ -154,8 +121,5 @@ fn main() {
         if time < sleep {
             thread::sleep(sleep - time);
         }
-
-        // audio sync
-        //dmg.mmu_mut().apu().lock().unwrap().flush();
     }
 }

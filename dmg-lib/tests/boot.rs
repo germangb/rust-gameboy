@@ -11,7 +11,7 @@ const TIMEOUT: u64 = 4;
 #[test]
 fn boot() {
     let mut cpu = Cpu::default();
-    let mut mmu = Mmu::with_cartridge_video_audio((), Mode::GB, (), ());
+    let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
 
     let timeout = Arc::new(Mutex::new(Cell::new(false)));
 

@@ -4,7 +4,7 @@ use dmg_lib::{cartridge::Rom, dev::Device, mmu::Mmu, ppu::palette::GRAYSCALE, Mo
 
 #[test]
 fn checksum() {
-    let mmu = Mmu::with_cartridge_video_audio(Rom::from_bytes(ROM), Mode::GB, (), ());
+    let mmu = Mmu::with_cartridge_and_video(Rom::from_bytes(ROM), Mode::GB, (), ());
 
     let mut res = 0x19u8;
     for addr in 0x134..=0x14d {

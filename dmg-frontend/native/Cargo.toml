@@ -8,10 +8,9 @@ edition = "2018"
 
 [dependencies]
 sdl2 = "0.33.0"
-
 log = "0.4.8"
 env_logger = "0.7.1"
-
+rodio = "0.11.0"
 dmg-peripheral-camera = { path = "../../dmg-peripheral/camera" }
 
 [dependencies.dmg-lib]

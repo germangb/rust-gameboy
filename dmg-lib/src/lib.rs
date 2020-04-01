@@ -9,7 +9,6 @@
 //#![deny(clippy::complexity)]
 //#![deny(clippy::perf)]
 
-use apu::AudioOutput;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use dev::Device;
@@ -29,7 +28,6 @@ pub mod timer;
 pub mod vram;
 pub mod wram;
 
-/// Main clock frequency.
 const CLOCK: u64 = 4_194_304;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -38,41 +36,24 @@ pub enum Mode {
     CGB,
 }
 
-pub struct Dmg<C: Cartridge, V: VideoOutput, A: AudioOutput> {
-    mode: Mode,
+pub struct Dmg<C: Cartridge, V: VideoOutput> {
     cpu: Cpu,
-    mmu: Box<Mmu<C, V, A>>,
+    mmu: Box<Mmu<C, V>>,
     carry: u64,
 }
 
-impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Dmg<C, V, A> {
-    pub fn new(cartridge: C, mode: Mode, video_out: V, audio_out: A) -> Self {
-        Self {
-            mode,
-            cpu: Cpu::default(),
-            mmu: Box::new(Mmu::with_cartridge_video_audio(
-                cartridge, mode, video_out, audio_out,
-            )),
-            carry: 0,
-        }
-    }
-
+impl<C: Cartridge, V: VideoOutput> Dmg<C, V> {
     pub fn emulate_frame(&mut self) {
         self.carry = self.mmu.emulate_frame(&mut self.cpu, self.carry);
     }
 
-    /// Return the mode of emulation (GB or CGB).
-    pub fn mode(&self) -> Mode {
-        self.mode
-    }
-
     /// Return the Memory Manager Unit (MMU).
-    pub fn mmu(&self) -> &Mmu<C, V, A> {
+    pub fn mmu(&self) -> &Mmu<C, V> {
         &self.mmu
     }
 
     /// Return the Memory Manager Unit (MMU) as mutable.
-    pub fn mmu_mut(&mut self) -> &mut Mmu<C, V, A> {
+    pub fn mmu_mut(&mut self) -> &mut Mmu<C, V> {
         &mut self.mmu
     }
 
@@ -87,16 +68,15 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Dmg<C, V, A> {
     }
 }
 
-pub struct Builder<C: Cartridge, V: VideoOutput, A: AudioOutput> {
+pub struct Builder<C: Cartridge, V: VideoOutput> {
     mode: Option<Mode>,
     palette: Option<Palette>,
     skip_boot: bool,
     cartridge: C,
     video: V,
-    audio: A,
 }
 
-impl Default for Builder<(), (), ()> {
+impl Default for Builder<(), ()> {
     fn default() -> Self {
         Self {
             mode: None,
@@ -104,42 +84,28 @@ impl Default for Builder<(), (), ()> {
             skip_boot: false,
             cartridge: (),
             video: (),
-            audio: (),
         }
     }
 }
 
-impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Builder<C, V, A> {
-    pub fn with_cartridge<C2: Cartridge>(self, cartridge: C2) -> Builder<C2, V, A> {
+impl<C: Cartridge, V: VideoOutput> Builder<C, V> {
+    pub fn with_cartridge<C2: Cartridge>(self, cartridge: C2) -> Builder<C2, V> {
         Builder {
             mode: self.mode,
             skip_boot: self.skip_boot,
             palette: self.palette,
             cartridge,
             video: self.video,
-            audio: self.audio,
         }
     }
 
-    pub fn with_video<V2: VideoOutput>(self, video: V2) -> Builder<C, V2, A> {
+    pub fn with_video<V2: VideoOutput>(self, video: V2) -> Builder<C, V2> {
         Builder {
             mode: self.mode,
             skip_boot: self.skip_boot,
             palette: self.palette,
             cartridge: self.cartridge,
             video,
-            audio: self.audio,
-        }
-    }
-
-    pub fn with_audio<A2: AudioOutput>(self, audio: A2) -> Builder<C, V, A2> {
-        Builder {
-            mode: self.mode,
-            skip_boot: self.skip_boot,
-            palette: self.palette,
-            cartridge: self.cartridge,
-            video: self.video,
-            audio,
         }
     }
 
@@ -168,17 +134,13 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Builder<C, V, A> {
         self
     }
 
-    pub fn build(self) -> Dmg<C, V, A> {
+    pub fn build(self) -> Dmg<C, V> {
         let cartridge = self.cartridge;
         let mode = self.mode.unwrap_or(Mode::CGB);
         let video = self.video;
-        let audio = self.audio;
         let mut dmg = Dmg {
-            mode,
             cpu: Cpu::default(),
-            mmu: Box::new(Mmu::with_cartridge_video_audio(
-                cartridge, mode, video, audio,
-            )),
+            mmu: Box::new(Mmu::with_cartridge_and_video(cartridge, mode, video)),
             carry: 0,
         };
         if self.skip_boot || cfg!(not(feature = "boot")) {

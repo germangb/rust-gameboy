@@ -1,25 +1,51 @@
-use dmg_lib::apu::AudioOutput;
-use rodio::{buffer::SamplesBuffer, Sink};
+use dmg_lib::apu::Samples;
+use rodio::Source;
 use std::time::Duration;
-// use std::time::{Instant, Duration};
 
-pub struct RodioAudioOutput {
-    sink: Sink,
+pub struct RodioSamples {
+    samples: Samples,
+    l: Option<i16>,
+    r: Option<i16>,
 }
 
-impl RodioAudioOutput {
-    pub fn new() -> Self {
-        let device =
-            rodio::default_output_device().expect("Error initializing Rodio output device");
-        let sink = Sink::new(&device);
-
-        Self { sink }
+impl RodioSamples {
+    pub fn new(samples: Samples) -> Self {
+        Self {
+            samples,
+            l: None,
+            r: None,
+        }
     }
 }
 
-impl AudioOutput for RodioAudioOutput {
-    fn queue(&mut self, samples: &[i16]) {
-        let buf = samples.to_vec();
-        self.sink.append(SamplesBuffer::new(1, 44100, buf));
+impl Iterator for RodioSamples {
+    type Item = i16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.r.is_none() {
+            self.samples.next().into_iter().for_each(|[l, r]| {
+                self.l = Some(l);
+                self.r = Some(r);
+            });
+        }
+        self.l.take().or_else(|| self.r.take())
+    }
+}
+
+impl Source for RodioSamples {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+
+    fn channels(&self) -> u16 {
+        2
+    }
+
+    fn sample_rate(&self) -> u32 {
+        44100
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        None
     }
 }

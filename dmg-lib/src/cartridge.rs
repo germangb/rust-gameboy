@@ -16,14 +16,16 @@ pub use rom::Rom;
 // 01h - 2 KBytes
 // 02h - 8 Kbytes
 // 03h - 32 KBytes (4 banks of 8KBytes each)
+#[allow(unused_variables)]
 fn ram_banks(banks: u8) -> usize {
-    match banks {
-        0x00 => 0,
-        0x01 | 0x02 => 1,
-        0x03 => 4,
-        0x04 => 16,
-        _ => panic!(),
-    }
+    // match banks {
+    //     0x00 => 0,
+    //     0x01 | 0x02 => 1,
+    //     0x03 => 4,
+    //     0x04 => 16,
+    //     _ => panic!(),
+    // }
+    16
 }
 
 #[repr(u8)]

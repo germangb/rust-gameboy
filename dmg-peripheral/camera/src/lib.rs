@@ -11,7 +11,7 @@ pub trait CameraSensor {
 }
 
 impl CameraSensor for () {
-    fn capture(&mut self, buffer: &mut [[u8; 128]; 112]) {}
+    fn capture(&mut self, _: &mut [[u8; 128]; 112]) {}
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

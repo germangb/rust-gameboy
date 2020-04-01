@@ -25,7 +25,7 @@ const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen::prelude::wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<PoketCamera<WasmCameraSensor>, WasmVideoOutput, ()>);
+pub struct Dmg(dmg_lib::Dmg<PoketCamera<WasmCameraSensor>, WasmVideoOutput>);
 
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn init_log() {

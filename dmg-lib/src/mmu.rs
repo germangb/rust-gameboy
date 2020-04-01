@@ -1,5 +1,5 @@
 use crate::{
-    apu::{Apu, AudioOutput},
+    apu::Apu,
     cartridge::Cartridge,
     cpu::Cpu,
     dev::Device,
@@ -8,9 +8,8 @@ use crate::{
     ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
     timer::Timer,
     wram::WorkRam,
-    Mode, CLOCK,
+    Mode,
 };
-use std::sync::{Arc, Mutex};
 
 // return value for the HDMA5 register some games expect all the bits to be set,
 // even though the specification only requires the MSB to be.
@@ -56,34 +55,24 @@ struct VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu<C: Cartridge, V: VideoOutput, A: AudioOutput> {
-    count: usize,
+pub struct Mmu<C: Cartridge, V: VideoOutput> {
     #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
     cartridge: C,
     ppu: Ppu<V>,
-    apu: Arc<Mutex<Apu<A>>>,
+    apu: Apu,
     timer: Timer,
     wram: WorkRam,
     joy: Joypad,
     hram: HRam,
     vram_dma: VRamDma,
     int: Interrupts,
-    // FF4D - KEY1 - CGB Mode Only - Prepare Speed Switch
-    //
-    // Bit 7: Current Speed     (0=Normal, 1=Double) (Read Only)
-    // Bit 0: Prepare Speed Switch (0=No, 1=Prepare) (Read/Write)
     speed: Speed,
 }
 
-impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
-    pub fn with_cartridge_video_audio(
-        cartridge: C,
-        mode: Mode,
-        video_out: V,
-        audio_out: A,
-    ) -> Self {
+impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
+    pub fn with_cartridge_and_video(cartridge: C, mode: Mode, video_out: V) -> Self {
         let vram_dma = VRamDma {
             hdma1: 0,
             hdma2: 0,
@@ -95,11 +84,10 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         let wram = WorkRam::default();
         let int = Interrupts::default();
         let joy = Joypad::default();
-        let apu = Arc::new(Mutex::new(Apu::with_audio(audio_out)));
+        let apu = Apu::default();
         let speed = Speed::X1;
         let hram = [0; HRAM_SIZE];
         Self {
-            count: 0,
             mode,
             boot: false,
             cartridge,
@@ -147,13 +135,13 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         &mut self.wram
     }
 
-    pub fn apu(&self) -> &Arc<Mutex<Apu<A>>> {
+    pub fn apu(&self) -> &Apu {
         &self.apu
     }
 
-    // pub fn apu_mut(&mut self) -> &mut Apu<A> {
-    //     &mut self.apu
-    // }
+    pub fn apu_mut(&mut self) -> &mut Apu {
+        &mut self.apu
+    }
 
     pub fn timer(&self) -> &Timer {
         &self.timer
@@ -174,7 +162,6 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
         const FRAME_CYCLES: u64 =
             144 * (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) + VBLANK_CYCLES;
-        //CLOCK / 60;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;
@@ -278,7 +265,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
     }
 }
 
-impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
+impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
     fn read(&self, addr: u16) -> u8 {
         #[cfg(feature = "boot")]
         use dmg_boot::{cgb, gb};
@@ -309,7 +296,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.lock().unwrap().read(addr),
+                | 0xff20..=0xff26 => self.apu.read(addr),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => self.ppu.read(addr),
                 0xff46 => UNUSED_DATA, // OAM DMA
                 0xff50 => BOOT_REG_DATA,
@@ -353,7 +340,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.lock().unwrap().write(addr, data),
+                | 0xff20..=0xff26 => self.apu.write(addr, data),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => {
                     self.ppu.write(addr, data)
                 }
@@ -404,7 +391,7 @@ mod tests {
 
     #[test]
     fn dma() {
-        let mut mmu = Mmu::with_cartridge_video_audio((), Mode::GB, (), ());
+        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
 
         mmu.write(0xff50, 1);
         mmu.write(0xff46, 0);
