@@ -10,6 +10,7 @@ use crate::{
     wram::WorkRam,
     Mode, CLOCK,
 };
+use std::sync::{Arc, Mutex};
 
 // return value for the HDMA5 register some games expect all the bits to be set,
 // even though the specification only requires the MSB to be.
@@ -62,7 +63,7 @@ pub struct Mmu<C: Cartridge, V: VideoOutput, A: AudioOutput> {
     boot: bool,
     cartridge: C,
     ppu: Ppu<V>,
-    apu: Apu<A>,
+    apu: Arc<Mutex<Apu<A>>>,
     timer: Timer,
     wram: WorkRam,
     joy: Joypad,
@@ -94,7 +95,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         let wram = WorkRam::default();
         let int = Interrupts::default();
         let joy = Joypad::default();
-        let apu = Apu::with_audio(audio_out);
+        let apu = Arc::new(Mutex::new(Apu::with_audio(audio_out)));
         let speed = Speed::X1;
         let hram = [0; HRAM_SIZE];
         Self {
@@ -146,13 +147,13 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
         &mut self.wram
     }
 
-    pub fn apu(&self) -> &Apu<A> {
+    pub fn apu(&self) -> &Arc<Mutex<Apu<A>>> {
         &self.apu
     }
 
-    pub fn apu_mut(&mut self) -> &mut Apu<A> {
-        &mut self.apu
-    }
+    // pub fn apu_mut(&mut self) -> &mut Apu<A> {
+    //     &mut self.apu
+    // }
 
     pub fn timer(&self) -> &Timer {
         &self.timer
@@ -194,7 +195,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Mmu<C, V, A> {
             }
         }
 
-        self.apu.flush();
+        //self.apu.flush();
 
         // return carry. This value should be passed as carry argument on the next call
         // to this method.
@@ -308,7 +309,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.read(addr),
+                | 0xff20..=0xff26 => self.apu.lock().unwrap().read(addr),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => self.ppu.read(addr),
                 0xff46 => UNUSED_DATA, // OAM DMA
                 0xff50 => BOOT_REG_DATA,
@@ -352,7 +353,7 @@ impl<C: Cartridge, V: VideoOutput, A: AudioOutput> Device for Mmu<C, V, A> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.write(addr, data),
+                | 0xff20..=0xff26 => self.apu.lock().unwrap().write(addr, data),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => {
                     self.ppu.write(addr, data)
                 }

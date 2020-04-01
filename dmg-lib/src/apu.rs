@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender, SyncSender};
 
 const SAMPLING: u64 = 44100;
 const CYCLES_PER_SAMPLE: u64 = CLOCK / SAMPLING;
-const BUFFER_SIZE: u64 = 1024;
+const BUFFER_SIZE: u64 = 1024 * 4;
 
 pub trait AudioOutput {
     fn queue(&mut self, samples: &[i16]);
@@ -162,6 +162,14 @@ impl<A: AudioOutput> Apu<A> {
         }
     }
 
+    pub fn next_sample(&mut self) -> i16 {
+        self.buf_samples = 0;
+        while self.buf_samples != 1 {
+            self.step(4);
+        }
+        self.buf[0]
+    }
+
     pub fn step(&mut self, cycles: u64) {
         self.cycles += cycles;
 
@@ -277,9 +285,8 @@ impl<A: AudioOutput> Apu<A> {
     }
 
     pub fn flush(&mut self) {
-        let over = self.state * 0;
+        let over = self.state * 90;
         self.state = 1 - self.state;
-
 
         let frame_samples = SAMPLING / 60 + over;
         while self.buf_samples < frame_samples {

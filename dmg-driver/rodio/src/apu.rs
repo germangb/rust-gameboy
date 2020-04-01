@@ -12,7 +12,6 @@ impl RodioAudioOutput {
         let device =
             rodio::default_output_device().expect("Error initializing Rodio output device");
         let sink = Sink::new(&device);
-        sink.set_volume(0.2);
 
         Self { sink }
     }

@@ -12,8 +12,8 @@ use sdl2::{
 use dmg_driver_rodio::apu::RodioAudioOutput;
 use dmg_driver_sdl2::{apu::Sdl2AudioOutput, ppu::Sdl2VideoOutput};
 use dmg_lib::{
-    apu::AudioOutput,
-    cartridge::{Cartridge, Mbc3, Mbc5},
+    apu::{Apu, AudioOutput},
+    cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::palette::{Palette, *},
     Builder, Dmg, Mode,
@@ -23,10 +23,13 @@ use sdl2::{
     audio::{AudioCallback, AudioDevice, AudioStatus},
     render::TextureAccess::Target,
 };
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{
+    mpsc::{Receiver, Sender},
+    Arc, Mutex,
+};
 
 static ROM: &[u8] =
-    include_bytes!("../roms/Tetris-USA.gb");
+    include_bytes!("../roms/Star Wars (E).gb");
 
 const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
@@ -49,16 +52,42 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, impl AudioOutput> 
     let cartridge = Mbc3::from_bytes(ROM);
     //let cartridge = PoketCamera::with_sensor(());
 
-    let audio = sdl.audio().unwrap();
-
     let mut dmg = Builder::default()
         .with_mode(MODE)
         .with_palette(PALETTE)
         .with_video(video)
-        .with_audio(Sdl2AudioOutput::new(&audio).unwrap())
+        .with_audio(())
         .with_cartridge(cartridge)
         .build();
 
+    struct Callback {
+        apu: Arc<Mutex<Apu<()>>>,
+    }
+
+    impl AudioCallback for Callback {
+        type Channel = i16;
+
+        fn callback(&mut self, samples: &mut [Self::Channel]) {
+            let mut apu = self.apu.lock().unwrap();
+            for sample in samples.iter_mut() {
+                *sample = apu.next_sample();
+            }
+        }
+    }
+
+    let audio = sdl.audio().unwrap();
+
+    let audio_spec = sdl2::audio::AudioSpecDesired {
+        freq: Some(44100),
+        channels: Some(1),
+        samples: None,
+    };
+    let device = audio.open_playback(None, &audio_spec, |spec| {
+        Callback { apu: dmg.mmu().apu().clone() }
+    }).unwrap();
+
+    device.resume();
+    std::mem::forget(device);
     dmg
 }
 
@@ -125,5 +154,8 @@ fn main() {
         if time < sleep {
             thread::sleep(sleep - time);
         }
+
+        // audio sync
+        //dmg.mmu_mut().apu().lock().unwrap().flush();
     }
 }
