@@ -182,8 +182,6 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
             }
         }
 
-        //self.apu.flush();
-
         // return carry. This value should be passed as carry argument on the next call
         // to this method.
         cycles % FRAME_CYCLES
@@ -198,7 +196,6 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
         self.ppu.step(cycles);
         self.timer.step(cycles);
         self.cartridge.step(cycles);
-        //self.apu.step(cycles);
 
         // request generated interrupts
         if let Some(flag) = self.ppu.take_vblank_int() {
@@ -304,7 +301,7 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
                 0xff55 => HDMA5_DATA,
                 0xff4d => self.speed as u8,
                 0xff70 => self.wram.read(addr),
-                _ => UNHANDLED_DATA,
+                _ => panic!(),
             },
             0xff80..=0xfffe => match addr {
                 0xff80..=0xfffe => self.hram[addr as usize - 0xff80],
@@ -380,20 +377,14 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
-    use crate::{
-        cartridge::{Rom, ZeroRom},
-        dev::Device,
-        mmu::Mmu,
-        Mode,
-    };
+    use crate::{dev::Device, mmu::Mmu, Mode};
 
     #[test]
-    fn dma() {
-        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
+    fn oam_dma() {
+        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, ());
 
-        mmu.write(0xff50, 1);
         mmu.write(0xff46, 0);
 
         for addr in 0..=0x9f {

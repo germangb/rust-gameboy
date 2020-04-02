@@ -21,9 +21,10 @@ use dmg_lib::{
     },
     Builder, Dmg, Mode,
 };
+use rodio::Source;
 
 static ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening (U) (V1.2) [!].gb");
 
 const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
@@ -63,6 +64,7 @@ fn main() {
     let device = rodio::default_output_device().unwrap();
     let queue = rodio::Sink::new(&device);
 
+    use rodio::Source;
     queue.append(RodioSamples::new(dmg.mmu().apu().samples()));
     queue.play();
 
@@ -118,7 +120,7 @@ fn main() {
 
         let time = time.elapsed();
         let sleep = Duration::new(0, 1_000_000_000 / 60);
-        if time < sleep {
+        if time < sleep && !event_pump.keyboard_state().is_scancode_pressed(Scancode::F) {
             thread::sleep(sleep - time);
         }
     }

@@ -19,7 +19,7 @@ impl RodioSamples {
 }
 
 impl Iterator for RodioSamples {
-    type Item = i16;
+    type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.r.is_none() {
@@ -28,7 +28,10 @@ impl Iterator for RodioSamples {
                 self.r = Some(r);
             });
         }
-        self.l.take().or_else(|| self.r.take())
+        self.l
+            .take()
+            .or_else(|| self.r.take())
+            .map(|s| ((s as f32) / (0x7fff as f32)).max(-1.0).min(1.0))
     }
 }
 

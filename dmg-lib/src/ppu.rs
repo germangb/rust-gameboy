@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn vram() {
-        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
+        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, ());
 
         mmu.write(0x8000, 1);
         mmu.write(0x9fff, 2);
@@ -801,7 +801,7 @@ mod tests {
 
     #[test]
     fn oam() {
-        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
+        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, ());
 
         mmu.write(0xfe00, 1);
         mmu.write(0xfe9f, 2);
@@ -812,7 +812,7 @@ mod tests {
 
     #[test]
     fn registers() {
-        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, (), ());
+        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, ());
 
         mmu.write(0xff42, 1);
         mmu.write(0xff43, 2);

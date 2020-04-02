@@ -1,5 +1,5 @@
 use crate::{
-    apu::sfx::{LenCounter, Noise, Source, Square, SquareSweep, Volume, VolumeEnv},
+    apu::sfx::{LenCounter, Noise, Source, Square, SquareSweep, Volume, VolumeEnv, Wave},
     dev::Device,
 };
 use std::sync::{Arc, Mutex};
@@ -161,6 +161,11 @@ impl Iterator for Samples {
     fn next(&mut self) -> Option<Self::Item> {
         let mut apu = self.inner.lock().unwrap();
 
+        // stop ch3
+        if apu.nr30 & 0x80 == 0 {
+            apu.ch3 = None;
+        }
+
         let ch1 = apu.ch1.as_mut().and_then(|c| c.sample());
         let ch2 = apu.ch2.as_mut().and_then(|c| c.sample());
         let ch3 = apu.ch3.as_mut().and_then(|c| c.sample());
@@ -178,7 +183,11 @@ impl Iterator for Samples {
         let mut count: [i32; 2] = [0, 0];
 
         let nr51 = apu.nr51;
-        for (ch, sample) in ch1.into_iter().chain(ch2).chain(ch3).chain(ch4).enumerate() {
+        for (ch, sample) in ch1.into_iter()
+            .chain(ch2)
+            .chain(ch3)
+            .chain(ch4).enumerate()
+        {
             let so1_bit = 1 << (ch as u8);
             let so2_bit = 1 << (4 + ch as u8);
             if nr51 & so1_bit != 0 {
@@ -283,8 +292,15 @@ impl Device for Apu {
                 0xff1b => apu.nr31 = data,
                 0xff1c => apu.nr32 = data,
                 0xff1d => apu.nr33 = data,
-                0xff1e => apu.nr34 = data,
-                0xff30..=0xff3f => { /* below */ }
+                0xff1e => {
+                    apu.nr34 = data;
+
+                    if apu.nr34 & 0x80 != 0 {
+                        let wave = Wave::new(apu.nr31, apu.nr32, apu.nr33, apu.nr34, apu.wave_ram);
+                        apu.ch3 = Some(Box::new(wave));
+                    }
+                }
+                0xff30..=0xff3f => { /* Handled below */ }
 
                 // Channel 4 - Noise
                 0xff20 => apu.nr41 = data,
@@ -294,24 +310,36 @@ impl Device for Apu {
                     apu.nr44 = data;
 
                     if apu.nr44 & 0x80 != 0 {
-                        let tone =
-                            apply_len_envelope(Noise::new(apu.nr43), apu.nr41, apu.nr42, apu.nr44);
-                        apu.ch4 = Some(tone);
+                        let noise = Noise::new(apu.nr43);
+                        apu.ch4 = Some(apply_len_envelope(noise, apu.nr41, apu.nr42, apu.nr44));
                     }
                 }
 
                 0xff24 => apu.nr50 = data,
                 0xff25 => apu.nr51 = data,
 
-                0xff26 => { /* below */ }
+                0xff26 => { /* Handled below */ }
                 _ => panic!(),
             }
         }
 
         // Wave RAM writes are unaffected by power status
         if let 0xff30..=0xff3f = addr {
+            // let f = data >> 4;
+            // let s = data & 0xf;
+            // for _ in 0..f {
+            //     print!("-");
+            // }
+            // println!("*");
+            // for _ in 0..s {
+            //     print!("-");
+            // }
+            // println!("*");
             apu.wave_ram[addr as usize - 0xff30] = data;
         }
+        // if addr == 0xff3f {
+        //     println!("===");
+        // }
 
         // If your GB programs don't use sound then write 00h to this register to save
         // 16% or more on GB power consumption. Disabeling the sound controller
@@ -365,4 +393,27 @@ fn apply_len_envelope(
     };
 
     wave
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{apu::Apu, dev::Device};
+
+    #[test]
+    fn wave_ram() {
+        let mut apu = Apu::default();
+
+        let wave = &[
+            0x01_u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xcd, 0xba, 0x98, 0x76, 0x54,
+            0x32, 0x10,
+        ];
+
+        for (i, w) in wave.iter().copied().enumerate() {
+            apu.write(0xff30 + i as u16, w)
+        }
+
+        for (i, w) in wave.iter().copied().enumerate() {
+            assert_eq!(w, apu.read(0xff30 + i as u16));
+        }
+    }
 }

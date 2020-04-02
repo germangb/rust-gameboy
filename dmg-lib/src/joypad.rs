@@ -128,15 +128,12 @@ impl Device for Joypad {
 mod tests {
     use crate::{
         dev::Device,
-        interrupts::Interrupts,
         joypad::{Btn::*, Dir::*, Joypad, Key, BTN_ROW_FLAG, DIR_ROW_FLAG},
     };
-    use std::{cell::RefCell, rc::Rc};
 
     #[test]
     fn joypad_never_0() {
-        let int = Rc::new(RefCell::new(Interrupts::default()));
-        let mut joypad = Joypad::new(int);
+        let mut joypad = Joypad::default();
 
         assert_ne!(0, joypad.read(0xff00));
 
@@ -165,8 +162,7 @@ mod tests {
 
     #[test]
     fn joypad_select() {
-        let int = Rc::new(RefCell::new(Interrupts::default()));
-        let mut joypad = Joypad::new(int);
+        let mut joypad = Joypad::default();
 
         joypad.press(Key::Btn(Select));
         joypad.press(Key::Btn(Start));

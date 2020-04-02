@@ -62,9 +62,9 @@ impl Source for Square {
         let patt = self.patt & 3;
         let peri = SAMPLE_RATE * (2048 - self.freq) / 131_072;
 
-        let samp = self.sample % peri;
-
         self.sample += 1;
+
+        let samp = self.sample % peri;
 
         if patt == 0b00 && samp < peri * 125 / 1000
             || patt == 0b01 && samp < peri / 4
@@ -121,34 +121,6 @@ impl Source for SquareSweep {
         self.sample += 1;
 
         if self.sample == self.time * SAMPLE_RATE / 128 {
-            // During a trigger event, several things occur:
-            //
-            // Square 1's frequency is copied to the shadow register.
-            // The sweep timer is reloaded.
-            // The internal enabled flag is set if either the sweep period or shift are
-            // non-zero, cleared otherwise. If the sweep shift is non-zero,
-            // frequency calculation and the overflow check are performed immediately.
-            //
-            // Frequency calculation consists of taking the value in the frequency shadow
-            // register, shifting it right by sweep shift, optionally negating the value,
-            // and summing this with the frequency shadow register to produce a new
-            // frequency. What is done with this new frequency depends on the context.
-            //
-            // The overflow check simply calculates the new frequency and if this is greater
-            // than 2047, square 1 is disabled.
-            //
-            // The sweep timer is clocked at 128 Hz by the frame sequencer. When it
-            // generates a clock and the sweep's internal enabled flag is set and the sweep
-            // period is not zero, a new frequency is calculated and the overflow check is
-            // performed. If the new frequency is 2047 or less and the sweep shift is not
-            // zero, this new frequency is written back to the shadow frequency and square
-            // 1's frequency in NR13 and NR14, then frequency calculation and overflow check
-            // are run AGAIN immediately using this new value, but this second new frequency
-            // is not written back.
-            //
-            // Square 1's frequency can be modified via NR13 and NR14 while sweep is active,
-            // but the shadow frequency won't be affected so the next time the sweep updates
-            // the channel's frequency this modification will be lost.
             let shadow = self.freq >> 1;
 
             match self.mode {
@@ -241,7 +213,7 @@ impl<S: Source> Source for LenCounter<S> {
 
         self.sample += 1;
 
-        if self.sample == SAMPLE_RATE / 256 {
+        if self.sample == SAMPLE_RATE / 64 {
             self.sample = 0;
             self.len -= 1;
         }
@@ -259,8 +231,74 @@ impl Noise {
 }
 
 impl Source for Noise {
-    // TODO
     fn sample(&mut self) -> Option<i16> {
-        Some(0)
+        None
+    }
+}
+
+pub struct Wave {
+    sample: u64,
+    wave: [u8; 0x10],
+    wave_sample: usize,
+    freq: u64,
+    // length timer
+    time: Option<u64>,
+    // volume code:
+    //  00 - 0% (no sound)
+    //  01 - 100%
+    //  10 - 50%
+    //  11 - 25%
+    volume: u64,
+}
+
+impl Wave {
+    pub fn new(nr31: u8, nr32: u8, nr33: u8, nr34: u8, wave: [u8; 0x10]) -> Self {
+        Self {
+            sample: 0,
+            wave,
+            wave_sample: 0,
+            freq: u64::from(nr33) | (u64::from(nr34 & 0x7) << 8),
+            time: None,
+            volume: u64::from(nr32 >> 5) & 0x3,
+        }
+    }
+}
+
+impl Source for Wave {
+    fn sample(&mut self) -> Option<i16> {
+        self.sample += 1;
+
+        let freq_period = 2 * (2048 - self.freq);
+        if self.sample == SAMPLE_RATE / freq_period {
+            self.sample = 0;
+            self.wave_sample += 1;
+            self.wave_sample %= 32;
+        }
+
+        let shift = match self.volume {
+            0 => 4,
+            1 => 0,
+            2 => 1,
+            3 => 3,
+            _ => panic!(),
+        };
+
+        let mut sample = self.wave[self.wave_sample / 2];
+        if self.wave_sample % 2 == 0 {
+            sample >>= 4;
+        }
+        sample &= 0xf;
+        sample >>= shift;
+
+        let mut sample = sample as f64;
+        sample /= 0xf as f64;
+        sample *= 2.0;
+        sample -= 1.0;
+        sample *= 0x7fff as f64;
+
+        let sample = sample as i16;
+        //println!("{} | {}", sample, self.freq);
+
+        Some(sample as i16)
     }
 }

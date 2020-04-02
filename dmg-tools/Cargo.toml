@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 dmg-lib = { path = "../dmg-lib" }
 colored = "1.9.3"
+rodio = "0.11.0"
