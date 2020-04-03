@@ -1,11 +1,9 @@
-use crate::{apu::device::Stereo16i44100, map::Mapped};
+use crate::{apu::device::Sample, map::Mapped};
 use device::AudioDevice;
-use num_traits::Bounded;
 use std::{
     marker::PhantomData,
     sync::{Arc, Mutex},
 };
-//use num_traits::{Bounded, NumCast};
 
 pub mod device;
 
@@ -358,25 +356,31 @@ impl<D: AudioDevice> Samples<D> {
             so[1] /= count[1] as f64;
         }
 
-        use num_traits::NumCast;
-
-        let max: f64 = NumCast::from(D::Sample::max_value()).expect("Conversion error");
-        let min: f64 = NumCast::from(D::Sample::min_value()).expect("Conversion error");
-        let l = so[0] * 0.5 + 0.5;
+        let max: f64 = D::Sample::max().as_f64();
+        let min: f64 = D::Sample::min().as_f64();
+        let l = clamp(so[0] * 0.5 + 0.5, 0.0, 1.0);
         let l = min * (1.0 - l) + max * l;
         let r = so[1] * 0.5 + 0.5;
         let r = min * (1.0 - r) + max * r;
 
         self.buffer = if D::mono() {
-            let mix = (l + r) / 2.0;
-            Some(Buffer::One(NumCast::from(mix).expect("Conversion error")))
+            let mix = D::Sample::from_f64((l + r) / 2.0);
+            Some(Buffer::One(mix))
         } else {
-            //Some(Buffer::Two([so[0] as i16, so[1] as i16]))
-            Some(Buffer::Two([
-                NumCast::from(l).expect("Conversion error"),
-                NumCast::from(r).expect("Conversion error"),
-            ]))
+            let l = D::Sample::from_f64(l);
+            let r = D::Sample::from_f64(r);
+            Some(Buffer::Two([l, r]))
         };
+    }
+}
+
+fn clamp(n: f64, min: f64, max: f64) -> f64 {
+    if n > max {
+        max
+    } else if n < min {
+        min
+    } else {
+        n
     }
 }
 

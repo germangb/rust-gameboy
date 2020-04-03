@@ -12,10 +12,7 @@ use sdl2::{
 use dmg_driver_rodio::apu::RodioSamples;
 use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
 use dmg_lib::{
-    apu::{
-        device::{Mono16i44100, Stereo16i44100},
-        Apu, Samples,
-    },
+    apu::{device::Stereo44100, Apu, Samples},
     cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::{
@@ -26,13 +23,13 @@ use dmg_lib::{
 };
 use rodio::Source;
 
-static ROM: &[u8] = include_bytes!("../roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
+static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
 
-const SCALE: u32 = 2;
-const MODE: Mode = Mode::CGB;
+const SCALE: u32 = 4;
+const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo16i44100> {
+fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> {
     let window = sdl
         .video()
         .unwrap()
