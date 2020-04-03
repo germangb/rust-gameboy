@@ -1,4 +1,4 @@
-use crate::{dev::Device, interrupts::Flag};
+use crate::{interrupts::Flag, map::Mapped};
 
 const BTN_ROW_FLAG: u8 = 0x10;
 const DIR_ROW_FLAG: u8 = 0x20;
@@ -106,7 +106,7 @@ impl Joypad {
 // Bit 2 - P12 Input Up    or Select   (0=Pressed) (Read Only)
 // Bit 1 - P11 Input Left  or Button B (0=Pressed) (Read Only)
 // Bit 0 - P10 Input Right or Button A (0=Pressed) (Read Only)
-impl Device for Joypad {
+impl Mapped for Joypad {
     fn read(&self, addr: u16) -> u8 {
         assert_eq!(0xff00, addr);
         match self.joyp & 0x30 {
@@ -127,8 +127,8 @@ impl Device for Joypad {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dev::Device,
         joypad::{Btn::*, Dir::*, Joypad, Key, BTN_ROW_FLAG, DIR_ROW_FLAG},
+        map::Mapped,
     };
 
     #[test]

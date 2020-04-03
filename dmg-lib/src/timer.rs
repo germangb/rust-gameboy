@@ -1,4 +1,4 @@
-use crate::{dev::Device, interrupts::Flag, CLOCK};
+use crate::{interrupts::Flag, map::Mapped, CLOCK};
 
 const DIV: u64 = 16_384;
 
@@ -81,7 +81,7 @@ impl Timer {
     }
 }
 
-impl Device for Timer {
+impl Mapped for Timer {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0xff04 => self.div,

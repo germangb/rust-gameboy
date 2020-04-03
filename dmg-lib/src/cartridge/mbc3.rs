@@ -1,4 +1,4 @@
-use crate::{cartridge::ram_banks, dev::Device};
+use crate::{cartridge::ram_banks, map::Mapped};
 
 enum Mode {
     Ram,
@@ -43,7 +43,7 @@ impl Mbc3 {
     }
 }
 
-impl Device for Mbc3 {
+impl Mapped for Mbc3 {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x3fff => self.rom[addr as usize],

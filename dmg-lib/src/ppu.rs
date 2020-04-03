@@ -1,6 +1,6 @@
 use crate::{
-    dev::Device,
     interrupts::Flag,
+    map::Mapped,
     ppu::palette::{Color, Palette},
     vram::VideoRam,
     Mode,
@@ -675,7 +675,7 @@ impl<V: VideoOutput> Ppu<V> {
     }
 }
 
-impl<V: VideoOutput> Device for Ppu<V> {
+impl<V: VideoOutput> Mapped for Ppu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x8000..=0x9fff => self.vram.read(addr),
@@ -786,7 +786,7 @@ impl<V: VideoOutput> Device for Ppu<V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{dev::Device, mmu::Mmu, Mode};
+    use crate::{map::Mapped, mmu::Mmu, Mode};
 
     #[test]
     fn vram() {

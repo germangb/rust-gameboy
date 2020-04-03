@@ -1,4 +1,4 @@
-pub trait Device {
+pub trait Mapped {
     fn read(&self, addr: u16) -> u8;
 
     fn write(&mut self, addr: u16, data: u8);
@@ -21,23 +21,23 @@ pub trait Device {
     }
 }
 
-impl<T: Device> Device for Box<T> {
+impl<T: Mapped> Mapped for Box<T> {
     fn read(&self, addr: u16) -> u8 {
-        <T as Device>::read(self, addr)
+        <T as Mapped>::read(self, addr)
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        <T as Device>::write(self, addr, data);
+        <T as Mapped>::write(self, addr, data);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::dev::Device;
+    use crate::map::Mapped;
 
     #[test]
     fn words() {
-        impl Device for [u8; 4] {
+        impl Mapped for [u8; 4] {
             fn read(&self, addr: u16) -> u8 {
                 self[addr as usize]
             }

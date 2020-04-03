@@ -1,4 +1,4 @@
-use crate::dev::Device;
+use crate::map::Mapped;
 
 #[repr(u8)]
 pub enum Flag {
@@ -39,7 +39,7 @@ impl Interrupts {
     }
 }
 
-impl Device for Interrupts {
+impl Mapped for Interrupts {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0xff0f => self.if_,
@@ -66,8 +66,8 @@ impl Device for Interrupts {
 #[cfg(test)]
 mod tests {
     use crate::{
-        dev::Device,
         interrupts::{Flag::*, Interrupts},
+        map::Mapped,
     };
 
     #[test]

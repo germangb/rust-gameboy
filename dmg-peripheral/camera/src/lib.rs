@@ -1,4 +1,4 @@
-use dmg_lib::{cartridge::Cartridge, dev::Device};
+use dmg_lib::{cartridge::Cartridge, map::Mapped};
 
 pub static ROM: &[u8] = include_bytes!(env!("DMG_CAMERA_ROM"));
 
@@ -166,7 +166,7 @@ impl<S: CameraSensor> PoketCamera<S> {
     }
 }
 
-impl<S: CameraSensor> Device for PoketCamera<S> {
+impl<S: CameraSensor> Mapped for PoketCamera<S> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x3fff => ROM[addr as usize],

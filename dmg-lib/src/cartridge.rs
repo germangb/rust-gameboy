@@ -1,4 +1,4 @@
-use crate::dev::Device;
+use crate::map::Mapped;
 
 mod mbc1;
 mod mbc3;
@@ -38,7 +38,7 @@ pub enum CGBSupport {
     CGB_ONLY = 0xc0,
 }
 
-pub trait Cartridge: Device {
+pub trait Cartridge: Mapped {
     #[allow(unused_variables)]
     fn step(&mut self, cycles: u64) {}
 
@@ -67,7 +67,7 @@ pub trait Cartridge: Device {
     }
 }
 
-impl Device for () {
+impl Mapped for () {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x143 => 0xc0,

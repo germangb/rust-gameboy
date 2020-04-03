@@ -12,7 +12,10 @@ use sdl2::{
 use dmg_driver_rodio::apu::RodioSamples;
 use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
 use dmg_lib::{
-    apu::{Apu, Samples},
+    apu::{
+        device::{Mono16i44100, Stereo16i44100},
+        Apu, Samples,
+    },
     cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::{
@@ -23,14 +26,13 @@ use dmg_lib::{
 };
 use rodio::Source;
 
-static ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening (U) (V1.2) [!].gb");
+static ROM: &[u8] = include_bytes!("../roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
 
 const SCALE: u32 = 2;
-const MODE: Mode = Mode::GB;
+const MODE: Mode = Mode::CGB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput> {
+fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo16i44100> {
     let window = sdl
         .video()
         .unwrap()
@@ -48,8 +50,10 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput> {
         .with_mode(MODE)
         .with_palette(PALETTE)
         .with_video(Sdl2VideoOutput::from_canvas(canvas))
-        .with_cartridge(Mbc5::from_bytes(ROM))
-        .skip_boot()
+        .with_cartridge(())
+        .with_cartridge(Mbc3::from_bytes(ROM))
+        .with_audio()
+        //.skip_boot()
         .build()
 }
 
@@ -63,9 +67,8 @@ fn main() {
 
     let device = rodio::default_output_device().unwrap();
     let queue = rodio::Sink::new(&device);
-
-    use rodio::Source;
-    queue.append(RodioSamples::new(dmg.mmu().apu().samples()));
+    let source = RodioSamples::new(dmg.mmu().apu().samples());
+    queue.append(source);
     queue.play();
 
     'mainLoop: loop {

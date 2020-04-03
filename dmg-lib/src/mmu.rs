@@ -1,10 +1,10 @@
 use crate::{
-    apu::Apu,
+    apu::{device::AudioDevice, Apu},
     cartridge::Cartridge,
     cpu::Cpu,
-    dev::Device,
     interrupts::Interrupts,
     joypad::Joypad,
+    map::Mapped,
     ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
     timer::Timer,
     wram::WorkRam,
@@ -55,13 +55,13 @@ struct VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu<C: Cartridge, V: VideoOutput> {
+pub struct Mmu<C: Cartridge, V: VideoOutput, D: AudioDevice> {
     #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
     cartridge: C,
     ppu: Ppu<V>,
-    apu: Apu,
+    apu: Apu<D>,
     timer: Timer,
     wram: WorkRam,
     joy: Joypad,
@@ -71,7 +71,7 @@ pub struct Mmu<C: Cartridge, V: VideoOutput> {
     speed: Speed,
 }
 
-impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
+impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mmu<C, V, D> {
     pub fn with_cartridge_and_video(cartridge: C, mode: Mode, video_out: V) -> Self {
         let vram_dma = VRamDma {
             hdma1: 0,
@@ -84,7 +84,7 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
         let wram = WorkRam::default();
         let int = Interrupts::default();
         let joy = Joypad::default();
-        let apu = Apu::default();
+        let apu = Apu::new();
         let speed = Speed::X1;
         let hram = [0; HRAM_SIZE];
         Self {
@@ -135,11 +135,11 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
         &mut self.wram
     }
 
-    pub fn apu(&self) -> &Apu {
+    pub fn apu(&self) -> &Apu<D> {
         &self.apu
     }
 
-    pub fn apu_mut(&mut self) -> &mut Apu {
+    pub fn apu_mut(&mut self) -> &mut Apu<D> {
         &mut self.apu
     }
 
@@ -227,7 +227,12 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
         let len = 0x9f;
 
         #[cfg(feature = "logging")]
-        log::info!(target: "mmu", "OAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#02x}", src, dst, len);
+        log::info!(
+            "OAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#02x}",
+            src,
+            dst,
+            len
+        );
 
         for addr in 0..=len {
             let src = src | (addr as u16);
@@ -251,7 +256,12 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
         let len = (u16::from(hdma5 & 0x7f) + 1) * 16;
 
         #[cfg(feature = "logging")]
-        log::info!(target: "mmu", "VRAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#04x}", src, dst, len);
+        log::info!(
+            "VRAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#04x}",
+            src,
+            dst,
+            len
+        );
 
         let src = src..src + len;
         let dst = dst..dst + len;
@@ -262,7 +272,7 @@ impl<C: Cartridge, V: VideoOutput> Mmu<C, V> {
     }
 }
 
-impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
+impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mapped for Mmu<C, V, D> {
     fn read(&self, addr: u16) -> u8 {
         #[cfg(feature = "boot")]
         use dmg_boot::{cgb, gb};
@@ -293,7 +303,8 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.read(addr),
+                | 0xff20..=0xff26
+                | 0xff27..=0xff2f => self.apu.read(addr),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => self.ppu.read(addr),
                 0xff46 => UNUSED_DATA, // OAM DMA
                 0xff50 => BOOT_REG_DATA,
@@ -337,14 +348,15 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
                 | 0xff16..=0xff19
                 | 0xff1a..=0xff1e
                 | 0xff30..=0xff3f
-                | 0xff20..=0xff26 => self.apu.write(addr, data),
+                | 0xff20..=0xff26
+                | 0xff27..=0xff2f => self.apu.write(addr, data),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => {
                     self.ppu.write(addr, data)
                 }
                 0xff46 => self.oam_dma(data),
                 0xff50 => {
                     #[cfg(feature = "logging")]
-                    log::info!(target: "mmu", "BOOT register = {:#02x}", data);
+                    log::info!("BOOT register = {:#02x}", data);
 
                     if !self.boot {
                         self.boot = data & 0x1 != 0;
@@ -360,7 +372,7 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
                 0xff4d => {
                     if data & 0x1 != 0 {
                         #[cfg(feature = "logging")]
-                        log::info!(target: "mmu", "Double speed mode enabled");
+                        log::info!("Double speed mode enabled");
 
                         self.speed = Speed::X2;
                     }
@@ -379,7 +391,7 @@ impl<C: Cartridge, V: VideoOutput> Device for Mmu<C, V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{dev::Device, mmu::Mmu, Mode};
+    use crate::{map::Mapped, mmu::Mmu, Mode};
 
     #[test]
     fn oam_dma() {

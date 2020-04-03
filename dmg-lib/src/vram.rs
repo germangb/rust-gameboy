@@ -1,4 +1,4 @@
-use crate::dev::Device;
+use crate::map::Mapped;
 
 const VRAM_SIZE: usize = 0x2000;
 
@@ -54,7 +54,7 @@ impl VideoRam {
     }
 }
 
-impl Device for VideoRam {
+impl Mapped for VideoRam {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0x8000..=0x9fff => {

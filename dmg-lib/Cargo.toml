@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 log = { version = "0.4.8", optional = true }
 dmg-boot = { path = "../dmg-boot", optional = true }
+num-traits = "0.2.11"
 
 [features]
 default = []

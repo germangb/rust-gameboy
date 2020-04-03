@@ -1,16 +1,32 @@
-use crate::{
-    apu::sfx::{LenCounter, Noise, Source, Square, SquareSweep, Volume, VolumeEnv, Wave},
-    dev::Device,
+use crate::{apu::device::Stereo16i44100, map::Mapped};
+use device::AudioDevice;
+use num_traits::Bounded;
+use std::{
+    marker::PhantomData,
+    sync::{Arc, Mutex},
 };
-use std::sync::{Arc, Mutex};
+//use num_traits::{Bounded, NumCast};
 
-mod sfx;
+pub mod device;
 
-struct ApuInner {
-    ch1: Option<Box<dyn Source>>,
-    ch2: Option<Box<dyn Source>>,
-    ch3: Option<Box<dyn Source>>,
-    ch4: Option<Box<dyn Source>>,
+struct ToneChannel {
+    // Loaded duration
+    timer: Option<u64>,
+    // NR11 FF11 DDLL LLLL Duty, Length load (64-L)
+    nrx1: u8,
+    // VVVV APPP Starting volume, Envelope add mode, period
+    nrx2: u8,
+}
+
+struct ApuInner<D: AudioDevice> {
+    _phantom: PhantomData<D>,
+    // clocked at whatever frequency in D
+    sample: u64,
+
+    ch1: Option<ToneChannel>,
+    ch2: Option<ToneChannel>,
+    ch3: Option<()>,
+    ch4: Option<()>,
 
     // Sound Channel 1 - Tone & Sweep
     nr10: u8,
@@ -54,7 +70,144 @@ struct ApuInner {
     nr52: u8,
 }
 
-impl ApuInner {
+// FIXME don't inline so much (channels 1 & 2 share some behaviour)
+impl<D: AudioDevice> ApuInner<D> {
+    #[rustfmt::skip]
+    fn ch1(&mut self) -> Option<f64> {
+        if let Some(ToneChannel {
+            ref mut timer,
+            nrx1: ref mut nr11,
+            nrx2: ref mut nr12,
+        }) = self.ch1.as_mut()
+        {
+            // duration timer
+            if let Some(ref mut timer) = timer {
+                let period = D::sample_rate() / 256;
+                if self.sample % period == 0 {
+                    *timer -= 1;
+                }
+
+                if *timer == 0 {
+                    self.ch1 = None;
+                    return None;
+                }
+            }
+
+            let mut freq = u64::from(self.nr13) | (u64::from(self.nr14 & 0x7) << 8);
+
+            // frequency sweep
+            let period = u64::from(self.nr10 >> 4) & 0x7;
+            if period > 0 && self.sample % (period * D::sample_rate() / 128) == 0 {
+                // Compute frequency and optionally negate value
+                let shift = u64::from(self.nr10) & 0x7;
+                let mut shadow = freq >> shift;
+                if self.nr10 & 0x8 != 0 {
+                    shadow = !shadow;
+                }
+                freq = freq.wrapping_add(shadow);
+                self.nr13 = (freq & 0xff) as u8;
+                self.nr14 &= !0x7;
+                self.nr14 |= (freq >> 8) as u8;
+                // The overflow check simply calculates the new frequency and if this is greater
+                // than 2047, square 1 is disabled.
+                if freq >= 2048 {
+                    self.ch1 = None;
+                    return None;
+                }
+            }
+
+            let period = D::sample_rate() * (2048 - freq) / 131072;
+            let sample = self.sample % period;
+            let duty = u64::from(self.nr11 >> 6);
+            let square = if duty == 0b00 && sample < period * 125 / 1000
+                || duty == 0b01 && sample < period / 4
+                || duty == 0b10 && sample < period / 2
+                || duty == 0b11 && sample < period * 2 / 3
+            { 1.0 } else { -1.0 };
+
+            // volume envelope
+            let mut vol = u64::from(*nr12 >> 4);
+            let period = *nr12 & 0x7;
+            if period != 0 {
+                let period = u64::from(period) * D::sample_rate() / 64;
+                if self.sample % period == 0 {
+                    match (self.nr12 >> 3) & 0x1 {
+                        0 => if vol > 0x0 { vol -= 1 }
+                        1 => if vol < 0xf { vol += 1 }
+                        _ => panic!(),
+                    }
+                    *nr12 &= 0x0f;
+                    *nr12 |= (vol as u8) << 4;
+                }
+            }
+            let vol = vol as f64 / (0xf as f64);
+
+            Some(square * vol)
+        } else {
+            None
+        }
+    }
+
+    #[rustfmt::skip]
+    fn ch2(&mut self) -> Option<f64> {
+        if let Some(ToneChannel {
+            ref mut timer,
+            nrx1: ref mut nr21,
+            nrx2: ref mut nr22,
+        }) = self.ch2.as_mut()
+        {
+            // duration timer
+            if let Some(ref mut timer) = timer {
+                let period = D::sample_rate() / 256;
+                if self.sample % period == 0 {
+                    *timer -= 1;
+                }
+
+                if *timer == 0 {
+                    self.ch2 = None;
+                    return None;
+                }
+            }
+
+            let freq = u64::from(self.nr23) | (u64::from(self.nr24 & 0x7) << 8);
+
+            let duty = u64::from(self.nr21 >> 6);
+            let period = D::sample_rate() * (2048 - freq) / 131072;
+            let sample = self.sample % period;
+            let square = if duty == 0b00 && sample < period * 125 / 1000
+                || duty == 0b01 && sample < period / 4
+                || duty == 0b10 && sample < period / 2
+                || duty == 0b11 && sample < period * 2 / 3
+            { 1.0 } else { -1.0 };
+
+            // volume envelope
+            let mut vol = u64::from(*nr22 >> 4);
+            let period = *nr22 & 0x7;
+            if period != 0 {
+                let period = u64::from(period) * D::sample_rate() / 64;
+                if self.sample % period == 0 {
+                    match (self.nr22 >> 3) & 0x1 {
+                        0 => if vol > 0x0 { vol -= 1 }
+                        1 => if vol < 0xf { vol += 1 }
+                        _ => panic!(),
+                    }
+                    *nr22 &= 0x0f;
+                    *nr22 |= (vol as u8) << 4;
+                }
+            }
+            let vol = vol as f64 / (0xf as f64);
+
+            Some(square * vol)
+        } else {
+            None
+        }
+    }
+
+    #[rustfmt::skip]
+    fn ch3(&mut self) -> Option<f64> {
+        None
+    }
+
     fn power_off(&mut self) {
         self.ch1 = None;
         self.ch2 = None;
@@ -91,15 +244,18 @@ impl ApuInner {
     }
 }
 
-unsafe impl Send for ApuInner {}
+unsafe impl<D: AudioDevice + Send> Send for ApuInner<D> {}
 
-pub struct Apu {
-    inner: Arc<Mutex<ApuInner>>,
+pub struct Apu<D: AudioDevice> {
+    inner: Arc<Mutex<ApuInner<D>>>,
 }
 
-impl Default for Apu {
-    fn default() -> Self {
+impl<D: AudioDevice> Apu<D> {
+    pub fn new() -> Self {
         let inner = ApuInner {
+            _phantom: PhantomData,
+            sample: 0,
+
             ch1: None,
             ch2: None,
             ch3: None,
@@ -136,74 +292,112 @@ impl Default for Apu {
             inner: Arc::new(Mutex::new(inner)),
         }
     }
-}
 
-impl Apu {
-    pub fn samples(&self) -> Samples {
+    pub fn samples(&self) -> Samples<D> {
         Samples {
             inner: Arc::clone(&self.inner),
+            buffer: None,
         }
     }
+}
+
+#[derive(Clone, Copy)]
+enum Buffer<D: AudioDevice> {
+    Two([D::Sample; 2]),
+    One(D::Sample),
 }
 
 /// Iterator of samples produced by the APU.
 ///
 /// # Panics
 /// The iterator panics if the APU lock gets poisoned.
-pub struct Samples {
-    inner: Arc<Mutex<ApuInner>>,
+pub struct Samples<D: AudioDevice> {
+    inner: Arc<Mutex<ApuInner<D>>>,
+    buffer: Option<Buffer<D>>,
 }
 
-impl Iterator for Samples {
-    type Item = [i16; 2];
-
-    #[rustfmt::skip]
-    fn next(&mut self) -> Option<Self::Item> {
+impl<D: AudioDevice> Samples<D> {
+    /// Loads the nest sample into the buffer
+    fn load(&mut self) {
         let mut apu = self.inner.lock().unwrap();
 
-        // stop ch3
-        if apu.nr30 & 0x80 == 0 {
-            apu.ch3 = None;
-        }
-
-        let ch1 = apu.ch1.as_mut().and_then(|c| c.sample());
-        let ch2 = apu.ch2.as_mut().and_then(|c| c.sample());
-        let ch3 = apu.ch3.as_mut().and_then(|c| c.sample());
-        let ch4 = apu.ch4.as_mut().and_then(|c| c.sample());
-
-        // Handle ended channels
-        // Unset trigger bits on each register
-        if ch1.is_none() { apu.ch1 = None; apu.nr14 &= 0x7f; }
-        if ch2.is_none() { apu.ch2 = None; apu.nr24 &= 0x7f; }
-        if ch3.is_none() { apu.ch3 = None; apu.nr34 &= 0x7f; }
-        if ch4.is_none() { apu.ch4 = None; apu.nr44 &= 0x7f; }
+        apu.sample += 1;
+        let ch1 = apu.ch1();
+        let ch2 = apu.ch2();
+        let ch3 = apu.ch3();
+        // let ch4 = apu.ch4.as_mut().and_then(|c| c.sample());
 
         // audio mixing
-        let mut so: [i32; 2] = [0, 0];
-        let mut count: [i32; 2] = [0, 0];
+        let mut so: [f64; 2] = [0.0; 2];
+        let mut count: [u32; 2] = [0; 2];
 
         let nr51 = apu.nr51;
-        for (ch, sample) in ch1.into_iter()
+        for (ch, sample) in ch1
+            .into_iter()
             .chain(ch2)
             .chain(ch3)
-            .chain(ch4).enumerate()
+            // .chain(ch4)
+            .enumerate()
         {
             let so1_bit = 1 << (ch as u8);
             let so2_bit = 1 << (4 + ch as u8);
             if nr51 & so1_bit != 0 {
-                so[0] += sample as i32;
+                so[0] += sample;
                 count[0] += 1;
             }
             if nr51 & so2_bit != 0 {
-                so[1] += sample as i32;
+                so[1] += sample;
                 count[1] += 1;
             }
         }
 
-        if count[0] > 0 { so[0] /= count[0] }
-        if count[1] > 0 { so[1] /= count[1] }
+        if count[0] > 0 {
+            so[0] /= count[0] as f64;
+        }
+        if count[1] > 0 {
+            so[1] /= count[1] as f64;
+        }
 
-        Some([so[0] as i16, so[1] as i16])
+        use num_traits::NumCast;
+
+        let max: f64 = NumCast::from(D::Sample::max_value()).expect("Conversion error");
+        let min: f64 = NumCast::from(D::Sample::min_value()).expect("Conversion error");
+        let l = so[0] * 0.5 + 0.5;
+        let l = min * (1.0 - l) + max * l;
+        let r = so[1] * 0.5 + 0.5;
+        let r = min * (1.0 - r) + max * r;
+
+        self.buffer = if D::mono() {
+            let mix = (l + r) / 2.0;
+            Some(Buffer::One(NumCast::from(mix).expect("Conversion error")))
+        } else {
+            //Some(Buffer::Two([so[0] as i16, so[1] as i16]))
+            Some(Buffer::Two([
+                NumCast::from(l).expect("Conversion error"),
+                NumCast::from(r).expect("Conversion error"),
+            ]))
+        };
+    }
+}
+
+impl<D: AudioDevice> Iterator for Samples<D> {
+    type Item = D::Sample;
+
+    #[rustfmt::skip]
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.buffer {
+                None => self.load(),
+                Some(Buffer::Two([ch0, ch1])) => {
+                    self.buffer = Some(Buffer::One(ch1));
+                    return Some(ch0);
+                },
+                Some(Buffer::One(ch)) => {
+                    self.buffer = None;
+                    return Some(ch);
+                }
+            }
+        }
     }
 }
 
@@ -213,7 +407,7 @@ impl Iterator for Samples {
 // - When powered off, registers are cleared, except high bit of NR52.
 // - While off, register writes are ignored, but not reads.
 // - Wave RAM is always readable and writable, and unaffected by power.
-impl Device for Apu {
+impl<D: AudioDevice> Mapped for Apu<D> {
     fn read(&self, addr: u16) -> u8 {
         let apu = self.inner.lock().expect("Error locking APU");
         match addr {
@@ -269,8 +463,16 @@ impl Device for Apu {
                     apu.nr14 = data & 0xc7;
 
                     if apu.nr14 & 0x80 != 0 {
-                        let tone = SquareSweep::new(apu.nr10, apu.nr11, apu.nr13, apu.nr14);
-                        apu.ch1 = Some(apply_len_envelope(tone, apu.nr11, apu.nr12, apu.nr14));
+                        let timer = if apu.nr14 & 0x40 != 0 {
+                            Some(u64::from(apu.nr11 & 0x3f))
+                        } else {
+                            None
+                        };
+                        apu.ch1 = Some(ToneChannel {
+                            timer,
+                            nrx1: apu.nr11,
+                            nrx2: apu.nr12,
+                        });
                     }
                 }
 
@@ -282,8 +484,16 @@ impl Device for Apu {
                     apu.nr24 = data & 0xc7;
 
                     if apu.nr24 & 0x80 != 0 {
-                        let tone = Square::new(apu.nr21, apu.nr23, apu.nr24);
-                        apu.ch2 = Some(apply_len_envelope(tone, apu.nr21, apu.nr22, apu.nr24));
+                        let timer = if apu.nr14 & 0x40 != 0 {
+                            Some(u64::from(apu.nr11 & 0x3f))
+                        } else {
+                            None
+                        };
+                        apu.ch2 = Some(ToneChannel {
+                            timer,
+                            nrx1: apu.nr21,
+                            nrx2: apu.nr22,
+                        });
                     }
                 }
 
@@ -295,10 +505,7 @@ impl Device for Apu {
                 0xff1e => {
                     apu.nr34 = data;
 
-                    if apu.nr34 & 0x80 != 0 {
-                        let wave = Wave::new(apu.nr31, apu.nr32, apu.nr33, apu.nr34, apu.wave_ram);
-                        apu.ch3 = Some(Box::new(wave));
-                    }
+                    if apu.nr34 & 0x80 != 0 {}
                 }
                 0xff30..=0xff3f => { /* Handled below */ }
 
@@ -308,11 +515,6 @@ impl Device for Apu {
                 0xff22 => apu.nr43 = data,
                 0xff23 => {
                     apu.nr44 = data;
-
-                    if apu.nr44 & 0x80 != 0 {
-                        let noise = Noise::new(apu.nr43);
-                        apu.ch4 = Some(apply_len_envelope(noise, apu.nr41, apu.nr42, apu.nr44));
-                    }
                 }
 
                 0xff24 => apu.nr50 = data,
@@ -371,33 +573,9 @@ impl Device for Apu {
     }
 }
 
-fn apply_len_envelope(
-    source: impl Source + 'static,
-    mut nr_1: u8,
-    nr_2: u8,
-    nr_4: u8,
-) -> Box<dyn Source> {
-    nr_1 &= 0x3f;
-
-    let len_enabled = nr_4 & 0x40 != 0;
-    let env_enabled = nr_2 & 0x7 != 0;
-
-    let wave: Box<dyn Source> = if env_enabled && len_enabled {
-        Box::new(LenCounter::new(VolumeEnv::new(source, nr_2), nr_1))
-    } else if env_enabled {
-        Box::new(VolumeEnv::new(source, nr_2))
-    } else if len_enabled {
-        Box::new(LenCounter::new(Volume::new(source, nr_2), nr_1))
-    } else {
-        Box::new(Volume::new(source, nr_2))
-    };
-
-    wave
-}
-
 #[cfg(test)]
 mod test {
-    use crate::{apu::Apu, dev::Device};
+    use crate::{apu::Apu, map::Mapped};
 
     #[test]
     fn wave_ram() {

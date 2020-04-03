@@ -9,18 +9,20 @@
 //#![deny(clippy::complexity)]
 //#![deny(clippy::perf)]
 
+use apu::device::AudioDevice;
 use cartridge::Cartridge;
 use cpu::Cpu;
-use dev::Device;
+use map::Mapped;
 use mmu::Mmu;
 use ppu::{palette::Palette, VideoOutput};
+use std::marker::PhantomData;
 
 pub mod apu;
 pub mod cartridge;
 pub mod cpu;
-pub mod dev;
 pub mod interrupts;
 pub mod joypad;
+pub mod map;
 pub mod mmu;
 pub mod ppu;
 pub mod reg;
@@ -36,24 +38,24 @@ pub enum Mode {
     CGB,
 }
 
-pub struct Dmg<C: Cartridge, V: VideoOutput> {
+pub struct Dmg<C: Cartridge, V: VideoOutput, D: AudioDevice> {
     cpu: Cpu,
-    mmu: Box<Mmu<C, V>>,
+    mmu: Box<Mmu<C, V, D>>,
     carry: u64,
 }
 
-impl<C: Cartridge, V: VideoOutput> Dmg<C, V> {
+impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Dmg<C, V, D> {
     pub fn emulate_frame(&mut self) {
         self.carry = self.mmu.emulate_frame(&mut self.cpu, self.carry);
     }
 
     /// Return the Memory Manager Unit (MMU).
-    pub fn mmu(&self) -> &Mmu<C, V> {
+    pub fn mmu(&self) -> &Mmu<C, V, D> {
         &self.mmu
     }
 
     /// Return the Memory Manager Unit (MMU) as mutable.
-    pub fn mmu_mut(&mut self) -> &mut Mmu<C, V> {
+    pub fn mmu_mut(&mut self) -> &mut Mmu<C, V, D> {
         &mut self.mmu
     }
 
@@ -68,7 +70,8 @@ impl<C: Cartridge, V: VideoOutput> Dmg<C, V> {
     }
 }
 
-pub struct Builder<C: Cartridge, V: VideoOutput> {
+pub struct Builder<C: Cartridge, V: VideoOutput, D: AudioDevice> {
+    _phantom: PhantomData<D>,
     mode: Option<Mode>,
     palette: Option<Palette>,
     skip_boot: bool,
@@ -76,9 +79,10 @@ pub struct Builder<C: Cartridge, V: VideoOutput> {
     video: V,
 }
 
-impl Default for Builder<(), ()> {
+impl Default for Builder<(), (), ()> {
     fn default() -> Self {
         Self {
+            _phantom: PhantomData,
             mode: None,
             palette: None,
             skip_boot: false,
@@ -88,9 +92,21 @@ impl Default for Builder<(), ()> {
     }
 }
 
-impl<C: Cartridge, V: VideoOutput> Builder<C, V> {
-    pub fn with_cartridge<C2: Cartridge>(self, cartridge: C2) -> Builder<C2, V> {
+impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Builder<C, V, D> {
+    pub fn with_audio<D2: AudioDevice>(self) -> Builder<C, V, D2> {
         Builder {
+            _phantom: PhantomData,
+            mode: self.mode,
+            skip_boot: self.skip_boot,
+            palette: self.palette,
+            cartridge: self.cartridge,
+            video: self.video,
+        }
+    }
+
+    pub fn with_cartridge<C2: Cartridge>(self, cartridge: C2) -> Builder<C2, V, D> {
+        Builder {
+            _phantom: PhantomData,
             mode: self.mode,
             skip_boot: self.skip_boot,
             palette: self.palette,
@@ -99,8 +115,9 @@ impl<C: Cartridge, V: VideoOutput> Builder<C, V> {
         }
     }
 
-    pub fn with_video<V2: VideoOutput>(self, video: V2) -> Builder<C, V2> {
+    pub fn with_video<V2: VideoOutput>(self, video: V2) -> Builder<C, V2, D> {
         Builder {
+            _phantom: PhantomData,
             mode: self.mode,
             skip_boot: self.skip_boot,
             palette: self.palette,
@@ -134,7 +151,7 @@ impl<C: Cartridge, V: VideoOutput> Builder<C, V> {
         self
     }
 
-    pub fn build(self) -> Dmg<C, V> {
+    pub fn build(self) -> Dmg<C, V, D> {
         let cartridge = self.cartridge;
         let mode = self.mode.unwrap_or(Mode::CGB);
         let video = self.video;

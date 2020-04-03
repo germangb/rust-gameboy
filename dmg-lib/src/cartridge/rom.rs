@@ -1,4 +1,4 @@
-use crate::dev::Device;
+use crate::map::Mapped;
 
 /// Non-switchable ROM & ram banks
 pub struct Rom {
@@ -15,7 +15,7 @@ impl Rom {
     }
 }
 
-impl Device for Rom {
+impl Mapped for Rom {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0x0000..=0x7fff => *self.rom.get(addr).unwrap_or(&0xff),

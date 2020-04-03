@@ -1,4 +1,4 @@
-use crate::dev::Device;
+use crate::map::Mapped;
 
 const WRAM_SIZE: usize = 0x1000;
 
@@ -20,7 +20,7 @@ impl Default for WorkRam {
     }
 }
 
-impl Device for WorkRam {
+impl Mapped for WorkRam {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0xc000..=0xcfff => self.wram[0][addr - 0xc000],

@@ -1,6 +1,6 @@
 static ROM: &[u8] = include_bytes!("roms/10-print.gb");
 
-use dmg_lib::{cartridge::Rom, dev::Device, mmu::Mmu, ppu::palette::GRAYSCALE, Mode};
+use dmg_lib::{cartridge::Rom, map::Mapped, mmu::Mmu, ppu::palette::GRAYSCALE, Mode};
 
 #[test]
 fn checksum() {

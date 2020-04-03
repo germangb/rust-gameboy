@@ -1,41 +1,28 @@
-use dmg_lib::apu::Samples;
+use dmg_lib::apu::{device::AudioDevice, Samples};
 use rodio::Source;
 use std::time::Duration;
 
-pub struct RodioSamples {
-    samples: Samples,
-    l: Option<i16>,
-    r: Option<i16>,
+pub type Depth = f32;
+
+pub struct RodioSamples<D: AudioDevice<Sample = Depth>> {
+    samples: Samples<D>,
 }
 
-impl RodioSamples {
-    pub fn new(samples: Samples) -> Self {
-        Self {
-            samples,
-            l: None,
-            r: None,
-        }
+impl<D: AudioDevice<Sample = Depth>> RodioSamples<D> {
+    pub fn new(samples: Samples<D>) -> Self {
+        Self { samples }
     }
 }
 
-impl Iterator for RodioSamples {
-    type Item = f32;
+impl<D: AudioDevice<Sample = Depth>> Iterator for RodioSamples<D> {
+    type Item = Depth;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.r.is_none() {
-            self.samples.next().into_iter().for_each(|[l, r]| {
-                self.l = Some(l);
-                self.r = Some(r);
-            });
-        }
-        self.l
-            .take()
-            .or_else(|| self.r.take())
-            .map(|s| ((s as f32) / (0x7fff as f32)).max(-1.0).min(1.0))
+        self.samples.next()
     }
 }
 
-impl Source for RodioSamples {
+impl<D: AudioDevice<Sample = Depth>> Source for RodioSamples<D> {
     fn current_frame_len(&self) -> Option<usize> {
         None
     }
