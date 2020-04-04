@@ -9,6 +9,8 @@ GameBoy emulation in Rust
 
 Example usage using SDL for video and [Rodio] for audio.
 
+[Rodio]: https://github.com/tomaka/rodio
+
 ```rust
 use dmg_lib::joypad::{Key, Btn};
 use dmg_driver_rodio::apu::RodioSamples;
