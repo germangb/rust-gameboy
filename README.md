@@ -77,6 +77,7 @@ loop {
 In order to include the bootstrap rom, you must own boot roms for both GB and CGB (they can be found online easily).
 
 ```bash
+# these must be present when you cargo build your crate
 export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
 export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
 ```
