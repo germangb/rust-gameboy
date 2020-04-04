@@ -4,8 +4,6 @@ Peripherals are cartridges that implement some special functionality.
 
 ## Supported
 
-These are the supported peripherals in the [dmg-peripheral](dmg-peripheral) module.
-
 | Peripheral | Requirements                | Notes 
 | ---        | ---                         | ---
 | Camera     | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own rom in via the environment variable
