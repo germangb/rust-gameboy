@@ -7,9 +7,12 @@ GameBoy emulation in Rust
 
 ## Usage
 
-Example usage using SDL for video and [Rodio] for audio.
+Example using SDL for video and [Rodio] for audio.
+
+(A simplified version of the full example in [native frontend])
 
 [Rodio]: https://github.com/tomaka/rodio
+[native frontend]: dmg-frontend/native/src/main.rs
 
 ```rust
 use dmg_lib::{
