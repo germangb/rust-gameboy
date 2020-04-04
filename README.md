@@ -21,6 +21,7 @@ let canvas = ...;
 
 // setup the emulator
 let mut dmg = Builder::default()
+    // Any type that implements the Cartridge trait
     .with_cartridge(..)
     .with_video(Sdl2VideoOutput::from_canvas(canvas))
     .build();
@@ -61,16 +62,45 @@ loop {
 | -------------- | :-----: | ---
 | Cycle accuracy | ❌      | Out of scope (might change my mind later)
 | Classic GB     | ✔️       | Works on most games, except the ones that require cycle accuracy.
-| Color GB (CGB) | ✔️       | Still buggy. Working on it
+| Color (CGB)    | ✔️       | Still buggy. Working on it
 | Sound          |         | Still buggy. Working on it
-| Serial         |         | In scope but not implemented yet.
+| Link cable     |         | In scope but not implemented yet.
 
 ## Peripherals
+
+These are the supported peripherals in the [dmg-peripheral](dmg-peripheral) module.
 
 | Peripheral | Requirements                | Notes 
 | ---        | ---                         | ---
 | Camera     | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own rom in via the environment variable
 
+Implementing new peripherals is straightforward:
+
+```Rust
+use dmg_lib::map::Mapped;
+use dmg_lib::cartridge::Cartridge;
+
+struct MyPeripheral { .. }
+
+// peripherals are mapped to:
+//
+//  0x0000..=0x7fff (ROM area)
+//  0xa000..=0xbfff (External RAM area)
+//
+// (ref: http://problemkaputt.de/pandocs.htm#memorymap):
+impl Mapped for MyPeripherak { 
+    fn read(&self, addr: u16) -> u8 {
+        // ...
+    }
+
+    fn write(&mut self, addr: u16, data: u8) {
+        // ...
+    }
+}
+
+// Add the Cartridge marker trait
+impl Cartridge for MyPeripheral {}
+```
 
 ## Boot ROMs
 
