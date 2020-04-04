@@ -1,11 +1,12 @@
-use crate::map::Mapped;
-use device::{AudioDevice, Sample};
+use crate::{apu::samples::SamplesMutex, map::Mapped};
+use device::AudioDevice;
 use std::{
     marker::PhantomData,
     sync::{Arc, Mutex, MutexGuard},
 };
 
 pub mod device;
+pub mod samples;
 
 const LEN_CLOCK: u64 = 256;
 const VOL_CLOCK: u64 = 64;
@@ -280,7 +281,7 @@ impl<D: AudioDevice> ApuInner<D> {
             0 => self.ch0.as_mut().and_then(|c| c.len),
             1 => self.ch1.as_mut().and_then(|c| c.len),
             2 => self.ch2.as_mut().and_then(|c| c.len),
-            3 => self.ch2.as_mut().and_then(|c| c.len),
+            3 => self.ch3.as_mut().and_then(|c| c.len),
             _ => panic!(),
         };
 
@@ -360,16 +361,6 @@ fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
     }
 }
 
-fn clamp(n: f64, min: f64, max: f64) -> f64 {
-    if n > max {
-        max
-    } else if n < min {
-        min
-    } else {
-        n
-    }
-}
-
 pub struct Apu<D: AudioDevice> {
     inner: Arc<Mutex<ApuInner<D>>>,
 }
@@ -418,111 +409,10 @@ impl<D: AudioDevice> Apu<D> {
     }
 
     /// Return audio samples iterator.
-    pub fn samples(&self) -> Samples<D> {
-        Samples {
-            inner: Arc::clone(&self.inner),
-            buf: None,
-        }
+    pub fn samples(&self) -> SamplesMutex<D> {
+        SamplesMutex::new(&self.inner)
     }
 }
-
-enum SampleBuffer<D: AudioDevice> {
-    Two([D::Sample; 2]),
-    One([D::Sample; 1]),
-}
-
-/// Iterator of samples produced by the APU.
-///
-/// # Panics
-/// The iterator panics if the APU lock gets poisoned.
-pub struct Samples<D: AudioDevice> {
-    inner: Arc<Mutex<ApuInner<D>>>,
-    buf: Option<SampleBuffer<D>>,
-}
-
-impl<D: AudioDevice> Samples<D> {
-    // Loads the next sample into the buffer
-    fn load(&mut self) {
-        let mut apu = lock(&self.inner);
-
-        apu.sample += 1;
-
-        // sample new voices
-        let ch0 = apu.channel0();
-        let ch1 = apu.channel1();
-        let ch2 = apu.channel2();
-        let ch3 = apu.ch3();
-
-        // audio mixing
-        let mut so: [f64; 2] = [0.0; 2];
-        let mut count: [u32; 2] = [0; 2];
-
-        let nr51 = apu.nr51;
-        for (ch, sample) in [ch0, ch1, ch2, ch3].iter().copied().enumerate() {
-            let so1_bit = 1 << (ch as u8);
-            let so2_bit = 1 << (4 + ch as u8);
-            let sample = if let Some(sample) = sample {
-                sample
-            } else {
-                0.0
-            };
-            if nr51 & so1_bit != 0 {
-                so[0] += sample;
-                count[0] += 1;
-            }
-            if nr51 & so2_bit != 0 {
-                so[1] += sample;
-                count[1] += 1;
-            }
-        }
-
-        if count[0] > 0 {
-            so[0] /= count[0] as f64;
-        }
-        if count[1] > 0 {
-            so[1] /= count[1] as f64;
-        }
-
-        let max: f64 = D::Sample::max().as_f64();
-        let min: f64 = D::Sample::min().as_f64();
-        let l = clamp(so[0] * 0.5 + 0.5, 0.0, 1.0);
-        let l = min * (1.0 - l) + max * l;
-        let r = clamp(so[1] * 0.5 + 0.5, 0.0, 1.0);
-        let r = min * (1.0 - r) + max * r;
-
-        self.buf = Some(if D::mono() {
-            let mix = D::Sample::from_f64((l + r) / 2.0);
-            SampleBuffer::One([mix])
-        } else {
-            let l = D::Sample::from_f64(l);
-            let r = D::Sample::from_f64(r);
-            SampleBuffer::Two([l, r])
-        });
-    }
-}
-
-// TODO currently the iterator has to lock the APU for every sample. Refactor so
-// that it only needs to lock once
-impl<D: AudioDevice> Iterator for Samples<D> {
-    type Item = D::Sample;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.buf {
-                Some(SampleBuffer::Two([ch0, ch1])) => {
-                    self.buf = Some(SampleBuffer::One([ch1]));
-                    return Some(ch0);
-                }
-                Some(SampleBuffer::One([ch])) => {
-                    self.buf = None;
-                    return Some(ch);
-                }
-                None => self.load(),
-            }
-        }
-    }
-}
-
 //
 // - APU registers always have some bits set when read back.
 // - Wave memory can be read back freely.

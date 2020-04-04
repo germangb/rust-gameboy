@@ -1,5 +1,5 @@
 use dmg_driver_rodio::apu::RodioSamples;
-use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
+use dmg_driver_sdl2::{apu::create_device, ppu::Sdl2VideoOutput};
 use dmg_lib::{
     apu::device::Stereo44100,
     cartridge::{Cartridge, Mbc5},
@@ -25,7 +25,7 @@ const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> {
+fn create_emulator(sdl: &Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> {
     let window = sdl
         .video()
         .unwrap()
@@ -58,13 +58,17 @@ fn main() {
     let sdl = sdl2::init().unwrap();
 
     let mut event_pump = sdl.event_pump().unwrap();
-    let mut dmg = emulator(sdl);
+    let mut dmg = create_emulator(&sdl);
 
     let device = rodio::default_output_device().unwrap();
     let queue = rodio::Sink::new(&device);
     let source = RodioSamples::new(dmg.mmu().apu().samples());
     queue.append(source);
     queue.play();
+
+    // let audio = sdl.audio().unwrap();
+    // let device = create_device(&audio, dmg.mmu().apu().samples()).unwrap();
+    // device.resume();
 
     'mainLoop: loop {
         let time = Instant::now();
@@ -117,7 +121,11 @@ fn main() {
         dmg.mmu_mut().ppu_mut().video_output_mut().present();
 
         let time = time.elapsed();
-        let sleep = Duration::new(0, 1_000_000_000 / 60);
+        let sleep = if event_pump.keyboard_state().is_scancode_pressed(Scancode::S) {
+            Duration::new(0, 1_000_000_000 / 30)
+        } else {
+            Duration::new(0, 1_000_000_000 / 60)
+        };
         if time < sleep && !event_pump.keyboard_state().is_scancode_pressed(Scancode::F) {
             thread::sleep(sleep - time);
         }

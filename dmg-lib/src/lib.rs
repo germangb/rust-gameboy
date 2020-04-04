@@ -1,13 +1,13 @@
-// #![deny(dead_code)]
-// #![deny(unused_imports)]
-// #![deny(unused_must_use)]
-// #![deny(unused_variables)]
-// #![deny(unused_mut)]
-// #![deny(unused_imports)]
-// #![deny(clippy::style)]
-// #![deny(clippy::correctness)]
-// #![deny(clippy::complexity)]
-// #![deny(clippy::perf)]
+#![deny(dead_code)]
+#![deny(unused_imports)]
+#![deny(unused_must_use)]
+#![deny(unused_variables)]
+#![deny(unused_mut)]
+#![deny(unused_imports)]
+#![deny(clippy::style)]
+#![deny(clippy::correctness)]
+#![deny(clippy::complexity)]
+#![deny(clippy::perf)]
 
 use apu::device::AudioDevice;
 use cartridge::Cartridge;

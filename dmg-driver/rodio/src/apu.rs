@@ -1,13 +1,13 @@
-use dmg_lib::apu::{device::AudioDevice, Samples};
+use dmg_lib::apu::{device::AudioDevice, samples::SamplesMutex};
 use rodio::Source;
 use std::time::Duration;
 
 pub struct RodioSamples<D: AudioDevice> {
-    samples: Samples<D>,
+    samples: SamplesMutex<D>,
 }
 
 impl<D: AudioDevice> RodioSamples<D> {
-    pub fn new(samples: Samples<D>) -> Self {
+    pub fn new(samples: SamplesMutex<D>) -> Self {
         Self { samples }
     }
 }
@@ -20,7 +20,7 @@ where
     type Item = D::Sample;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.samples.next()
+        self.samples.lock().next()
     }
 }
 
