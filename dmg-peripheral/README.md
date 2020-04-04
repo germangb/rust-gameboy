@@ -6,13 +6,13 @@ Peripherals are cartridges that implement some special functionality.
 
 | Name | Picture | Requirements | Notes 
 | --- | :---: | --- | ---
-| Camera | ![](assets/camera.png) | `DMG_PERIPHERAL_CAMERA_ROM` |
+| Camera | ![](assets/camera.png) | `DMG_PERIPHERAL_CAMERA_ROM` | Environment variable must be defined at build time
 
 ## Implement new peripherals
 
 Implementing new peripherals is straightforward.
 
-The only requirement is that the type is marked with the `Cartridge` and implement the `Mapped` trait.
+The only requirements is that the type is marked with the `Cartridge` and implement the `Mapped` trait.
 
 ```Rust
 use dmg_lib::{cartridge::Cartridge, map::Mapped};

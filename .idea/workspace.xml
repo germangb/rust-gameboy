@@ -122,8 +122,8 @@
       <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
       <envs>
-        <env name="DMG_BOOT_GB_ROM" value="$PWD/dmg-boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PWD/dmg-boot/roms/boot.gbc" />
+        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg-boot/roms/boot.gb" />
+        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg-boot/roms/boot.gbc" />
         <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg-peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
         <env name="RUST_LOG" value="apu" />
       </envs>
@@ -202,10 +202,10 @@
     <option name="showServicesTree" value="false" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1586027453737">
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1586041620870">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586027453737" />
+    <state x="288" y="242" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586041620870" />
     <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583947528331">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -222,30 +222,30 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="818" y="273" width="624" height="544" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585670688009" />
-    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog" timestamp="1586018343007">
+    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog" timestamp="1586041620037">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586018343007" />
+    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586041620037" />
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl" timestamp="1585239223742">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="261" key="GridCell.Tab.0.bottom" timestamp="1586041282816">
+    <state width="1920" height="261" key="GridCell.Tab.0.bottom" timestamp="1586041662990">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="261" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586041282816" />
-    <state width="1920" height="261" key="GridCell.Tab.0.center" timestamp="1586041282815">
+    <state width="1920" height="261" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586041662990" />
+    <state width="1920" height="261" key="GridCell.Tab.0.center" timestamp="1586041662989">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="261" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586041282815" />
-    <state width="1920" height="261" key="GridCell.Tab.0.left" timestamp="1586041282813">
+    <state width="1920" height="261" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586041662989" />
+    <state width="1920" height="261" key="GridCell.Tab.0.left" timestamp="1586041662988">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="261" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586041282813" />
-    <state width="1920" height="261" key="GridCell.Tab.0.right" timestamp="1586041282815">
+    <state width="1920" height="261" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586041662988" />
+    <state width="1920" height="261" key="GridCell.Tab.0.right" timestamp="1586041662989">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="261" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586041282815" />
+    <state width="1920" height="261" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586041662989" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
