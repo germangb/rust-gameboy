@@ -36,10 +36,11 @@ where
 {
     let freq = D::sample_rate() as _;
     let channels = if D::mono() { 1 } else { 2 };
+    let buffer = freq / 60;
     let spec = AudioSpecDesired {
         freq: Some(freq),
         channels: Some(channels),
-        samples: None,
+        samples: Some(buffer as _),
     };
 
     audio.open_playback(None, &spec, |spec| {

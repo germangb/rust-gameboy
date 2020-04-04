@@ -26,6 +26,7 @@ struct WaveChannel {
 struct NoiseChannel {
     len: Option<u64>,
     lfsr: u16,
+    nr43: u8,
 }
 
 struct ApuInner<D: AudioDevice> {
@@ -160,7 +161,6 @@ impl<D: AudioDevice> ApuInner<D> {
         let freq = self.freq(2);
 
         if let Some(WaveChannel { ref mut sample, .. }) = self.ch2.as_mut() {
-            // frequency timer
             let freq = (2048 - freq) * 2;
             if self.sample % (D::sample_rate() / freq) == 0 {
                 *sample += 1;
@@ -206,7 +206,7 @@ impl<D: AudioDevice> ApuInner<D> {
             let period = D::sample_rate() / freq.min(D::sample_rate());
 
             // FIXME this is wrong, but I can't get it to output what it should. I'm
-            // probably misunderstanding how this is supposed to work
+            // probably misunderstanding how this works...
             if self.nr43 & 0x8 != 0 {
                 if self.sample % period == 0 {
                     let l0 = *lfsr & 0x1;
@@ -547,6 +547,7 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         apu.ch3 = Some(NoiseChannel {
                             len: timer,
                             lfsr: 0x7fff,
+                            nr43: apu.nr43,
                         });
                     }
                 }

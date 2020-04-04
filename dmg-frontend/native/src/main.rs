@@ -21,6 +21,7 @@ use std::{
 static ROM: &[u8] =
     include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
+const RODIO: bool = true;
 const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
@@ -60,15 +61,21 @@ fn main() {
     let mut event_pump = sdl.event_pump().unwrap();
     let mut dmg = create_emulator(&sdl);
 
-    let device = rodio::default_output_device().unwrap();
-    let queue = rodio::Sink::new(&device);
-    let source = RodioSamples::new(dmg.mmu().apu().samples());
-    queue.append(source);
-    queue.play();
-
-    // let audio = sdl.audio().unwrap();
-    // let device = create_device(&audio, dmg.mmu().apu().samples()).unwrap();
-    // device.resume();
+    let _device = if RODIO {
+        eprintln!("Using Rodio for audio");
+        let device = rodio::default_output_device().unwrap();
+        let queue = rodio::Sink::new(&device);
+        let source = RodioSamples::new(dmg.mmu().apu().samples());
+        queue.append(source);
+        queue.play();
+        (Some(queue), None)
+    } else {
+        eprintln!("Using SDL for audio");
+        let audio = sdl.audio().unwrap();
+        let device = create_device(&audio, dmg.mmu().apu().samples()).unwrap();
+        device.resume();
+        (None, Some(device))
+    };
 
     'mainLoop: loop {
         let time = Instant::now();

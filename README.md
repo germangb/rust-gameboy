@@ -1,68 +1,85 @@
-# `YAGBE`
-**Y**et **A**nother **G**ame **B**oy **E**mulator.
+# `dmg`
+
+GameBoy emulation in Rust
 
 ![](assets/zelda.gif)
 ![](assets/mario.gif)
 
-# Scope
+## Usage
 
-The scope of this repo is not to be a fully feature standalone emulator, but rather to provide a set of primitives
-(component emulation, serialization, etc) that may be used to build emulators and tools. The `dmg-frontend` module
-contains two emulator as reference, one native (backed by SDL), and another that runs on the web (using WebAssembly).
+Example usage using SDL for video and [Rodio] for audio.
 
-## Project Structure
+```rust
+use dmg_lib::joypad::{Key, Btn};
+use dmg_driver_rodio::apu::RodioSamples;
+use dmg_driver_sdl::ppu::SdlVideoOutput;
 
-- **dmg-lib/** Emulator crate.
-- **dmg-boot/** Internally used to manage the boot ROMs.
-- **dmg-peripherals/**
-    - **camera/** GameBoy Camera emulation.
-- **dmg-driver/**
-    - **sdl2/** SDL2-backed video and audio backend.
-    - **wasm/** WebAssembly & JS backend.
-    - **gl/** OpenGL Texture-backed video backend.
-- **dmg-frontend/**
-    - **native/** Example native emulator frontend.
-    - **web/** Example web-based GameBoy Camera emulation.
-- **dmg-tools/**
-    - **src/bin/check_rom.rs** Standalone CLI tools.
+// create SDL canvas
+let canvas = ...;
+
+// setup the emulator
+let mut dmg = Builder::default()
+    .with_cartridge(..)
+    .with_video(Sdl2VideoOutput::from_canvas(canvas))
+    .build();
+
+// set up audio
+let device = rodio::default_output_device().unwrap();
+let queue = rodio::Sink::new(&device);
+queue.append(RodioSamples::new(dmg.mmu().apu().samples()));
+queue.play();
+
+loop {
+    // Here you would handle input
+    // As an example, press and release the start button
+    dmg.mmu_mut().joypad_mut().press(Key::Btn(Btn::Start))
+    dmg.mmu_mut().joypad_mut().release(Key::Btn(Btn::Start))
     
-### Features
+    // Emulate one frame and present the result
+    dmg.emulate_frame();
+    dmg.mmu_mut().ppu_mut().video_mut().present()
+
+    sync(60);
+}
+```
+
+## Modules
+
+- [dmg-lib](dmg-lib) core emulation library (cpu, ppu, apu, cartridges, etc..)
+- [dmg-driver](dmg-driver) video & audio backends
+- [dmg-peripherals](dmg-peripheral) supported peripherals
+- [dmg-frontend](dmg-frontend) reference frontends
+    - [native](dmg-frontend/native)
+    - [web](dmg-frontend/web)
+
+    
+## Features
 
 | Feature        | Support | Notes
 | -------------- | :-----: | ---
-| Cycle accuracy | ❌      | Out of scope. Some obscure games and demoscene demos that require very precise timing might fail as a result.
-| Classic GB     | ✔️       | Works on most games I tested (see compatibility table) except the ones that require super precise timing.
-| Color GB (CGB) | ✔️       | Known glitches on some games (see compatibility table).
-| Super GB (SGB) | ❌      | Outside of current scope, but maybe in the near future.
-| Sound          |         |
-| Serial         |         |
-| Peripherals    | ✔️       | See Peripherals section below.
+| Cycle accuracy | ❌      | Out of scope (might change my mind later)
+| Classic GB     | ✔️       | Works on most games, except the ones that require cycle accuracy.
+| Color GB (CGB) | ✔️       | Still buggy. Working on it
+| Sound          |         | Still buggy. Working on it
+| Serial         |         | In scope but not implemented yet.
 
-### Peripherals
+## Peripherals
 
-| Peripheral      | Requirements                | Notes 
-| ---             | ---                         | ---
-| Game Boy Camera | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own ROM in the env variable.
+| Peripheral | Requirements                | Notes 
+| ---        | ---                         | ---
+| Camera     | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own rom in via the environment variable
 
 
-# Boot ROMs
+## Boot ROMs
 
-The boot ROM is a small program that runs at the beginning of the emulation to initialize the state of the console. In GB, it doesn't do much, but in CGB it can [add color to non-CGB games].
-
-The `dmg-lib` crate can be built with a feature flag to include the boot ROMs of both the GB and CGB.
-You must provide your own ROMs in environment variables.
-
-[add color to non-CGB games]: https://www.reddit.com/r/nintendo/comments/43hzdo/til_the_color_palette_of_the_game_boy_color_can/
+In order to include the bootstrap rom, you must own boot roms for both GB and CGB (they can be found online easily).
 
 ```bash
 export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
 export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
 ```
 
-Additionally, if you want to support some of the peripherals listed below, you must also provide their own ROM if they
-require one.
-
-Then, in your Cargo.toml
+Then, in your Cargo.toml you must enable the `boot` feature flag:
 
 ```toml
 # Cargo.toml
@@ -71,8 +88,7 @@ Then, in your Cargo.toml
 features = ["boot"]
 ```
 
-> **NOTE:** The build process performs some shallow validations on the provided ROMS, but there is not guarantee that,
-> if they're not correct, the crate will not buid.
+> **NOTE:** There is currently no build-time validation of the boot rom. Therefore it's not guaranteed that, if the boot roms aren't correct, the build will not work.
 
 ## Tests
 
@@ -108,6 +124,8 @@ features = ["boot"]
 
 ## Resources
 
+- http://problemkaputt.de/pandocs.htm
+- https://gbdev.gg8.se/wiki/
 - https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 - https://gekkio.fi/files/gb-docs/gbctr.pdf
 - https://github.com/gbdev/awesome-gbdev
