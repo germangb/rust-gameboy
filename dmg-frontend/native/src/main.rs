@@ -1,5 +1,5 @@
-use dmg_driver_rodio::apu::RodioSamples;
-use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
+use dmg_driver_rodio::apu::DmgSource;
+use dmg_driver_sdl2::ppu::SdlVideo;
 use dmg_lib::{
     apu::device::Stereo44100,
     cartridge::Mbc5,
@@ -39,7 +39,7 @@ fn main() {
         .expect("Error creating SDL canvas");
 
     let mut emulator = Builder::default()
-        .with_video(Sdl2VideoOutput::new(canvas))
+        .with_video(SdlVideo::new(canvas))
         .with_cartridge(Mbc5::new(ROM))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
@@ -49,7 +49,7 @@ fn main() {
     // set up audio
     let device = rodio::default_output_device().expect("Error creating rodio device");
     let sink = rodio::Sink::new(&device);
-    let source = RodioSamples::new(emulator.mmu().apu());
+    let source = DmgSource::new(emulator.mmu().apu());
     sink.append(source);
     sink.play();
 

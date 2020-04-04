@@ -1,3 +1,9 @@
+#![cfg_attr(
+    not(debug_assertions),
+    deny(dead_code, unused_imports, unused_variables)
+)]
+#![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
+
 /// Audio backend using WebAudio.
 ///
 /// The feature *audio* must be enabled.

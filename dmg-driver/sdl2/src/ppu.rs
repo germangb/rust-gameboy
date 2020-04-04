@@ -10,12 +10,12 @@ use std::{
 
 const PIXELS: usize = 160 * 144;
 
-pub struct Sdl2VideoOutput {
+pub struct SdlVideo {
     canvas: WindowCanvas,
     buffer: Box<[[Color; 160]; 144]>,
 }
 
-impl Deref for Sdl2VideoOutput {
+impl Deref for SdlVideo {
     type Target = WindowCanvas;
 
     fn deref(&self) -> &Self::Target {
@@ -23,13 +23,13 @@ impl Deref for Sdl2VideoOutput {
     }
 }
 
-impl DerefMut for Sdl2VideoOutput {
+impl DerefMut for SdlVideo {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.canvas
     }
 }
 
-impl Sdl2VideoOutput {
+impl SdlVideo {
     pub fn new(canvas: WindowCanvas) -> Self {
         Self {
             canvas,
@@ -46,7 +46,7 @@ impl Sdl2VideoOutput {
     }
 }
 
-impl Video for Sdl2VideoOutput {
+impl Video for SdlVideo {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
         std::mem::replace(&mut self.buffer[line], *pixels);
         if line == 143 {

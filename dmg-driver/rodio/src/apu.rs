@@ -2,11 +2,11 @@ use dmg_lib::apu::{device::Audio, samples::SamplesMutex, Apu};
 use rodio::Source;
 use std::time::Duration;
 
-pub struct RodioSamples<D: Audio> {
+pub struct DmgSource<D: Audio> {
     samples: SamplesMutex<D>,
 }
 
-impl<D: Audio> RodioSamples<D> {
+impl<D: Audio> DmgSource<D> {
     pub fn new(apu: &Apu<D>) -> Self {
         Self {
             samples: apu.samples(),
@@ -14,7 +14,7 @@ impl<D: Audio> RodioSamples<D> {
     }
 }
 
-impl<D> Iterator for RodioSamples<D>
+impl<D> Iterator for DmgSource<D>
 where
     D: Audio,
     D::Sample: rodio::Sample,
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<D> Source for RodioSamples<D>
+impl<D> Source for DmgSource<D>
 where
     D: Audio,
     D::Sample: rodio::Sample,
