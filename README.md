@@ -138,6 +138,10 @@ features = ["boot"]
 
 ### CPU instruction tests
 
+```bash
+cargo test cpu_instrs
+```
+
 | Test                       | Pass
 | -------------------------- | :---:
 | `01-special.gb`            | ✔️
