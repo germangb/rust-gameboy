@@ -69,7 +69,7 @@ pub struct PoketCamera<S: CameraSensor> {
 }
 
 impl<S: CameraSensor> PoketCamera<S> {
-    pub fn with_sensor(sensor: S) -> Self {
+    pub fn new(sensor: S) -> Self {
         let mode = Mode::Ram;
         let buffer = [[0; SENSOR_W]; SENSOR_H];
         let rom_bank = 0;

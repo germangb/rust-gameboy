@@ -39,7 +39,7 @@ impl Dmg {
             .with_mode(MODE)
             .with_palette(PALETTE)
             .with_video(video)
-            .with_cartridge(PoketCamera::with_sensor(sensor))
+            .with_cartridge(PoketCamera::new(sensor))
             .build();
         Self(dmg)
     }

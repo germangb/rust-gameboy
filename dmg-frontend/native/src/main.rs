@@ -7,6 +7,7 @@ use dmg_lib::{
     ppu::palette::{Palette, *},
     Builder, Dmg, Mode,
 };
+use dmg_peripheral_camera::PoketCamera;
 use sdl2::{
     event::{Event, WindowEvent},
     keyboard::Scancode,
@@ -20,7 +21,7 @@ use std::{
 static ROM: &[u8] =
     include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
-const SCALE: u32 = 4;
+const SCALE: u32 = 2;
 const MODE: Mode = Mode::GB;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
@@ -44,6 +45,8 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> 
         .with_video(Sdl2VideoOutput::from_canvas(canvas))
         .with_cartridge(())
         .with_cartridge(Mbc5::from_bytes(ROM))
+        //.with_cartridge(PoketCamera::new(()))
+        //.with_cartridge(())
         .with_audio()
         //.skip_boot()
         .build()

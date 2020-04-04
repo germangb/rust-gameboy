@@ -1,19 +1,38 @@
 use std::marker::PhantomData;
 
 pub trait Sample: Copy {
+    /// Minimum sample value.
     fn min() -> Self;
+    /// Maximum sample value.
     fn max() -> Self;
+
     fn from_f64(n: f64) -> Self;
-    fn as_f64(&self) -> f64;
+
+    fn as_f64(self) -> f64;
 }
 
 macro_rules! sample {
     ($(($num:ty, $min:expr, $max:expr)),*) => {$(
         impl Sample for $num {
-            fn min() -> Self { $min }
-            fn max() -> Self { $max }
-            fn from_f64(n: f64) -> Self { n as Self }
-            fn as_f64(&self) -> f64 { *self as f64 }
+            #[inline]
+            fn min() -> Self {
+                $min
+            }
+
+            #[inline]
+            fn max() -> Self {
+                $max
+            }
+
+            #[inline]
+            fn from_f64(n: f64) -> Self {
+                n as Self
+            }
+
+            #[inline]
+            fn as_f64(self) -> f64 {
+                self as f64
+            }
         }
     )*}
 }
@@ -37,16 +56,19 @@ pub trait AudioDevice {
 
 /// 44100Hz, stereo.
 pub struct Stereo44100<T>(PhantomData<T>);
+
 /// 44100Hz, mono.
 pub struct Mono44100<T>(PhantomData<T>);
 
 impl<T: Sample> AudioDevice for Stereo44100<T> {
     type Sample = T;
 
+    #[inline]
     fn sample_rate() -> u64 {
         44100
     }
 
+    #[inline]
     fn mono() -> bool {
         false
     }
@@ -55,10 +77,12 @@ impl<T: Sample> AudioDevice for Stereo44100<T> {
 impl<T: Sample> AudioDevice for Mono44100<T> {
     type Sample = T;
 
+    #[inline]
     fn sample_rate() -> u64 {
         44100
     }
 
+    #[inline]
     fn mono() -> bool {
         false
     }
@@ -94,7 +118,7 @@ impl Sample for () {
         panic!()
     }
 
-    fn as_f64(&self) -> f64 {
+    fn as_f64(self) -> f64 {
         panic!()
     }
 }

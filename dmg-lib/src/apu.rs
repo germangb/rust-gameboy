@@ -12,17 +12,16 @@ const VOL_CLOCK: u64 = 64;
 const SWEEP_CLOCK: u64 = 128;
 
 struct ToneChannel {
-    timer: Option<u64>,
+    len: Option<u64>,
 }
 
 struct WaveChannel {
-    timer: Option<u64>,
+    len: Option<u64>,
     sample: u64,
 }
 
 struct NoiseChannel {
-    timer: Option<u64>,
-    // 15 & 7bit random generator
+    len: Option<u64>,
     lfsr: u16,
 }
 
@@ -31,10 +30,10 @@ struct ApuInner<D: AudioDevice> {
     // clocked at whatever frequency in D
     sample: u64,
 
+    ch0: Option<ToneChannel>,
     ch1: Option<ToneChannel>,
-    ch2: Option<ToneChannel>,
-    ch3: Option<WaveChannel>,
-    ch4: Option<NoiseChannel>,
+    ch2: Option<WaveChannel>,
+    ch3: Option<NoiseChannel>,
 
     // Sound Channel 1 - Tone & Sweep
     nr10: u8,
@@ -42,11 +41,13 @@ struct ApuInner<D: AudioDevice> {
     nr12: u8,
     nr13: u8,
     nr14: u8,
+
     // Sound Channel 2 - Tone
     nr21: u8,
     nr22: u8,
     nr23: u8,
     nr24: u8,
+
     // Sound Channel 3 - Wave Output
     nr30: u8,
     nr31: u8,
@@ -54,6 +55,7 @@ struct ApuInner<D: AudioDevice> {
     nr33: u8,
     nr34: u8,
     wave_ram: [u8; 0x10],
+
     // Sound Channel 4 - Noise
     nr41: u8,
     nr42: u8,
@@ -80,16 +82,17 @@ struct ApuInner<D: AudioDevice> {
 
 // FIXME don't inline so much (channels 1 & 2 share some behaviour)
 impl<D: AudioDevice> ApuInner<D> {
-    fn ch1(&mut self) -> Option<f64> {
-        if let Some(ToneChannel { ref mut timer, .. }) = self.ch1.as_mut() {
-            // duration timer
-            if update_len::<D>(self.sample, timer) {
-                self.ch1 = None;
-                return None;
-            }
+    // sample channel 0
+    // applies frequency sweeping, volume envelope, and duration
+    fn channel0(&mut self) -> Option<f64> {
+        if self.len_elapsed(0) {
+            self.ch0 = None;
+            return None;
+        }
 
-            let mut freq = u64::from(self.nr13) | (u64::from(self.nr14 & 0x7) << 8);
+        let mut freq = self.freq(0);
 
+        if self.ch0.is_some() {
             // frequency sweep
             let period = u64::from(self.nr10 >> 4) & 0x7;
             if period > 0 && self.sample % (period * D::sample_rate() / SWEEP_CLOCK) == 0 {
@@ -106,14 +109,14 @@ impl<D: AudioDevice> ApuInner<D> {
                 // The overflow check simply calculates the new frequency and if this is greater
                 // than 2047, square 1 is disabled.
                 if freq >= 2048 {
-                    self.ch1 = None;
+                    self.ch0 = None;
                     return None;
                 }
             }
 
             let square = square_wave::<D>(self.sample, freq, self.nr11);
 
-            let vol = update_vol::<D>(self.sample, &mut self.nr12);
+            let vol = self.vol_envelope(0);
 
             Some(square * vol)
         } else {
@@ -121,44 +124,40 @@ impl<D: AudioDevice> ApuInner<D> {
         }
     }
 
-    fn ch2(&mut self) -> Option<f64> {
-        if let Some(ToneChannel { ref mut timer, .. }) = self.ch2.as_mut() {
-            // duration timer
-            if update_len::<D>(self.sample, timer) {
-                self.ch2 = None;
-                return None;
-            }
+    // sample channel 1
+    // applies volume envelope, and duration
+    fn channel1(&mut self) -> Option<f64> {
+        if self.len_elapsed(1) {
+            self.ch1 = None;
+            return None;
+        }
 
-            // volume envelope
-            let vol = update_vol::<D>(self.sample, &mut self.nr22);
-
-            let freq = u64::from(self.nr23) | (u64::from(self.nr24 & 0x7) << 8);
+        if self.ch1.is_some() {
+            let freq = self.freq(1);
+            let vol = self.vol_envelope(1);
             let square = square_wave::<D>(self.sample, freq, self.nr21);
-
             Some(square * vol)
         } else {
             None
         }
     }
 
-    fn ch3(&mut self) -> Option<f64> {
+    // sample channel 3
+    // updates wave ram pointer
+    fn channel2(&mut self) -> Option<f64> {
         if self.nr30 & 0x80 == 0 {
             return None;
         }
 
-        if let Some(WaveChannel {
-            ref mut timer,
-            ref mut sample,
-        }) = self.ch3.as_mut()
-        {
-            // duration timer
-            if update_len::<D>(self.sample, timer) {
-                self.ch3 = None;
-                return None;
-            }
+        if self.len_elapsed(2) {
+            self.ch2 = None;
+            return None;
+        }
 
+        let freq = self.freq(2);
+
+        if let Some(WaveChannel { ref mut sample, .. }) = self.ch2.as_mut() {
             // frequency timer
-            let freq = u64::from(self.nr33) | (u64::from(self.nr34 & 0x7) << 8);
             let freq = (2048 - freq) * 2;
             if self.sample % (D::sample_rate() / freq) == 0 {
                 *sample += 1;
@@ -186,19 +185,15 @@ impl<D: AudioDevice> ApuInner<D> {
         }
     }
 
-    fn ch4(&mut self) -> Option<f64> {
-        if let Some(NoiseChannel {
-            ref mut timer,
-            ref mut lfsr,
-            ..
-        }) = self.ch4.as_mut()
-        {
-            // duration timer
-            if update_len::<D>(self.sample, timer) {
-                self.ch4 = None;
-                return None;
-            }
+    // sample channel 3
+    // applies volume envelope and updates LFSR
+    fn ch3(&mut self) -> Option<f64> {
+        if self.len_elapsed(3) {
+            self.ch3 = None;
+            return None;
+        }
 
+        if let Some(NoiseChannel { ref mut lfsr, .. }) = self.ch3.as_mut() {
             // update lfsr
             let shift = u64::from(self.nr43 >> 4);
             let freq = match self.nr43 & 0x7 {
@@ -207,7 +202,8 @@ impl<D: AudioDevice> ApuInner<D> {
             } << shift;
             let period = D::sample_rate() / freq.min(D::sample_rate());
 
-            // FIXME this is wrong
+            // FIXME this is wrong, but I can't get it to output what it should. I'm
+            // probably misunderstanding how this is supposed to work
             if self.nr43 & 0x8 != 0 {
                 if self.sample % period == 0 {
                     let l0 = *lfsr & 0x1;
@@ -226,20 +222,86 @@ impl<D: AudioDevice> ApuInner<D> {
                 *lfsr |= l14;
             }
 
-            // volume envelope
-            let vol = update_vol::<D>(self.sample, &mut self.nr42);
+            let amp = (*lfsr & 0x1) as f64 * 2.0 - 1.0;
+            let vol = self.vol_envelope(3);
 
-            Some(((*lfsr & 0x1) as f64 * 2.0 - 1.0) * vol)
+            Some(amp * vol)
         } else {
             None
         }
     }
 
+    #[rustfmt::skip]
+    fn vol_envelope(&mut self, ch: usize) -> f64 {
+        let nrx2 = match ch {
+            0 => &mut self.nr12,
+            1 => &mut self.nr22,
+            2 => panic!(),
+            3 => &mut self.nr42,
+            _ => panic!(),
+        };
+
+        let mut vol = u64::from(*nrx2 >> 4);
+        let period = u64::from(*nrx2 & 0x7) * D::sample_rate() / VOL_CLOCK;
+        if period != 0 {
+            if self.sample % period == 0 {
+                match (*nrx2 >> 3) & 0x1 {
+                    0 => if vol > 0x0 { vol -= 1 }
+                    1 => if vol < 0xf { vol += 1 }
+                    _ => panic!(),
+                }
+
+                *nrx2 &= 0x0f;
+                *nrx2 |= (vol as u8) << 4;
+            }
+        }
+
+        vol as f64 / (0xf as f64)
+    }
+
+    // computed frequency from the NRx3 & NRx4 registers
+    // which are common to challens 0..=2
+    fn freq(&self, ch: usize) -> u64 {
+        let (nrx3, nrx4) = match ch {
+            0 => (self.nr13, self.nr14),
+            1 => (self.nr23, self.nr24),
+            2 => (self.nr33, self.nr34),
+            3 => panic!(),
+            _ => panic!(),
+        };
+        u64::from(nrx3) | (u64::from(nrx4 & 0x7) << 8)
+    }
+
+    // updates length timer on a given channel
+    // returns true if the timer has elapsed and therefore the channel has to be
+    // disabled
+    fn len_elapsed(&mut self, ch: usize) -> bool {
+        let mut len = match ch {
+            0 => self.ch0.as_mut().and_then(|c| c.len),
+            1 => self.ch1.as_mut().and_then(|c| c.len),
+            2 => self.ch2.as_mut().and_then(|c| c.len),
+            3 => self.ch2.as_mut().and_then(|c| c.len),
+            _ => panic!(),
+        };
+
+        if let Some(ref mut len) = len {
+            let period = D::sample_rate() / LEN_CLOCK;
+
+            if self.sample % period == 0 {
+                *len -= 1
+            }
+
+            *len == 0
+        } else {
+            false
+        }
+    }
+
     fn power_off(&mut self) {
+        self.ch0 = None;
         self.ch1 = None;
         self.ch2 = None;
         self.ch3 = None;
-        self.ch4 = None;
 
         // clear APU registers except NR52's high bit
 
@@ -278,7 +340,6 @@ fn lock<D: AudioDevice>(mutex: &Mutex<ApuInner<D>>) -> MutexGuard<ApuInner<D>> {
     }
 }
 
-#[rustfmt::skip]
 fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
     let period = D::sample_rate() * (2048 - freq) / 131072;
     if period != 0 {
@@ -288,44 +349,26 @@ fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
             || duty == 0b01 && sample < period / 4
             || duty == 0b10 && sample < period / 2
             || duty == 0b11 && sample < period * 2 / 3
-        { 1.0 } else { -1.0 }
+        {
+            1.0
+        } else {
+            -1.0
+        }
     } else {
         // FIXME crashes on tetris, v-Rally (period = 0)
         0.0
     }
 }
 
-#[rustfmt::skip]
-fn update_len<D: AudioDevice>(sample: u64, timer: &mut Option<u64>) -> bool {
-    if let Some(ref mut timer) = timer {
-        let period = D::sample_rate() / LEN_CLOCK;
-        if sample % period == 0 { *timer -= 1 }
-        if *timer == 0 {
-            return true
-        }
+fn clamp(n: f64, min: f64, max: f64) -> f64 {
+    if n > max {
+        max
+    } else if n < min {
+        min
+    } else {
+        n
     }
-    return false;
 }
-
-#[rustfmt::skip]
-fn update_vol<D: AudioDevice>(sample: u64, nrx2: &mut u8) -> f64 {
-    let mut vol = u64::from(*nrx2 >> 4);
-    let period = u64::from(*nrx2 & 0x7) * D::sample_rate() / VOL_CLOCK;
-    if period != 0 {
-        if sample % period == 0 {
-            match (*nrx2 >> 3) & 0x1 {
-                0 => if vol > 0x0 { vol -= 1 }
-                1 => if vol < 0xf { vol += 1 }
-                _ => panic!(),
-            }
-            *nrx2 &= 0x0f;
-            *nrx2 |= (vol as u8) << 4;
-        }
-    }
-    vol as f64 / (0xf as f64)
-}
-
-unsafe impl<D: AudioDevice + Send> Send for ApuInner<D> {}
 
 pub struct Apu<D: AudioDevice> {
     inner: Arc<Mutex<ApuInner<D>>>,
@@ -337,10 +380,10 @@ impl<D: AudioDevice> Apu<D> {
             _phantom: PhantomData,
             sample: 0,
 
+            ch0: None,
             ch1: None,
             ch2: None,
             ch3: None,
-            ch4: None,
 
             nr10: 0,
             nr11: 0,
@@ -383,10 +426,9 @@ impl<D: AudioDevice> Apu<D> {
     }
 }
 
-#[derive(Clone, Copy)]
 enum SampleBuffer<D: AudioDevice> {
     Two([D::Sample; 2]),
-    One(D::Sample),
+    One([D::Sample; 1]),
 }
 
 /// Iterator of samples produced by the APU.
@@ -404,22 +446,19 @@ impl<D: AudioDevice> Samples<D> {
         let mut apu = lock(&self.inner);
 
         apu.sample += 1;
-        let ch1 = apu.ch1();
-        let ch2 = apu.ch2();
-        let ch3 = apu.ch3();
-        let ch4 = apu.ch4();
 
-        //let ch1 = None;
-        //let ch2 = None;
-        //let ch3 = None;
-        //let ch4 = None;
+        // sample new voices
+        let ch0 = apu.channel0();
+        let ch1 = apu.channel1();
+        let ch2 = apu.channel2();
+        let ch3 = apu.ch3();
 
         // audio mixing
         let mut so: [f64; 2] = [0.0; 2];
         let mut count: [u32; 2] = [0; 2];
 
         let nr51 = apu.nr51;
-        for (ch, sample) in [ch1, ch2, ch3, ch4].iter().copied().enumerate() {
+        for (ch, sample) in [ch0, ch1, ch2, ch3].iter().copied().enumerate() {
             let so1_bit = 1 << (ch as u8);
             let so2_bit = 1 << (4 + ch as u8);
             let sample = if let Some(sample) = sample {
@@ -448,12 +487,12 @@ impl<D: AudioDevice> Samples<D> {
         let min: f64 = D::Sample::min().as_f64();
         let l = clamp(so[0] * 0.5 + 0.5, 0.0, 1.0);
         let l = min * (1.0 - l) + max * l;
-        let r = so[1] * 0.5 + 0.5;
+        let r = clamp(so[1] * 0.5 + 0.5, 0.0, 1.0);
         let r = min * (1.0 - r) + max * r;
 
         self.buf = Some(if D::mono() {
             let mix = D::Sample::from_f64((l + r) / 2.0);
-            SampleBuffer::One(mix)
+            SampleBuffer::One([mix])
         } else {
             let l = D::Sample::from_f64(l);
             let r = D::Sample::from_f64(r);
@@ -462,16 +501,8 @@ impl<D: AudioDevice> Samples<D> {
     }
 }
 
-fn clamp(n: f64, min: f64, max: f64) -> f64 {
-    if n > max {
-        max
-    } else if n < min {
-        min
-    } else {
-        n
-    }
-}
-
+// TODO currently the iterator has to lock the APU for every sample. Refactor so
+// that it only needs to lock once
 impl<D: AudioDevice> Iterator for Samples<D> {
     type Item = D::Sample;
 
@@ -479,10 +510,10 @@ impl<D: AudioDevice> Iterator for Samples<D> {
         loop {
             match self.buf {
                 Some(SampleBuffer::Two([ch0, ch1])) => {
-                    self.buf = Some(SampleBuffer::One(ch1));
+                    self.buf = Some(SampleBuffer::One([ch1]));
                     return Some(ch0);
                 }
-                Some(SampleBuffer::One(ch)) => {
+                Some(SampleBuffer::One([ch])) => {
                     self.buf = None;
                     return Some(ch);
                 }
@@ -532,10 +563,10 @@ impl<D: AudioDevice> Mapped for Apu<D> {
             #[rustfmt::skip]
             0xff26 => {
                 let mut data = apu.nr52;
-                if apu.ch1.is_some() { data |= 0x1; }
-                if apu.ch2.is_some() { data |= 0x2; }
-                if apu.ch3.is_some() { data |= 0x4; }
-                if apu.ch4.is_some() { data |= 0x8; }
+                if apu.ch0.is_some() { data |= 0x1; }
+                if apu.ch1.is_some() { data |= 0x2; }
+                if apu.ch2.is_some() { data |= 0x4; }
+                if apu.ch3.is_some() { data |= 0x8; }
                 data
             }
             _ => panic!(),
@@ -561,7 +592,7 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         } else {
                             None
                         };
-                        apu.ch1 = Some(ToneChannel { timer });
+                        apu.ch0 = Some(ToneChannel { len: timer });
                     }
                 }
 
@@ -578,7 +609,7 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         } else {
                             None
                         };
-                        apu.ch2 = Some(ToneChannel { timer });
+                        apu.ch1 = Some(ToneChannel { len: timer });
                     }
                 }
 
@@ -596,8 +627,8 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         } else {
                             None
                         };
-                        let sample = apu.ch3.as_ref().map(|c| c.sample).unwrap_or(0);
-                        apu.ch3 = Some(WaveChannel { timer, sample });
+                        let sample = apu.ch2.as_ref().map(|c| c.sample).unwrap_or(0);
+                        apu.ch2 = Some(WaveChannel { len: timer, sample });
                     }
                 }
                 0xff30..=0xff3f => { /* Handled below */ }
@@ -621,8 +652,8 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         } else {
                             None
                         };
-                        apu.ch4 = Some(NoiseChannel {
-                            timer,
+                        apu.ch3 = Some(NoiseChannel {
+                            len: timer,
                             lfsr: 0x7fff,
                         });
                     }
