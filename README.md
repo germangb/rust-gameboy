@@ -15,6 +15,7 @@ Example usage using SDL for video and [Rodio] for audio.
 use dmg_lib::{
     joypad::{Key, Btn},
     apu::device::Stereo44100,
+    cartridge::Mbc5,
 };
 use dmg_driver_rodio::apu::RodioSamples;
 use dmg_driver_sdl::ppu::SdlVideoOutput;
