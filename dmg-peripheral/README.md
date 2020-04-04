@@ -4,9 +4,9 @@ Peripherals are cartridges that implement some special functionality.
 
 ## Supported
 
-| Peripheral | Requirements                | Notes 
-| ---        | ---                         | ---
-| Camera     | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own rom in via the environment variable
+| Name | Picture | Requirements | Notes 
+| --- | :---: | --- | ---
+| Camera | ![](assets/camera.png) | `DMG_PERIPHERAL_CAMERA_ROM` |
 
 ## Implement new peripherals
 
