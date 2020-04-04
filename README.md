@@ -25,42 +25,6 @@ GameBoy emulation in Rust
 | Sound          |         | Still buggy. Working on it
 | Link cable     |         | In scope but not implemented yet.
 
-## Peripherals
-
-These are the supported peripherals in the [dmg-peripheral](dmg-peripheral) module.
-
-| Peripheral | Requirements                | Notes 
-| ---        | ---                         | ---
-| Camera     | `DMG_PERIPHERAL_CAMERA_ROM` | You must provide your own rom in via the environment variable
-
-Implementing new peripherals is straightforward:
-
-```Rust
-use dmg_lib::map::Mapped;
-use dmg_lib::cartridge::Cartridge;
-
-struct MyPeripheral { .. }
-
-// peripherals are mapped to:
-//
-//  0x0000..=0x7fff (ROM area)
-//  0xa000..=0xbfff (External RAM area)
-//
-// (ref: http://problemkaputt.de/pandocs.htm#memorymap):
-impl Mapped for MyPeripherak { 
-    fn read(&self, addr: u16) -> u8 {
-        // ...
-    }
-
-    fn write(&mut self, addr: u16, data: u8) {
-        // ...
-    }
-}
-
-// Add the Cartridge marker trait
-impl Cartridge for MyPeripheral {}
-```
-
 ## Boot ROMs
 
 In order to include the bootstrap rom, you must own boot roms for both GB and CGB (they can be found online easily).
