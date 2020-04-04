@@ -23,6 +23,8 @@ const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
 
 fn main() {
+    env_logger::init();
+
     let sdl = sdl2::init().unwrap();
 
     let canvas = sdl

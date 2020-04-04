@@ -7,18 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dmg-lib = { path = "../../dmg-lib", features = ["boot", "logging"] }
+dmg-driver-sdl2 = { path = "../../dmg-driver/sdl2", default-features = false, features = ["video"]}
+dmg-driver-rodio = { path = "../../dmg-driver/rodio" }
+
 sdl2 = "0.33.0"
-log = "0.4.8"
-env_logger = "0.7.1"
 rodio = "0.11.0"
-dmg-peripheral-camera = { path = "../../dmg-peripheral/camera" }
-
-[dependencies.dmg-lib]
-path = "../../dmg-lib"
-features = ["boot", "logging"]
-
-[dependencies.dmg-driver-sdl2]
-path = "../../dmg-driver/sdl2"
-
-[dependencies.dmg-driver-rodio]
-path = "../../dmg-driver/rodio"
+env_logger = "0.7.1"
