@@ -12,18 +12,25 @@ Example usage using SDL for video and [Rodio] for audio.
 [Rodio]: https://github.com/tomaka/rodio
 
 ```rust
-use dmg_lib::joypad::{Key, Btn};
+use dmg_lib::{
+    joypad::{Key, Btn},
+    apu::device::Stereo44100,
+};
 use dmg_driver_rodio::apu::RodioSamples;
 use dmg_driver_sdl::ppu::SdlVideoOutput;
 
 // create SDL canvas
 let canvas = ...;
 
-// setup the emulator
+// create cartridge
+// (this is any type that implements the Cartridge trait)
+let cartridge = Mbc5::new(..);
+
+// set up the emulator
 let mut dmg = Builder::default()
-    // Any type that implements the Cartridge trait
-    .with_cartridge(..)
+    .with_cartridge(cartridge)
     .with_video(Sdl2VideoOutput::from_canvas(canvas))
+    .with_audio::<Stereo44100<i16>>()
     .build();
 
 // set up audio
