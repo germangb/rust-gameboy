@@ -1,9 +1,9 @@
 use crate::{
-    apu::device::AudioDevice,
+    apu::device::Audio,
     cartridge::Cartridge,
     map::Mapped,
     mmu::Mmu,
-    ppu::VideoOutput,
+    ppu::Video,
     reg::{Flag::*, Registers},
 };
 
@@ -63,47 +63,34 @@ impl Cpu {
         self.halt
     }
 
-    fn fetch<C: Cartridge, V: VideoOutput, D: AudioDevice>(&mut self, mmu: &Mmu<C, V, D>) -> u8 {
+    fn fetch<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &Mmu<C, V, D>) -> u8 {
         let b = mmu.read(self.reg.pc);
         self.reg.pc += 1;
         b
     }
 
-    fn fetch_word<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        mmu: &Mmu<C, V, D>,
-    ) -> u16 {
+    fn fetch_word<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &Mmu<C, V, D>) -> u16 {
         let lo = mmu.read(self.reg.pc) as u16;
         let hi = mmu.read(self.reg.pc + 1) as u16;
         self.reg.pc += 2;
         (hi << 8) | lo
     }
 
-    fn fetch_signed<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        mmu: &Mmu<C, V, D>,
-    ) -> i8 {
+    fn fetch_signed<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &Mmu<C, V, D>) -> i8 {
         let n: i8 = unsafe { std::mem::transmute(self.fetch(mmu)) };
         n
     }
 
     // Pushes word into the stack
     // Decrements SP by 2
-    fn stack_push<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        nn: u16,
-        mmu: &mut Mmu<C, V, D>,
-    ) {
+    fn stack_push<C: Cartridge, V: Video, D: Audio>(&mut self, nn: u16, mmu: &mut Mmu<C, V, D>) {
         self.reg.sp -= 2;
         mmu.write_word(self.reg.sp, nn);
     }
 
     // Pops word from the stack
     // Increments SP by 2
-    fn stack_pop<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        mmu: &Mmu<C, V, D>,
-    ) -> u16 {
+    fn stack_pop<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &Mmu<C, V, D>) -> u16 {
         let r = mmu.read_word(self.reg.sp);
         self.reg.sp += 2;
         r
@@ -393,11 +380,7 @@ impl Cpu {
     // Pushes present address onto stack.
     // Jump to address $000 + n
     // n = 00,$08,$10,$18,$20,$28,$30,$38
-    fn rst_n<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        n: u8,
-        mmu: &mut Mmu<C, V, D>,
-    ) {
+    fn rst_n<C: Cartridge, V: Video, D: Audio>(&mut self, n: u8, mmu: &mut Mmu<C, V, D>) {
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = n as u16;
     }
@@ -407,7 +390,7 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn call_c_n<C: Cartridge, V: VideoOutput, D: AudioDevice>(
+    fn call_c_n<C: Cartridge, V: Video, D: Audio>(
         &mut self,
         c: bool,
         mmu: &mut Mmu<C, V, D>,
@@ -421,7 +404,7 @@ impl Cpu {
     }
 
     // Push address of next instruction onto the stack and then jump to address n.
-    fn call_n<C: Cartridge, V: VideoOutput, D: AudioDevice>(&mut self, mmu: &mut Mmu<C, V, D>) {
+    fn call_n<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &mut Mmu<C, V, D>) {
         let n = self.fetch_word(mmu);
         self.stack_push(self.reg.pc, mmu);
         self.reg.pc = n;
@@ -432,7 +415,7 @@ impl Cpu {
     // c = Z, Call if Z flag is set.
     // c = NC, Call if C flag is reset.
     // c = C, Call if C flag is set.
-    fn jp_c_n<C: Cartridge, V: VideoOutput, D: AudioDevice>(
+    fn jp_c_n<C: Cartridge, V: Video, D: Audio>(
         &mut self,
         c: bool,
         mmu: &mut Mmu<C, V, D>,
@@ -445,11 +428,7 @@ impl Cpu {
     }
 
     // Add n to current address and jump tp it.
-    fn jr_c<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        c: bool,
-        mmu: &mut Mmu<C, V, D>,
-    ) -> bool {
+    fn jr_c<C: Cartridge, V: Video, D: Audio>(&mut self, c: bool, mmu: &mut Mmu<C, V, D>) -> bool {
         let n = self.fetch_signed(mmu);
         if c {
             let pc = i32::from(self.reg.pc) + i32::from(n);
@@ -460,10 +439,7 @@ impl Cpu {
 }
 
 impl Cpu {
-    pub fn step<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        mmu: &mut Mmu<C, V, D>,
-    ) -> u64 {
+    pub fn step<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &mut Mmu<C, V, D>) -> u64 {
         let int = self.int(mmu);
         let c = if int != 0 {
             int
@@ -475,7 +451,7 @@ impl Cpu {
         c * 4
     }
 
-    fn int<C: Cartridge, V: VideoOutput, D: AudioDevice>(&mut self, mmu: &mut Mmu<C, V, D>) -> u64 {
+    fn int<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &mut Mmu<C, V, D>) -> u64 {
         let ie = mmu.read(0xffff);
         let if_ = mmu.read(0xff0f);
         let tr = (ie & if_).trailing_zeros() as u8;
@@ -495,11 +471,7 @@ impl Cpu {
         4
     }
 
-    fn int_v<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        v: u16,
-        mmu: &mut Mmu<C, V, D>,
-    ) {
+    fn int_v<C: Cartridge, V: Video, D: Audio>(&mut self, v: u16, mmu: &mut Mmu<C, V, D>) {
         #[cfg(feature = "logging")]
         log::info!(target: "cpu", "CALL interrupt vector {:#02x}", v);
 
@@ -507,10 +479,7 @@ impl Cpu {
         self.reg.pc = v;
     }
 
-    fn exec<C: Cartridge, V: VideoOutput, D: AudioDevice>(
-        &mut self,
-        mmu: &mut Mmu<C, V, D>,
-    ) -> u64 {
+    fn exec<C: Cartridge, V: Video, D: Audio>(&mut self, mmu: &mut Mmu<C, V, D>) -> u64 {
         let opcode = self.fetch(mmu);
         let mut branch = false;
 

@@ -1,21 +1,21 @@
-use dmg_lib::apu::{device::AudioDevice, samples::SamplesMutex};
+use dmg_lib::apu::{device::Audio, samples::SamplesMutex};
 use sdl2::{
     audio::{AudioCallback, AudioDevice as SdlAudioDevice, AudioFormatNum, AudioSpecDesired},
     AudioSubsystem,
 };
 
 /// Audio callback.
-pub struct Callback<D: AudioDevice>(SamplesMutex<D>);
+pub struct Callback<D: Audio>(SamplesMutex<D>);
 
 impl<D> AudioCallback for Callback<D>
 where
-    D: AudioDevice + 'static,
+    D: Audio + 'static,
     D::Sample: AudioFormatNum,
 {
     type Channel = D::Sample;
 
     fn callback(&mut self, samples: &mut [Self::Channel]) {
-        let mut lock = self.0.lock();
+        let lock = self.0.lock();
         for (i, sample) in lock.take(samples.len()).enumerate() {
             samples[i] = sample;
         }
@@ -31,7 +31,7 @@ pub fn create_device<D>(
     samples: SamplesMutex<D>,
 ) -> Result<SdlAudioDevice<Callback<D>>, String>
 where
-    D: AudioDevice + 'static,
+    D: Audio + 'static,
     D::Sample: AudioFormatNum,
 {
     let freq = D::sample_rate() as _;

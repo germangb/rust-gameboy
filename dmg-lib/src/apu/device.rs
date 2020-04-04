@@ -44,7 +44,7 @@ sample! {
 }
 
 /// Audio device
-pub trait AudioDevice {
+pub trait Audio {
     type Sample: Sample;
 
     /// Return the samples per second of the device.
@@ -60,7 +60,7 @@ pub struct Stereo44100<T>(PhantomData<T>);
 /// 44100Hz, mono.
 pub struct Mono44100<T>(PhantomData<T>);
 
-impl<T: Sample> AudioDevice for Stereo44100<T> {
+impl<T: Sample> Audio for Stereo44100<T> {
     type Sample = T;
 
     #[inline]
@@ -74,7 +74,7 @@ impl<T: Sample> AudioDevice for Stereo44100<T> {
     }
 }
 
-impl<T: Sample> AudioDevice for Mono44100<T> {
+impl<T: Sample> Audio for Mono44100<T> {
     type Sample = T;
 
     #[inline]
@@ -93,7 +93,7 @@ impl<T: Sample> AudioDevice for Mono44100<T> {
 /// # Panic
 /// Since this device is meant for emulators without sound, calling any method
 /// will panic.
-impl AudioDevice for () {
+impl Audio for () {
     type Sample = ();
 
     fn sample_rate() -> u64 {

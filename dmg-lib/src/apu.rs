@@ -1,5 +1,5 @@
 use crate::{apu::samples::SamplesMutex, map::Mapped};
-use device::AudioDevice;
+use device::Audio;
 use std::{
     marker::PhantomData,
     sync::{Arc, Mutex, MutexGuard},
@@ -26,10 +26,9 @@ struct WaveChannel {
 struct NoiseChannel {
     len: Option<u64>,
     lfsr: u16,
-    nr43: u8,
 }
 
-struct ApuInner<D: AudioDevice> {
+struct ApuInner<D: Audio> {
     _phantom: PhantomData<D>,
     // clocked at whatever frequency in D
     sample: u64,
@@ -85,7 +84,7 @@ struct ApuInner<D: AudioDevice> {
 }
 
 // FIXME don't inline so much (channels 1 & 2 share some behaviour)
-impl<D: AudioDevice> ApuInner<D> {
+impl<D: Audio> ApuInner<D> {
     // sample channel 0 (sweep tone)
     // applies frequency sweeping, volume envelope, and duration
     fn channel0(&mut self) -> Option<f64> {
@@ -334,14 +333,14 @@ impl<D: AudioDevice> ApuInner<D> {
     }
 }
 
-fn lock<D: AudioDevice>(mutex: &Mutex<ApuInner<D>>) -> MutexGuard<ApuInner<D>> {
+fn lock<D: Audio>(mutex: &Mutex<ApuInner<D>>) -> MutexGuard<ApuInner<D>> {
     match mutex.lock() {
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     }
 }
 
-fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
+fn square_wave<D: Audio>(sample: u64, freq: u64, nrx1: u8) -> f64 {
     let period = D::sample_rate() * (2048 - freq) / 131_072;
     if period != 0 {
         let sample = sample % period;
@@ -361,11 +360,11 @@ fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
     }
 }
 
-pub struct Apu<D: AudioDevice> {
+pub struct Apu<D: Audio> {
     inner: Arc<Mutex<ApuInner<D>>>,
 }
 
-impl<D: AudioDevice> Default for Apu<D> {
+impl<D: Audio> Default for Apu<D> {
     fn default() -> Self {
         let inner = ApuInner {
             _phantom: PhantomData,
@@ -409,7 +408,7 @@ impl<D: AudioDevice> Default for Apu<D> {
     }
 }
 
-impl<D: AudioDevice> Apu<D> {
+impl<D: Audio> Apu<D> {
     /// Return audio samples iterator.
     pub fn samples(&self) -> SamplesMutex<D> {
         SamplesMutex::new(&self.inner)
@@ -421,7 +420,7 @@ impl<D: AudioDevice> Apu<D> {
 // - When powered off, registers are cleared, except high bit of NR52.
 // - While off, register writes are ignored, but not reads.
 // - Wave RAM is always readable and writable, and unaffected by power.
-impl<D: AudioDevice> Mapped for Apu<D> {
+impl<D: Audio> Mapped for Apu<D> {
     fn read(&self, addr: u16) -> u8 {
         let apu = lock(&self.inner);
 
@@ -547,7 +546,6 @@ impl<D: AudioDevice> Mapped for Apu<D> {
                         apu.ch3 = Some(NoiseChannel {
                             len: timer,
                             lfsr: 0x7fff,
-                            nr43: apu.nr43,
                         });
                     }
                 }

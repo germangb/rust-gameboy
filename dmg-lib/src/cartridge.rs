@@ -50,7 +50,7 @@ pub trait Cartridge: Mapped {
     /// use dmg_lib::cartridge::{Mbc3, Cartridge};
     ///
     /// # let bytes = &[];
-    /// let rom = Mbc3::from_bytes(bytes);
+    /// let rom = Mbc3::new(bytes);
     ///
     /// if rom.cgb_support().is_some() {
     ///     println!("CGB mode supported");

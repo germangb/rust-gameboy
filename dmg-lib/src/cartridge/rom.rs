@@ -7,7 +7,7 @@ pub struct Rom {
 }
 
 impl Rom {
-    pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
+    pub fn new<B: Into<Box<[u8]>>>(rom: B) -> Self {
         Self {
             rom: rom.into(),
             ram: Box::new([0; 0x2000]),

@@ -1,5 +1,5 @@
 use crate::apu::{
-    device::{AudioDevice, Sample},
+    device::{Audio, Sample},
     ApuInner,
 };
 use std::{
@@ -8,7 +8,7 @@ use std::{
 };
 
 /// A mutex before the APU samples.
-pub struct SamplesMutex<D: AudioDevice> {
+pub struct SamplesMutex<D: Audio> {
     inner: Arc<Mutex<ApuInner<D>>>,
     buf: Arc<Cell<Option<SampleBuffer<D>>>>,
 }
@@ -16,9 +16,9 @@ pub struct SamplesMutex<D: AudioDevice> {
 // SamplesMutex is not send by default because of the usage of Cell.
 // Safety is handled handled by the Arc<Mutex<ApuInner<D>>> inside the
 // SamplesMutex.
-unsafe impl<D: AudioDevice> Send for SamplesMutex<D> {}
+unsafe impl<D: Audio> Send for SamplesMutex<D> {}
 
-impl<D: AudioDevice> SamplesMutex<D> {
+impl<D: Audio> SamplesMutex<D> {
     pub(super) fn new(inner: &Arc<Mutex<ApuInner<D>>>) -> Self {
         SamplesMutex {
             inner: Arc::clone(inner),
@@ -35,18 +35,18 @@ impl<D: AudioDevice> SamplesMutex<D> {
 }
 
 #[derive(Clone, Copy)]
-enum SampleBuffer<D: AudioDevice> {
+enum SampleBuffer<D: Audio> {
     Two([D::Sample; 2]),
     One([D::Sample; 1]),
 }
 
 /// Iterator of samples produced by the APU.
-struct Samples<'a, D: AudioDevice> {
+struct Samples<'a, D: Audio> {
     inner: MutexGuard<'a, ApuInner<D>>,
     buf: Arc<Cell<Option<SampleBuffer<D>>>>,
 }
 
-impl<D: AudioDevice> Samples<'_, D> {
+impl<D: Audio> Samples<'_, D> {
     // Loads the next sample into the buffer
     fn load(&mut self) {
         let apu = &mut self.inner;
@@ -107,7 +107,7 @@ impl<D: AudioDevice> Samples<'_, D> {
     }
 }
 
-impl<D: AudioDevice> Iterator for Samples<'_, D> {
+impl<D: Audio> Iterator for Samples<'_, D> {
     type Item = D::Sample;
 
     fn next(&mut self) -> Option<Self::Item> {

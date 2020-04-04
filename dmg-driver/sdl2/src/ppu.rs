@@ -1,4 +1,4 @@
-use dmg_lib::ppu::{palette::Color, VideoOutput};
+use dmg_lib::ppu::{palette::Color, Video};
 use sdl2::{
     pixels::PixelFormatEnum,
     render::{TextureAccess, WindowCanvas},
@@ -30,7 +30,7 @@ impl DerefMut for Sdl2VideoOutput {
 }
 
 impl Sdl2VideoOutput {
-    pub fn from_canvas(canvas: WindowCanvas) -> Self {
+    pub fn new(canvas: WindowCanvas) -> Self {
         Self {
             canvas,
             buffer: Box::new([[[0, 0, 0]; 160]; 144]),
@@ -46,7 +46,7 @@ impl Sdl2VideoOutput {
     }
 }
 
-impl VideoOutput for Sdl2VideoOutput {
+impl Video for Sdl2VideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
         std::mem::replace(&mut self.buffer[line], *pixels);
         if line == 143 {

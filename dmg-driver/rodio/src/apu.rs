@@ -1,20 +1,22 @@
-use dmg_lib::apu::{device::AudioDevice, samples::SamplesMutex};
+use dmg_lib::apu::{device::Audio, samples::SamplesMutex, Apu};
 use rodio::Source;
 use std::time::Duration;
 
-pub struct RodioSamples<D: AudioDevice> {
+pub struct RodioSamples<D: Audio> {
     samples: SamplesMutex<D>,
 }
 
-impl<D: AudioDevice> RodioSamples<D> {
-    pub fn new(samples: SamplesMutex<D>) -> Self {
-        Self { samples }
+impl<D: Audio> RodioSamples<D> {
+    pub fn new(apu: &Apu<D>) -> Self {
+        Self {
+            samples: apu.samples(),
+        }
     }
 }
 
 impl<D> Iterator for RodioSamples<D>
 where
-    D: AudioDevice,
+    D: Audio,
     D::Sample: rodio::Sample,
 {
     type Item = D::Sample;
@@ -26,7 +28,7 @@ where
 
 impl<D> Source for RodioSamples<D>
 where
-    D: AudioDevice,
+    D: Audio,
     D::Sample: rodio::Sample,
 {
     fn current_frame_len(&self) -> Option<usize> {

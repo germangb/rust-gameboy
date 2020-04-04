@@ -1,140 +1,121 @@
 use dmg_driver_rodio::apu::RodioSamples;
-use dmg_driver_sdl2::{apu::create_device, ppu::Sdl2VideoOutput};
+use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
 use dmg_lib::{
     apu::device::Stereo44100,
-    cartridge::{Cartridge, Mbc5},
-    joypad::{Btn, Dir, Key},
+    cartridge::Mbc5,
+    joypad::{Btn, Dir, Joypad, Key},
     ppu::palette::{Palette, *},
-    Builder, Dmg, Mode,
+    Builder, Mode,
 };
-use dmg_peripheral_camera::PoketCamera;
 use sdl2::{
     event::{Event, WindowEvent},
     keyboard::Scancode,
-    Sdl,
+    EventPump,
 };
 use std::{
     thread,
     time::{Duration, Instant},
 };
 
-static ROM: &[u8] =
-    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
-
-const RODIO: bool = true;
-const SCALE: u32 = 2;
-const MODE: Mode = Mode::GB;
+const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-fn create_emulator(sdl: &Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> {
-    let window = sdl
+static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
+
+fn main() {
+    let sdl = sdl2::init().unwrap();
+
+    let canvas = sdl
         .video()
         .unwrap()
-        .window("DMG", 160 * SCALE, 144 * SCALE)
+        .window("DMG", 160 * WINDOW_SCALE, 144 * WINDOW_SCALE)
         .position_centered()
         .build()
-        .expect("Error creating SDL window");
-
-    let canvas = window
+        .expect("Error creating SDL window")
         .into_canvas()
         .build()
         .expect("Error creating SDL canvas");
 
-    Builder::default()
-        .with_mode(MODE)
+    let mut emulator = Builder::default()
+        .with_video(Sdl2VideoOutput::new(canvas))
+        .with_cartridge(Mbc5::new(ROM))
+        .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
-        .with_video(Sdl2VideoOutput::from_canvas(canvas))
-        .with_cartridge(())
-        .with_cartridge(Mbc5::from_bytes(ROM))
-        //.with_cartridge(PoketCamera::new(()))
-        //.with_cartridge(())
-        .with_audio()
-        //.skip_boot()
-        .build()
-}
+        .with_mode(Mode::GB)
+        .build();
 
-fn main() {
-    //env_logger::init();
+    // set up audio
+    let device = rodio::default_output_device().expect("Error creating rodio device");
+    let sink = rodio::Sink::new(&device);
+    let source = RodioSamples::new(emulator.mmu().apu());
+    sink.append(source);
+    sink.play();
 
-    let sdl = sdl2::init().unwrap();
+    let mut pump = sdl.event_pump().unwrap();
+    let mut carry = Duration::new(0, 0);
 
-    let mut event_pump = sdl.event_pump().unwrap();
-    let mut dmg = create_emulator(&sdl);
-
-    let _device = if RODIO {
-        eprintln!("Using Rodio for audio");
-        let device = rodio::default_output_device().unwrap();
-        let queue = rodio::Sink::new(&device);
-        let source = RodioSamples::new(dmg.mmu().apu().samples());
-        queue.append(source);
-        queue.play();
-        (Some(queue), None)
-    } else {
-        eprintln!("Using SDL for audio");
-        let audio = sdl.audio().unwrap();
-        let device = create_device(&audio, dmg.mmu().apu().samples()).unwrap();
-        device.resume();
-        (None, Some(device))
-    };
-
-    'mainLoop: loop {
+    loop {
         let time = Instant::now();
 
-        let joypad = dmg.mmu_mut().joypad_mut();
-
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Window {
-                    win_event: WindowEvent::Close,
-                    ..
-                }
-                | Event::KeyDown {
-                    scancode: Some(Scancode::Escape),
-                    ..
-                } => break 'mainLoop,
-                Event::KeyDown {
-                    scancode: Some(key),
-                    ..
-                } => match key {
-                    Scancode::Z => joypad.press(Key::Btn(Btn::A)),
-                    Scancode::X => joypad.press(Key::Btn(Btn::B)),
-                    Scancode::RShift => joypad.press(Key::Btn(Btn::Select)),
-                    Scancode::Return => joypad.press(Key::Btn(Btn::Start)),
-                    Scancode::Left => joypad.press(Key::Dir(Dir::Left)),
-                    Scancode::Right => joypad.press(Key::Dir(Dir::Right)),
-                    Scancode::Up => joypad.press(Key::Dir(Dir::Up)),
-                    Scancode::Down => joypad.press(Key::Dir(Dir::Down)),
-                    _ => {}
-                },
-                Event::KeyUp {
-                    scancode: Some(key),
-                    ..
-                } => match key {
-                    Scancode::Z => joypad.release(Key::Btn(Btn::A)),
-                    Scancode::X => joypad.release(Key::Btn(Btn::B)),
-                    Scancode::RShift => joypad.release(Key::Btn(Btn::Select)),
-                    Scancode::Return => joypad.release(Key::Btn(Btn::Start)),
-                    Scancode::Left => joypad.release(Key::Dir(Dir::Left)),
-                    Scancode::Right => joypad.release(Key::Dir(Dir::Right)),
-                    Scancode::Up => joypad.release(Key::Dir(Dir::Up)),
-                    Scancode::Down => joypad.release(Key::Dir(Dir::Down)),
-                    _ => {}
-                },
-                _ => {}
-            }
+        // handle input
+        if handle_input(&mut pump, emulator.mmu_mut().joypad_mut()) {
+            break;
         }
 
-        dmg.emulate_frame();
-        dmg.mmu_mut().ppu_mut().video_output_mut().present();
+        // emulate (1/60) seconds-worth of clock cycles
+        emulator.emulate_frame();
+        emulator.mmu_mut().ppu_mut().video_output_mut().present();
 
-        let time = time.elapsed();
-        let sleep = if event_pump.keyboard_state().is_scancode_pressed(Scancode::S) {
-            Duration::new(0, 1_000_000_000 / 30)
+        let elapsed = time.elapsed() + carry;
+        let sleep = Duration::new(0, 1_000_000_000 / 60);
+        if elapsed < sleep {
+            carry = Duration::new(0, 0);
+            thread::sleep(sleep - elapsed);
         } else {
-            Duration::new(0, 1_000_000_000 / 60)
-        };
-        if time < sleep && !event_pump.keyboard_state().is_scancode_pressed(Scancode::F) {
-            thread::sleep(sleep - time);
+            carry = elapsed - sleep;
         }
+    }
+}
+
+fn handle_input(pump: &mut EventPump, joypad: &mut Joypad) -> bool {
+    for event in pump.poll_iter() {
+        match event {
+            Event::Window {
+                win_event: WindowEvent::Close,
+                ..
+            } => return true,
+            Event::KeyDown {
+                scancode: Some(scancode),
+                ..
+            } => {
+                if let Some(key) = map_scancode(scancode) {
+                    joypad.press(key)
+                }
+            }
+            Event::KeyUp {
+                scancode: Some(scancode),
+                ..
+            } => {
+                if let Some(key) = map_scancode(scancode) {
+                    joypad.release(key)
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+fn map_scancode(scancode: Scancode) -> Option<Key> {
+    match scancode {
+        Scancode::Z => Some(Key::Btn(Btn::A)),
+        Scancode::X => Some(Key::Btn(Btn::B)),
+        Scancode::RShift => Some(Key::Btn(Btn::Select)),
+        Scancode::Return => Some(Key::Btn(Btn::Start)),
+        Scancode::Left => Some(Key::Dir(Dir::Left)),
+        Scancode::Right => Some(Key::Dir(Dir::Right)),
+        Scancode::Up => Some(Key::Dir(Dir::Up)),
+        Scancode::Down => Some(Key::Dir(Dir::Down)),
+        _ => None,
     }
 }

@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlVideoElement};
 
-use dmg_peripheral_camera::CameraSensor;
+use dmg_peripheral_camera::Sensor;
 
 #[wasm_bindgen]
 pub struct WasmCameraSensor {
@@ -16,7 +16,7 @@ impl WasmCameraSensor {
     }
 }
 
-impl CameraSensor for WasmCameraSensor {
+impl Sensor for WasmCameraSensor {
     fn capture(&mut self, buffer: &mut [[u8; 128]; 112]) {
         self.ctx
             .draw_image_with_html_video_element_and_dw_and_dh(&self.vid, 0.0, 0.0, 128.0, 112.0)

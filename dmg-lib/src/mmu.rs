@@ -1,11 +1,11 @@
 use crate::{
-    apu::{device::AudioDevice, Apu},
+    apu::{device::Audio, Apu},
     cartridge::Cartridge,
     cpu::Cpu,
     interrupts::Interrupts,
     joypad::Joypad,
     map::Mapped,
-    ppu::{Ppu, VideoOutput},
+    ppu::{Ppu, Video},
     timer::Timer,
     wram::WorkRam,
     Mode, CLOCK,
@@ -54,7 +54,7 @@ struct VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu<C: Cartridge, V: VideoOutput, D: AudioDevice> {
+pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
     #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
@@ -70,7 +70,7 @@ pub struct Mmu<C: Cartridge, V: VideoOutput, D: AudioDevice> {
     speed: Speed,
 }
 
-impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mmu<C, V, D> {
+impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
     pub fn with_cartridge_and_video(cartridge: C, mode: Mode, video_out: V) -> Self {
         let vram_dma = VRamDma {
             hdma1: 0,
@@ -270,7 +270,7 @@ impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mmu<C, V, D> {
     }
 }
 
-impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mapped for Mmu<C, V, D> {
+impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
     fn read(&self, addr: u16) -> u8 {
         #[cfg(feature = "boot")]
         use dmg_boot::{cgb, gb};

@@ -20,11 +20,11 @@ pub const VBLANK_CYCLES: u64 = (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCL
 const OAM_SIZE: usize = 0xa0;
 const PAL_SIZE: usize = 0x40;
 
-pub trait VideoOutput {
+pub trait Video {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]);
 }
 
-impl VideoOutput for () {
+impl Video for () {
     fn render_line(&mut self, _: usize, _: &[Color; 160]) {}
 }
 
@@ -105,7 +105,7 @@ pub struct Line {
     pub lyc: u8,
 }
 
-pub struct Ppu<V: VideoOutput> {
+pub struct Ppu<V: Video> {
     output: V,
     mode: Mode,
     cycles: u64,
@@ -141,7 +141,7 @@ pub struct Ppu<V: VideoOutput> {
     lcdc_int: Option<Flag>,
 }
 
-impl<V: VideoOutput> Ppu<V> {
+impl<V: Video> Ppu<V> {
     pub fn with_mode_and_video(mode: Mode, output: V) -> Self {
         let scroll = Scroll { scy: 0, scx: 0 };
         let win = Window { wy: 0, wx: 0 };
@@ -675,7 +675,7 @@ impl<V: VideoOutput> Ppu<V> {
     }
 }
 
-impl<V: VideoOutput> Mapped for Ppu<V> {
+impl<V: Video> Mapped for Ppu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x8000..=0x9fff => self.vram.read(addr),

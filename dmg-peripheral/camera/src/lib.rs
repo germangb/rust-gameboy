@@ -6,11 +6,11 @@ pub const SENSOR_W: usize = 128;
 pub const SENSOR_H: usize = 112;
 
 /// Trait to provide raw image data.
-pub trait CameraSensor {
+pub trait Sensor {
     fn capture(&mut self, buffer: &mut [[u8; SENSOR_W]; SENSOR_H]);
 }
 
-impl CameraSensor for () {
+impl Sensor for () {
     fn capture(&mut self, _: &mut [[u8; 128]; 112]) {}
 }
 
@@ -57,7 +57,7 @@ pub struct Cam {
     pub a006: [u8; 0x30],
 }
 
-pub struct PoketCamera<S: CameraSensor> {
+pub struct PoketCamera<S: Sensor> {
     mode: Mode,
     sensor: S,
     buf: [[u8; SENSOR_W]; SENSOR_H],
@@ -68,7 +68,7 @@ pub struct PoketCamera<S: CameraSensor> {
     cam: Cam,
 }
 
-impl<S: CameraSensor> PoketCamera<S> {
+impl<S: Sensor> PoketCamera<S> {
     pub fn new(sensor: S) -> Self {
         let mode = Mode::Ram;
         let buffer = [[0; SENSOR_W]; SENSOR_H];
@@ -166,7 +166,7 @@ impl<S: CameraSensor> PoketCamera<S> {
     }
 }
 
-impl<S: CameraSensor> Mapped for PoketCamera<S> {
+impl<S: Sensor> Mapped for PoketCamera<S> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x3fff => ROM[addr as usize],
@@ -239,4 +239,4 @@ impl<S: CameraSensor> Mapped for PoketCamera<S> {
     }
 }
 
-impl<S: CameraSensor> Cartridge for PoketCamera<S> {}
+impl<S: Sensor> Cartridge for PoketCamera<S> {}

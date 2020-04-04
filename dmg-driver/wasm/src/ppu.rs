@@ -1,4 +1,4 @@
-use dmg_lib::ppu::{palette::Color, VideoOutput};
+use dmg_lib::ppu::{palette::Color, Video};
 use wasm_bindgen::prelude::*;
 use web_sys::CanvasRenderingContext2d;
 
@@ -20,7 +20,7 @@ impl WasmVideoOutput {
     }
 }
 
-impl VideoOutput for WasmVideoOutput {
+impl Video for WasmVideoOutput {
     fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
         let offset = 160 * 4 * line;
         for (i, [r, g, b]) in pixels.iter().enumerate() {

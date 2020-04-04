@@ -27,7 +27,7 @@ pub struct Mbc3 {
 }
 
 impl Mbc3 {
-    pub fn from_bytes<B: Into<Box<[u8]>>>(rom: B) -> Self {
+    pub fn new<B: Into<Box<[u8]>>>(rom: B) -> Self {
         let rom = rom.into();
         let ram_banks = ram_banks(rom[0x149]);
         Self {
