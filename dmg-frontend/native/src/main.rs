@@ -1,29 +1,24 @@
-use std::{
-    thread,
-    time::{Duration, Instant},
+use dmg_driver_rodio::apu::RodioSamples;
+use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
+use dmg_lib::{
+    apu::device::Stereo44100,
+    cartridge::{Cartridge, Mbc5},
+    joypad::{Btn, Dir, Key},
+    ppu::palette::{Palette, *},
+    Builder, Dmg, Mode,
 };
-
 use sdl2::{
     event::{Event, WindowEvent},
     keyboard::Scancode,
     Sdl,
 };
-
-use dmg_driver_rodio::apu::RodioSamples;
-use dmg_driver_sdl2::ppu::Sdl2VideoOutput;
-use dmg_lib::{
-    apu::{device::Stereo44100, Apu, Samples},
-    cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
-    joypad::{Btn, Dir, Key},
-    ppu::{
-        palette::{Palette, *},
-        VideoOutput,
-    },
-    Builder, Dmg, Mode,
+use std::{
+    thread,
+    time::{Duration, Instant},
 };
-use rodio::Source;
 
-static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
+static ROM: &[u8] =
+    include_bytes!("../roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
 const SCALE: u32 = 4;
 const MODE: Mode = Mode::GB;
@@ -48,7 +43,7 @@ fn emulator(sdl: Sdl) -> Dmg<impl Cartridge, Sdl2VideoOutput, Stereo44100<i16>> 
         .with_palette(PALETTE)
         .with_video(Sdl2VideoOutput::from_canvas(canvas))
         .with_cartridge(())
-        .with_cartridge(Mbc3::from_bytes(ROM))
+        .with_cartridge(Mbc5::from_bytes(ROM))
         .with_audio()
         //.skip_boot()
         .build()

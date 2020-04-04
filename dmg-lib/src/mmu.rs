@@ -5,10 +5,10 @@ use crate::{
     interrupts::Interrupts,
     joypad::Joypad,
     map::Mapped,
-    ppu::{Ppu, VideoOutput, HBLANK_CYCLES, OAM_CYCLES, PIXEL_TRANSFER_CYCLES, VBLANK_CYCLES},
+    ppu::{Ppu, VideoOutput},
     timer::Timer,
     wram::WorkRam,
-    Mode,
+    Mode, CLOCK,
 };
 
 // return value for the HDMA5 register some games expect all the bits to be set,
@@ -20,7 +20,6 @@ use crate::{
 const HDMA5_DATA: u8 = 0xff;
 const HDMA_DATA: u8 = 0xff; // HDMA1..4
 const UNUSED_DATA: u8 = 0x00;
-const UNHANDLED_DATA: u8 = 0x00;
 const BOOT_REG_DATA: u8 = 0x00; // ff50
 const HRAM_SIZE: usize = 0x7f;
 
@@ -160,8 +159,7 @@ impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mmu<C, V, D> {
     }
 
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
-        const FRAME_CYCLES: u64 =
-            144 * (OAM_CYCLES + PIXEL_TRANSFER_CYCLES + HBLANK_CYCLES) + VBLANK_CYCLES;
+        const FRAME_CYCLES: u64 = CLOCK / 60;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;

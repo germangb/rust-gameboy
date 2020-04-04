@@ -7,76 +7,21 @@ pub trait Sample: Copy {
     fn as_f64(&self) -> f64;
 }
 
-impl Sample for i16 {
-    fn min() -> Self {
-        std::i16::MIN
-    }
-
-    fn max() -> Self {
-        std::i16::MAX
-    }
-
-    fn from_f64(n: f64) -> Self {
-        n as Self
-    }
-
-    fn as_f64(&self) -> f64 {
-        *self as f64
-    }
+macro_rules! sample {
+    ($(($num:ty, $min:expr, $max:expr)),*) => {$(
+        impl Sample for $num {
+            fn min() -> Self { $min }
+            fn max() -> Self { $max }
+            fn from_f64(n: f64) -> Self { n as Self }
+            fn as_f64(&self) -> f64 { *self as f64 }
+        }
+    )*}
 }
 
-impl Sample for u16 {
-    fn min() -> Self {
-        std::u16::MIN
-    }
-
-    fn max() -> Self {
-        std::u16::MAX
-    }
-
-    fn from_f64(n: f64) -> Self {
-        n as Self
-    }
-
-    fn as_f64(&self) -> f64 {
-        *self as f64
-    }
-}
-
-impl Sample for f32 {
-    fn min() -> Self {
-        -1.0
-    }
-
-    fn max() -> Self {
-        1.0
-    }
-
-    fn from_f64(n: f64) -> Self {
-        n as Self
-    }
-
-    fn as_f64(&self) -> f64 {
-        *self as f64
-    }
-}
-
-impl Sample for () {
-    fn min() -> Self {
-        panic!()
-    }
-
-    fn max() -> Self {
-        panic!()
-    }
-
-    fn from_f64(_: f64) -> Self {
-        panic!()
-    }
-
-    fn as_f64(&self) -> f64 {
-        panic!()
-    }
+sample! {
+    (i16, std::i16::MIN, std::i16::MAX),
+    (u16, std::u16::MIN, std::u16::MAX),
+    (f32, -1.0, 1.0)
 }
 
 /// Audio device
@@ -119,7 +64,7 @@ impl<T: Sample> AudioDevice for Mono44100<T> {
     }
 }
 
-/// A stub device, meant for emulators without sound.
+/// A stub device for emulators without sound support.
 ///
 /// # Panic
 /// Since this device is meant for emulators without sound, calling any method
@@ -132,6 +77,24 @@ impl AudioDevice for () {
     }
 
     fn mono() -> bool {
+        panic!()
+    }
+}
+
+impl Sample for () {
+    fn min() -> Self {
+        panic!()
+    }
+
+    fn max() -> Self {
+        panic!()
+    }
+
+    fn from_f64(_: f64) -> Self {
+        panic!()
+    }
+
+    fn as_f64(&self) -> f64 {
         panic!()
     }
 }

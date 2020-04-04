@@ -151,6 +151,7 @@ impl Cpu {
         self.reg.set_flag(C, n > self.reg.a);
         self.reg.a = res;
     }
+
     // Subtract n + Carry flag from A.
     // n = A,B,C,D,E,H,(HL),#
     // Flags
@@ -249,15 +250,6 @@ impl Cpu {
         self.reg
             .set_flag(C, u32::from(self.reg.hl()) + u32::from(nn) > 0xffff);
         self.reg.set_hl((res & 0xffff) as u16);
-    }
-
-    // Add n to Stack Pointer (SP).
-    // n = signed #
-    // Flags
-    // 0 0 H C
-    #[allow(dead_code)]
-    fn add_sp_n(&mut self, _n: i8) {
-        unimplemented!()
     }
 
     // Increment register nn.
