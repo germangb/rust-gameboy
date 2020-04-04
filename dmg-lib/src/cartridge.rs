@@ -83,5 +83,3 @@ impl Cartridge for Rom {}
 impl Cartridge for Mbc1 {}
 impl Cartridge for Mbc3 {}
 impl Cartridge for Mbc5 {}
-
-impl<C: Cartridge> Cartridge for Box<C> {}

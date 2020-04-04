@@ -83,7 +83,7 @@ impl<C: Cartridge, V: VideoOutput, D: AudioDevice> Mmu<C, V, D> {
         let wram = WorkRam::default();
         let int = Interrupts::default();
         let joy = Joypad::default();
-        let apu = Apu::new();
+        let apu = Apu::default();
         let speed = Speed::X1;
         let hram = [0; HRAM_SIZE];
         Self {

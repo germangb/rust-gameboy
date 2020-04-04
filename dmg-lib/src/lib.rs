@@ -1,13 +1,8 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![deny(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
+#![cfg_attr(
+    not(debug_assertions),
+    deny(dead_code, unused_imports, unused_variables)
+)]
+#![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
 
 use apu::device::AudioDevice;
 use cartridge::Cartridge;

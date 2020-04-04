@@ -5,7 +5,9 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+/// Audio format spec.
 pub mod device;
+/// APU sample iterator.
 pub mod samples;
 
 const LEN_CLOCK: u64 = 256;
@@ -83,7 +85,7 @@ struct ApuInner<D: AudioDevice> {
 
 // FIXME don't inline so much (channels 1 & 2 share some behaviour)
 impl<D: AudioDevice> ApuInner<D> {
-    // sample channel 0
+    // sample channel 0 (sweep tone)
     // applies frequency sweeping, volume envelope, and duration
     fn channel0(&mut self) -> Option<f64> {
         if self.len_elapsed(0) {
@@ -125,7 +127,7 @@ impl<D: AudioDevice> ApuInner<D> {
         }
     }
 
-    // sample channel 1
+    // sample channel 1 (tone)
     // applies volume envelope, and duration
     fn channel1(&mut self) -> Option<f64> {
         if self.len_elapsed(1) {
@@ -143,7 +145,7 @@ impl<D: AudioDevice> ApuInner<D> {
         }
     }
 
-    // sample channel 3
+    // sample channel 3 (wave ram)
     // updates wave ram pointer
     fn channel2(&mut self) -> Option<f64> {
         if self.nr30 & 0x80 == 0 {
@@ -171,7 +173,7 @@ impl<D: AudioDevice> ApuInner<D> {
                 wave_sample >>= 4
             };
             wave_sample &= 0xf;
-            let wave_sample = (wave_sample as f64 / (0xf as f64)) * 0.5 + 0.5;
+            let wave_sample = (wave_sample as f64 / 15_f64) * 0.5 + 0.5;
             let vol = match (self.nr32 >> 5) & 0x3 {
                 0 => 0.0,
                 1 => 1.0,
@@ -186,7 +188,7 @@ impl<D: AudioDevice> ApuInner<D> {
         }
     }
 
-    // sample channel 3
+    // sample channel 3 (noise)
     // applies volume envelope and updates LFSR
     fn ch3(&mut self) -> Option<f64> {
         if self.len_elapsed(3) {
@@ -244,20 +246,18 @@ impl<D: AudioDevice> ApuInner<D> {
 
         let mut vol = u64::from(*nrx2 >> 4);
         let period = u64::from(*nrx2 & 0x7) * D::sample_rate() / VOL_CLOCK;
-        if period != 0 {
-            if self.sample % period == 0 {
-                match (*nrx2 >> 3) & 0x1 {
-                    0 => if vol > 0x0 { vol -= 1 }
-                    1 => if vol < 0xf { vol += 1 }
-                    _ => panic!(),
-                }
-
-                *nrx2 &= 0x0f;
-                *nrx2 |= (vol as u8) << 4;
+        if period != 0 && self.sample % period == 0 {
+            match (*nrx2 >> 3) & 0x1 {
+                0 => if vol > 0x0 { vol -= 1 }
+                1 => if vol < 0xf { vol += 1 }
+                _ => panic!(),
             }
+
+            *nrx2 &= 0x0f;
+            *nrx2 |= (vol as u8) << 4;
         }
 
-        vol as f64 / (0xf as f64)
+        vol as f64 / 15_f64
     }
 
     // computed frequency from the NRx3 & NRx4 registers
@@ -278,10 +278,10 @@ impl<D: AudioDevice> ApuInner<D> {
     // disabled
     fn len_elapsed(&mut self, ch: usize) -> bool {
         let mut len = match ch {
-            0 => self.ch0.as_mut().and_then(|c| c.len),
-            1 => self.ch1.as_mut().and_then(|c| c.len),
-            2 => self.ch2.as_mut().and_then(|c| c.len),
-            3 => self.ch3.as_mut().and_then(|c| c.len),
+            0 => self.ch0.as_mut().and_then(|c| c.len.as_mut()),
+            1 => self.ch1.as_mut().and_then(|c| c.len.as_mut()),
+            2 => self.ch2.as_mut().and_then(|c| c.len.as_mut()),
+            3 => self.ch3.as_mut().and_then(|c| c.len.as_mut()),
             _ => panic!(),
         };
 
@@ -289,10 +289,10 @@ impl<D: AudioDevice> ApuInner<D> {
             let period = D::sample_rate() / LEN_CLOCK;
 
             if self.sample % period == 0 {
-                *len -= 1
+                **len -= 1
             }
 
-            *len == 0
+            **len == 0
         } else {
             false
         }
@@ -342,7 +342,7 @@ fn lock<D: AudioDevice>(mutex: &Mutex<ApuInner<D>>) -> MutexGuard<ApuInner<D>> {
 }
 
 fn square_wave<D: AudioDevice>(sample: u64, freq: u64, nrx1: u8) -> f64 {
-    let period = D::sample_rate() * (2048 - freq) / 131072;
+    let period = D::sample_rate() * (2048 - freq) / 131_072;
     if period != 0 {
         let sample = sample % period;
         let duty = u64::from(nrx1 >> 6);
@@ -365,8 +365,8 @@ pub struct Apu<D: AudioDevice> {
     inner: Arc<Mutex<ApuInner<D>>>,
 }
 
-impl<D: AudioDevice> Apu<D> {
-    pub fn new() -> Self {
+impl<D: AudioDevice> Default for Apu<D> {
+    fn default() -> Self {
         let inner = ApuInner {
             _phantom: PhantomData,
             sample: 0,
@@ -407,7 +407,9 @@ impl<D: AudioDevice> Apu<D> {
             inner: Arc::new(Mutex::new(inner)),
         }
     }
+}
 
+impl<D: AudioDevice> Apu<D> {
     /// Return audio samples iterator.
     pub fn samples(&self) -> SamplesMutex<D> {
         SamplesMutex::new(&self.inner)

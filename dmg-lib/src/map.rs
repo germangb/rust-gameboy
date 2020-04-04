@@ -8,9 +8,9 @@ pub trait Mapped {
     }
 
     fn read_word(&self, addr: u16) -> u16 {
-        let lo = u16::from(self.read(addr));
-        let hi = u16::from(self.read(addr + 1)) << 8;
-        hi | lo
+        let lo = self.read(addr);
+        let hi = self.read(addr + 1);
+        (u16::from(hi) << 8) | u16::from(lo)
     }
 
     fn write_word(&mut self, addr: u16, data: u16) {
@@ -18,16 +18,6 @@ pub trait Mapped {
         let hi = data >> 8;
         self.write(addr, lo as u8);
         self.write(addr + 1, hi as u8);
-    }
-}
-
-impl<T: Mapped> Mapped for Box<T> {
-    fn read(&self, addr: u16) -> u8 {
-        <T as Mapped>::read(self, addr)
-    }
-
-    fn write(&mut self, addr: u16, data: u8) {
-        <T as Mapped>::write(self, addr, data);
     }
 }
 
