@@ -12,31 +12,31 @@ Peripherals are cartridges that implement some special functionality.
 
 Implementing new peripherals is straightforward.
 
-The only requirement is that the type is marked with the `Cartridge`.
+The only requirement is that the type is marked with the `Cartridge` and implement the `Mapped` trait.
 
 ```Rust
-use dmg_lib::map::Mapped;
-use dmg_lib::cartridge::Cartridge;
+use dmg_lib::{cartridge::Cartridge, map::Mapped};
 
-struct MyPeripheral { .. }
+struct MyPeripheral {
+    // ...
+}
 
-// peripherals are mapped to:
-//
-//  0x0000..=0x7fff (ROM area)
-//  0xa000..=0xbfff (External RAM area)
-//
-// (ref: http://problemkaputt.de/pandocs.htm#memorymap):
-impl Mapped for MyPeripherak { 
+impl Cartridge for MyPeripheral {}
+
+impl Mapped for MyPeripheral { 
     fn read(&self, addr: u16) -> u8 {
-        // ...
+        // peripherals are mapped to two regions:
+        // ref: http://problemkaputt.de/pandocs.htm#memorymap
+        match addr {
+            0x0000..=0x7fff => self.read_rom(addr),
+            0xa000..=0xbfff => self.read_ram(addr),
+            _ => unreachable(),
+        }
     }
 
     fn write(&mut self, addr: u16, data: u8) {
         // ...
     }
 }
-
-// Add the Cartridge marker trait
-impl Cartridge for MyPeripheral {}
 ```
 

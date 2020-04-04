@@ -21,6 +21,7 @@ pub mod map;
 pub mod mmu;
 pub mod ppu;
 pub mod reg;
+pub mod serial;
 pub mod timer;
 pub mod vram;
 pub mod wram;
