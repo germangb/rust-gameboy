@@ -50,11 +50,11 @@ features = ["boot"]
 
 ### CPU instruction tests
 
-![](assets/cpu_instrs.png)
-
 ```bash
 cargo test cpu_instrs
 ```
+
+![](assets/cpu_instrs.png)
 
 ### CPU timming tests
 
