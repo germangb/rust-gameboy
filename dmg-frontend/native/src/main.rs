@@ -16,12 +16,13 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use dmg_lib::cartridge::Mbc1;
 
 const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
-static TEST: &[u8] = include_bytes!("../../../../gb-test-roms/cpu_instrs/cpu_instrs.gb");
+static TEST: &[u8] = include_bytes!("../../../../gb-test-roms/instr_timing/instr_timing.gb");
 
 fn main() {
     env_logger::init();
@@ -41,7 +42,7 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc5::new(TEST))
+        .with_cartridge(Mbc1::new(TEST))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
         .build();

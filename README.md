@@ -56,10 +56,13 @@ cargo test cpu_instrs
 
 ![](assets/cpu_instrs.png)
 
-### CPU timming tests
+### CPU timing tests
 
-| Test | Pass
-| ---- | :---:
+```bash
+cargo test instr_timing
+```
+
+![](assets/instr_timing.png)
 
 ## Tested Games
 

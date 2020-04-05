@@ -66,7 +66,7 @@
       <command value="cargo --package dmg-wasm build" />
     </option>
   </component>
-  <component name="RunManager" selected="Cargo Command.+nightly">
+  <component name="RunManager" selected="Cargo Command.Run native">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -187,9 +187,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Cargo Command.Run native" />
         <item itemvalue="Cargo Command.+nightly" />
         <item itemvalue="Cargo Command.Test cpu_instrs" />
-        <item itemvalue="Cargo Command.Run native" />
         <item itemvalue="Cargo Command.clippy" />
         <item itemvalue="Cargo Command.Run play_sound" />
       </list>
@@ -231,22 +231,22 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="299" key="GridCell.Tab.0.bottom" timestamp="1586080798559">
+    <state width="1920" height="299" key="GridCell.Tab.0.bottom" timestamp="1586081376139">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="299" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586080798559" />
-    <state width="1920" height="299" key="GridCell.Tab.0.center" timestamp="1586080798559">
+    <state width="1920" height="299" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586081376139" />
+    <state width="1920" height="299" key="GridCell.Tab.0.center" timestamp="1586081376139">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="299" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586080798559" />
-    <state width="1920" height="299" key="GridCell.Tab.0.left" timestamp="1586080798558">
+    <state width="1920" height="299" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586081376139" />
+    <state width="1920" height="299" key="GridCell.Tab.0.left" timestamp="1586081376138">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="299" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586080798558" />
-    <state width="1920" height="299" key="GridCell.Tab.0.right" timestamp="1586080798559">
+    <state width="1920" height="299" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586081376138" />
+    <state width="1920" height="299" key="GridCell.Tab.0.right" timestamp="1586081376139">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="299" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586080798559" />
+    <state width="1920" height="299" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586081376139" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
