@@ -77,10 +77,15 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/rodio/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/rodio/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/rodio/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/dmg-sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/gl/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg-driver/headless/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/rodio/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/wasm/target" />

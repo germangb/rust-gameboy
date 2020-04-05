@@ -220,11 +220,11 @@ impl<V: Video> Ppu<V> {
         unsafe { slice::from_raw_parts_mut(self.oam.as_ptr() as _, 40) }
     }
 
-    pub fn video_output(&self) -> &V {
+    pub fn video(&self) -> &V {
         &self.output
     }
 
-    pub fn video_output_mut(&mut self) -> &mut V {
+    pub fn video_mut(&mut self) -> &mut V {
         &mut self.output
     }
 

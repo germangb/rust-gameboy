@@ -3,8 +3,11 @@
 *.lock
 
 # roms
-*.gb
-*.gbc
+dmg-frontend/native/roms/*.gb
+dmg-frontend/native/roms/*.gbc
+dmg-peripheral/camera/rom/*.gb
+dmg-boot/roms/*.gb
+dmg-boot/roms/*.gbc
 
 # wasm project
 dmg-wasm/pkg/

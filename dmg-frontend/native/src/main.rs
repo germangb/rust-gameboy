@@ -21,6 +21,7 @@ const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
+static TEST: &[u8] = include_bytes!("../../../../gb-test-roms/cpu_instrs/cpu_instrs.gb");
 
 fn main() {
     env_logger::init();
@@ -40,10 +41,9 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc5::new(ROM))
+        .with_cartridge(Mbc5::new(TEST))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
-        .with_mode(Mode::GB)
         .build();
 
     // set up audio
@@ -66,7 +66,7 @@ fn main() {
 
         // emulate (1/60) seconds-worth of clock cycles
         emulator.emulate_frame();
-        emulator.mmu_mut().ppu_mut().video_output_mut().present();
+        emulator.mmu_mut().ppu_mut().video_mut().present();
 
         let elapsed = time.elapsed() + carry;
         let sleep = Duration::new(0, 1_000_000_000 / 60);

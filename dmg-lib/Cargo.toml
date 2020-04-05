@@ -10,6 +10,9 @@ edition = "2018"
 log = { version = "0.4.8", optional = true }
 dmg-boot = { path = "../dmg-boot", optional = true }
 
+[dev-dependencies]
+dmg-driver-headless = { path = "../dmg-driver/headless" }
+
 [features]
 default = []
 boot = ["dmg-boot"]
