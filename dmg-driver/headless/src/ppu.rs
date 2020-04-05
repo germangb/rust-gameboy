@@ -20,6 +20,10 @@ impl HeadlessVideo {
         self.front.as_ref()
     }
 
+    pub fn as_ptr(&self) -> *const u8 {
+        self.front.as_ptr() as _
+    }
+
     fn swap(&mut self) {
         mem::swap(&mut self.front, &mut self.back);
     }

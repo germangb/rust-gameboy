@@ -11,6 +11,7 @@ fn cpu_instrs() {
         .with_cartridge(Mbc3::new(ROM))
         .with_video(HeadlessVideo::new())
         .build();
+
     let time = Instant::now();
     loop {
         if time.elapsed() > Duration::new(16, 0) {
@@ -19,9 +20,8 @@ fn cpu_instrs() {
         dmg.emulate_frame();
     }
 
-    let buf_size = std::mem::size_of::<Buffer>();
-    let buf = dmg.mmu().ppu().video().buffer();
-    let buf = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u8, buf_size) };
+    let video = dmg.mmu().ppu().video();
+    let buf = unsafe { std::slice::from_raw_parts(video.as_ptr(), 160 * 144 * 3) };
 
     assert_eq!(PPU, buf)
 }
