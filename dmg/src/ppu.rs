@@ -440,11 +440,11 @@ impl<V: Video> Ppu<V> {
                 self.render_bg(ly, offset, len);
             }
         }
-        if win {
-            self.render_win(ly);
-        }
         if obj {
             self.render_sprites(ly);
+        }
+        if win {
+            self.render_win(ly);
         }
     }
 

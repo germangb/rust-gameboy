@@ -10,9 +10,9 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-dmg-lib = { path = "../../dmg-lib", features = ["boot"] }
-dmg-peripheral-camera = { path = "../../dmg-peripheral/camera" }
-dmg-driver-wasm = { path = "../../dmg-driver/wasm", features = ["video", "poket-camera"] }
+dmg-lib = { path = "../../", features = ["boot"] }
+dmg-peripheral-camera = { path = "../../peripheral/camera" }
+dmg-driver-wasm = { path = "../../driver/wasm", features = ["video", "poket-camera"] }
 
 wasm-bindgen = "0.2.59"
 web-sys = { version = "0.3.37", features = ["KeyboardEvent"] }

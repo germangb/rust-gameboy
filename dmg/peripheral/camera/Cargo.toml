@@ -1,5 +1,5 @@
 [package]
-name = "dmg-tools"
+name = "dmg-peripheral-camera"
 version = "0.1.0"
 authors = ["german gomez <germangb42@gmail.com>"]
 edition = "2018"
@@ -7,6 +7,4 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dmg-lib = { path = "../dmg-lib" }
-colored = "1.9.3"
-rodio = "0.11.0"
+dmg-lib = { path = "../../" }

@@ -23,7 +23,7 @@ use std::{
 const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-static ROM: &[u8] = include_bytes!("../roms/Super Mario Land (World).gb");
+static ROM: &[u8] = include_bytes!("../roms/DashyHalloween2019.gb");
 
 fn main() {
     env_logger::init();

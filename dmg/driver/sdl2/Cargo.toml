@@ -1,5 +1,5 @@
 [package]
-name = "dmg-driver-rodio"
+name = "dmg-driver-sdl2"
 version = "0.1.0"
 authors = ["german gomez <germangb42@gmail.com>"]
 edition = "2018"
@@ -7,5 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dmg-lib = { path = "../../dmg-lib" }
-rodio = "0.11.0"
+dmg-lib = { path = "../../" }
+sdl2 = "0.33"
+
+[features]
+default = ["audio", "video"]
+video = []
+audio = []

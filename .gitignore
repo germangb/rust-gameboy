@@ -3,19 +3,13 @@
 *.lock
 
 # roms
-dmg-frontend/native/roms/*.gb
-dmg-frontend/native/roms/*.gbc
-dmg-peripheral/camera/rom/*.gb
-dmg-boot/roms/*.gb
-dmg-boot/roms/*.gbc
+*.gb
+*.gbc
 
 # wasm project
-dmg-wasm/pkg/
-dmg-wasm/www/dist
-dmg-wasm/www/node_modules
+pkg/
+www/dist
+www/node_modules
 
 # vim
 *.swp
-
-# rom directory
-dmg-lib/roms
