@@ -1,22 +1,22 @@
 [workspace]
 members = [
     # core and tools
-    "dmg",
-    "dmg/boot",
-    "dmg/tools",
+    "dmg01",
+    "dmg01/boot",
+    "dmg01/tools",
 
     # peripherals
-    "dmg/peripheral/camera",
+    "dmg01/peripheral/camera",
 
     # drivers
-    "dmg/driver/sdl2",
-    "dmg/driver/wasm",
-    "dmg/driver/gl",
-    "dmg/driver/rodio",
-    "dmg/driver/headless",
+    "dmg01/driver/sdl2",
+    "dmg01/driver/wasm",
+    "dmg01/driver/gl",
+    "dmg01/driver/rodio",
+    "dmg01/driver/headless",
 
     # frontends
-    "dmg/frontend/native",
-    "dmg/frontend/web",
+    "dmg01/frontend/native",
+    "dmg01/frontend/web",
 ]
 

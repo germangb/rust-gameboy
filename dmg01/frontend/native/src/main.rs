@@ -23,7 +23,8 @@ use std::{
 const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-static ROM: &[u8] = include_bytes!("../roms/DashyHalloween2019.gb");
+// FIXME I think I broke the timer module (Mario 2 and 4)
+static ROM: &[u8] = include_bytes!("../roms/Super Mario Land 4 (J) [!].gb");
 
 fn main() {
     env_logger::init();
@@ -42,7 +43,7 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc5::new(ROM))
+        .with_cartridge(Mbc1::new(ROM))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
         .with_mode(Mode::GB)
