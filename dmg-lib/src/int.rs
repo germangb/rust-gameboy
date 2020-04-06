@@ -51,13 +51,7 @@ impl Mapped for Interrupts {
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
             0xff0f => self.if_ = data,
-            0xffff => {
-                if self.ie != data {
-                    #[cfg(feature = "logging")]
-                    log::info!("IE <- {:#08b}", data);
-                }
-                self.ie = data
-            }
+            0xffff => self.ie = data,
             _ => panic!(),
         }
     }
@@ -66,7 +60,7 @@ impl Mapped for Interrupts {
 #[cfg(test)]
 mod tests {
     use crate::{
-        interrupts::{Flag::*, Interrupts},
+        int::{Flag::*, Interrupts},
         map::Mapped,
     };
 

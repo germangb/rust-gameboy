@@ -1,82 +1,56 @@
-use crate::{interrupts::Flag, map::Mapped, CLOCK};
+use crate::{clock::Clock, int::Flag, map::Mapped, CLOCK};
 
 const DIV: u64 = 16_384;
 
 pub struct Timer {
     div: u8,
+    div_clock: Clock,
     tima: u8,
     tma: u8,
-    // Bit 2    - Timer Stop  (0=Stop, 1=Start)
-    // Bits 1-0 - Input Clock Select
-    //            00:   4096 Hz    (~4194 Hz SGB)
-    //            01: 262144 Hz  (~268400 Hz SGB)
-    //            10:  65536 Hz   (~67110 Hz SGB)
-    //            11:  16384 Hz   (~16780 Hz SGB)
     tac: u8,
-    div_cycles: u64,
-    tima_cycles: u64,
-    // Interrupt requests
-    timer_int: Option<Flag>,
+    tima_clock: Clock,
+    tima_int: Option<Flag>,
 }
 
 impl Default for Timer {
     fn default() -> Self {
         Self {
             div: 0,
+            div_clock: Clock::new(CLOCK, 16_384),
             tima: 0,
             tma: 0,
             tac: 0,
-            div_cycles: 0,
-            tima_cycles: 0,
-            timer_int: None,
+            tima_int: None,
+            tima_clock: Clock::new(0, 0),
         }
     }
 }
 
 impl Timer {
-    pub(crate) fn step(&mut self, cycles: u64) {
-        // DIV counter
-        self.div_cycles += cycles;
-        let cycles_per_tick = CLOCK / DIV;
+    pub fn step(&mut self, cycles: u64) {
+        self.step_div(cycles);
 
-        if self.div_cycles > cycles_per_tick {
-            self.div_cycles %= cycles_per_tick;
-            self.div = self.div.wrapping_add(1);
-        }
-
-        if self.tac & 0x4 == 0 {
-            return;
-        }
-
-        // TIMA counter
-        self.tima_cycles += cycles as u64;
-        let cycles_per_tick = CLOCK / self.clock();
-
-        if self.tima_cycles > cycles_per_tick {
-            self.tima_cycles %= cycles_per_tick;
-            self.tima = self.tima.wrapping_add(1);
-            if self.tima == 0 {
-                self.tima = self.tma;
-                self.request_timer();
-            }
+        if self.tac & 0x4 != 0 {
+            self.step_tima(cycles);
         }
     }
 
     pub fn take_timer_int(&mut self) -> Option<Flag> {
-        self.timer_int.take()
+        self.tima_int.take()
     }
 
-    fn request_timer(&mut self) {
-        self.timer_int = Some(Flag::Timer);
+    fn step_div(&mut self, cycles: u64) {
+        let div_cycles = self.div_clock.step(cycles);
+        self.div = self.div.wrapping_add(div_cycles as u8);
     }
 
-    fn clock(&self) -> u64 {
-        match self.tac & 0x3 {
-            0 => 4_096,
-            1 => 262_144,
-            2 => 65_536,
-            3 => 16_384,
-            _ => panic!(),
+    fn step_tima(&mut self, cycles: u64) {
+        for _ in 0..self.tima_clock.step(cycles) {
+            self.tima = self.tima.wrapping_add(1);
+            if self.tima == 0 {
+                self.tima = self.tma;
+                self.tima_int = Some(Flag::Timer);
+            }
         }
     }
 }
@@ -94,13 +68,26 @@ impl Mapped for Timer {
 
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
-            0xff04 => {
-                //self.div_cycles = 0;
-                self.div = 0
-            }
+            0xff04 => self.div = 0,
             0xff05 => self.tima = data,
             0xff06 => self.tma = data,
-            0xff07 => self.tac = data,
+            // Bit 2    - Timer Stop  (0=Stop, 1=Start)
+            // Bits 1-0 - Input Clock Select
+            //            00:   4096 Hz    (~4194 Hz SGB)
+            //            01: 262144 Hz  (~268400 Hz SGB)
+            //            10:  65536 Hz   (~67110 Hz SGB)
+            //            11:  16384 Hz   (~16780 Hz SGB)
+            0xff07 => {
+                self.tac = data;
+                let freq = match self.tac & 0x3 {
+                    0 => 4_096,
+                    1 => 262_144,
+                    2 => 65_536,
+                    3 => 16_384,
+                    _ => panic!(),
+                };
+                self.tima_clock = Clock::new(CLOCK, freq);
+            }
             _ => panic!(),
         }
     }

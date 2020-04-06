@@ -15,26 +15,16 @@ pub struct SdlVideo {
     buffer: Box<[[Color; 160]; 144]>,
 }
 
-impl Deref for SdlVideo {
-    type Target = WindowCanvas;
-
-    fn deref(&self) -> &Self::Target {
-        &self.canvas
-    }
-}
-
-impl DerefMut for SdlVideo {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.canvas
-    }
-}
-
 impl SdlVideo {
     pub fn new(canvas: WindowCanvas) -> Self {
         Self {
             canvas,
             buffer: Box::new([[[0, 0, 0]; 160]; 144]),
         }
+    }
+
+    pub fn as_ptr(&self) -> *const u8 {
+        self.buffer.as_ptr() as _
     }
 
     pub fn canvas(&self) -> &WindowCanvas {

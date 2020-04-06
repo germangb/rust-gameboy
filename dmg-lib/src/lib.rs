@@ -4,18 +4,22 @@
 )]
 #![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
 
-use apu::device::Audio;
-use cartridge::Cartridge;
-use cpu::Cpu;
-use map::Mapped;
-use mmu::Mmu;
-use ppu::{palette::Palette, Video};
+use crate::{
+    apu::device::Audio,
+    cartridge::Cartridge,
+    cpu::Cpu,
+    map::Mapped,
+    mmu::Mmu,
+    ppu::{palette::Palette, Video},
+};
 use std::marker::PhantomData;
 
 pub mod apu;
 pub mod cartridge;
+// clock utility
+pub(crate) mod clock;
 pub mod cpu;
-pub mod interrupts;
+pub mod int;
 pub mod joypad;
 pub mod map;
 pub mod mmu;
@@ -153,10 +157,13 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
         let video = self.video;
         let mut dmg = Dmg {
             cpu: Cpu::default(),
-            mmu: Box::new(Mmu::with_cartridge_and_video(cartridge, mode, video)),
+            mmu: Box::new(Mmu::new(mode, cartridge, video)),
             carry: 0,
         };
         if self.skip_boot || cfg!(not(feature = "boot")) {
+            // TODO skip boot with GB roms in CGB mode
+
+            // Initialize CPU
             let cpu = dmg.cpu_mut();
 
             cpu.reg_mut().set_af(0x01b0);
@@ -170,6 +177,7 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
                 cpu.reg_mut().a = 0x11;
             }
 
+            // Initialize memory map
             let mmu = dmg.mmu_mut();
 
             mmu.write(0xFF05, 0x00); // TIMA

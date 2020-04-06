@@ -1,11 +1,14 @@
 use dmg_driver_rodio::apu::DmgSource;
 use dmg_driver_sdl2::ppu::SdlVideo;
 use dmg_lib::{
-    apu::device::Stereo44100,
-    cartridge::Mbc5,
+    apu::device::{Audio, Stereo44100},
+    cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Joypad, Key},
-    ppu::palette::{Palette, *},
-    Builder, Mode,
+    ppu::{
+        palette::{Palette, *},
+        Video,
+    },
+    Builder, Dmg, Mode,
 };
 use sdl2::{
     event::{Event, WindowEvent},
@@ -16,19 +19,16 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use dmg_lib::cartridge::Mbc1;
 
 const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-static ROM: &[u8] = include_bytes!("../roms/Tetris-USA.gb");
-static TEST: &[u8] = include_bytes!("../../../../gb-test-roms/instr_timing/instr_timing.gb");
+static ROM: &[u8] = include_bytes!("../roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
 
 fn main() {
     env_logger::init();
 
     let sdl = sdl2::init().unwrap();
-
     let canvas = sdl
         .video()
         .unwrap()
@@ -42,9 +42,11 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc1::new(TEST))
+        .with_cartridge(Mbc5::new(ROM))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
+        // .with_mode(Mode::GB)
+        // .skip_boot()
         .build();
 
     // set up audio
@@ -55,19 +57,23 @@ fn main() {
     sink.play();
 
     let mut pump = sdl.event_pump().unwrap();
+
     let mut carry = Duration::new(0, 0);
 
     loop {
         let time = Instant::now();
 
-        // handle input
-        if handle_input(&mut pump, emulator.mmu_mut().joypad_mut()) {
+        if handle_input(&mut pump, &mut emulator) {
             break;
         }
 
-        // emulate (1/60) seconds-worth of clock cycles
         emulator.emulate_frame();
-        emulator.mmu_mut().ppu_mut().video_mut().present();
+        emulator
+            .mmu_mut()
+            .ppu_mut()
+            .video_mut()
+            .canvas_mut()
+            .present();
 
         let elapsed = time.elapsed() + carry;
         let sleep = Duration::new(0, 1_000_000_000 / 60);
@@ -80,7 +86,11 @@ fn main() {
     }
 }
 
-fn handle_input(pump: &mut EventPump, joypad: &mut Joypad) -> bool {
+fn handle_input(
+    pump: &mut EventPump,
+    dmg: &mut Dmg<impl Cartridge, impl Video, impl Audio>,
+) -> bool {
+    let joypad = dmg.mmu_mut().joypad_mut();
     for event in pump.poll_iter() {
         match event {
             Event::Window {
@@ -88,18 +98,20 @@ fn handle_input(pump: &mut EventPump, joypad: &mut Joypad) -> bool {
                 ..
             } => return true,
             Event::KeyDown {
-                scancode: Some(scancode),
+                scancode: Some(Scancode::S),
                 ..
+            } => unimplemented!("screenshot"),
+            Event::KeyDown {
+                scancode: Some(s), ..
             } => {
-                if let Some(key) = map_scancode(scancode) {
+                if let Some(key) = map_scancode(s) {
                     joypad.press(key)
                 }
             }
             Event::KeyUp {
-                scancode: Some(scancode),
-                ..
+                scancode: Some(s), ..
             } => {
-                if let Some(key) = map_scancode(scancode) {
+                if let Some(key) = map_scancode(s) {
                     joypad.release(key)
                 }
             }

@@ -27,15 +27,15 @@ GameBoy emulation in Rust
 
 ## Boot ROMs
 
-In order to include the bootstrap rom, you must own boot roms for both GB and CGB (they can be found online easily).
+In order to include the bootstrap roms, you must own the roms for both GB and CGB (they can be found online easily).
 
 ```bash
-# these must be present when you cargo build your crate
+# these must be defined when you cargo build your crate
 export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
 export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
 ```
 
-Then, in your Cargo.toml you must enable the `boot` feature flag:
+Then, in your `Cargo.toml` enable the `boot` feature flag:
 
 ```toml
 # Cargo.toml
@@ -44,7 +44,7 @@ Then, in your Cargo.toml you must enable the `boot` feature flag:
 features = ["boot"]
 ```
 
-> **NOTE:** There is currently no build-time validation of the boot rom. Therefore it's not guaranteed that, if the boot roms aren't correct, the build will not work.
+> **NOTE:** There is no built time valiation of the boot roms. Therefore it's not guaranteed that, it they were not correct, the build will still work.
 
 ## Tests
 

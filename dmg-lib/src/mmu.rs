@@ -2,7 +2,7 @@ use crate::{
     apu::{device::Audio, Apu},
     cartridge::Cartridge,
     cpu::Cpu,
-    interrupts::Interrupts,
+    int::Interrupts,
     joypad::Joypad,
     map::Mapped,
     ppu::{Ppu, Video},
@@ -71,7 +71,7 @@ pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
 }
 
 impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
-    pub fn with_cartridge_and_video(cartridge: C, mode: Mode, video_out: V) -> Self {
+    pub fn new(mode: Mode, cartridge: C, video_out: V) -> Self {
         let vram_dma = VRamDma {
             hdma1: 0,
             hdma2: 0,
@@ -393,7 +393,7 @@ mod tests {
 
     #[test]
     fn oam_dma() {
-        let mut mmu = Mmu::with_cartridge_and_video((), Mode::GB, ());
+        let mut mmu = Mmu::<_, _, ()>::new(Mode::GB, (), ());
 
         mmu.write(0xff46, 0);
 

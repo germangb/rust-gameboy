@@ -1,4 +1,4 @@
-use crate::{interrupts::Flag, map::Mapped};
+use crate::{int::Flag, map::Mapped};
 
 const BTN_ROW_FLAG: u8 = 0x10;
 const DIR_ROW_FLAG: u8 = 0x20;

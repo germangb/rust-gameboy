@@ -1,16 +1,16 @@
 use crate::map::Mapped;
 
-const VRAM_SIZE: usize = 0x2000;
+const SIZE: usize = 0x2000;
 
 pub struct VideoRam {
-    vram: [[u8; VRAM_SIZE]; 2],
+    vram: [[u8; SIZE]; 2],
     vbk: u8,
 }
 
 impl Default for VideoRam {
     fn default() -> Self {
         Self {
-            vram: [[0; VRAM_SIZE]; 2],
+            vram: [[0; SIZE]; 2],
             vbk: 0,
         }
     }
@@ -22,24 +22,11 @@ impl VideoRam {
         self.vbk
     }
 
-    /// Return the currently mapped bank (according to the VBK register).
-    pub fn active(&self) -> &[u8; VRAM_SIZE] {
-        let bank = self.vbk & 0x1;
-        self.bank(bank as usize)
-    }
-
-    /// Return the currently mapped bank (according to the VBK register) as
-    /// mutable.
-    pub fn active_mut(&mut self) -> &mut [u8; VRAM_SIZE] {
-        let bank = self.vbk & 0x1;
-        self.bank_mut(bank as usize)
-    }
-
     /// Get the contents of the VRAM memory banks.
     ///
     /// # Panic
     /// Panics if `bank` > 1
-    pub fn bank(&self, bank: usize) -> &[u8; VRAM_SIZE] {
+    pub fn bank(&self, bank: usize) -> &[u8; SIZE] {
         assert!(bank < 2);
         &self.vram[bank]
     }
@@ -48,7 +35,7 @@ impl VideoRam {
     ///
     /// # Panic
     /// Panics if `bank` > 1
-    pub fn bank_mut(&mut self, bank: usize) -> &mut [u8; VRAM_SIZE] {
+    pub fn bank_mut(&mut self, bank: usize) -> &mut [u8; SIZE] {
         assert!(bank < 2);
         &mut self.vram[bank]
     }

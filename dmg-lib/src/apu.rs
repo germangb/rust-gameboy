@@ -5,9 +5,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
-/// Audio format spec.
 pub mod device;
-/// APU sample iterator.
 pub mod samples;
 
 const LEN_CLOCK: u64 = 256;
@@ -20,7 +18,6 @@ struct ToneChannel {
 
 struct WaveChannel {
     len: Option<u64>,
-    sample: u64,
 }
 
 struct NoiseChannel {
@@ -157,18 +154,12 @@ impl<D: Audio> ApuInner<D> {
             return None;
         }
 
-        let freq = self.freq(2);
+        if self.ch2.is_some() {
+            let freq = (2048 - self.freq(2)) * 2;
+            let sample = self.sample / (D::sample_rate() / freq) % 32;
 
-        if let Some(WaveChannel { ref mut sample, .. }) = self.ch2.as_mut() {
-            let freq = (2048 - freq) * 2;
-            if self.sample % (D::sample_rate() / freq) == 0 {
-                *sample += 1;
-                *sample %= 32;
-            }
-
-            // fetch sample and apply volume
-            let mut wave_sample = self.wave_ram[*sample as usize / 2];
-            if *sample % 2 == 0 {
+            let mut wave_sample = self.wave_ram[sample as usize / 2];
+            if sample % 2 == 0 {
                 wave_sample >>= 4
             };
             wave_sample &= 0xf;
@@ -202,26 +193,25 @@ impl<D: Audio> ApuInner<D> {
                 0 => 8,
                 n => u64::from(n) * 16,
             } << shift;
-            let period = D::sample_rate() / freq.min(D::sample_rate());
 
-            // FIXME this is wrong, but I can't get it to output what it should. I'm
-            // probably misunderstanding how this works...
-            if self.nr43 & 0x8 != 0 {
-                if self.sample % period == 0 {
-                    let l0 = *lfsr & 0x1;
-                    *lfsr >>= 1;
-                    let l1 = *lfsr & 0x1;
-                    let l6 = (l0 ^ l1) << 6;
-                    *lfsr &= 0x3f;
-                    *lfsr |= l6;
-                }
-            } else {
+            // FIXME Noise channel doesn't work as expected and I don't know why
+            //let period = 2048 - D::sample_rate() / freq;
+            let period = D::sample_rate() * (2048 - freq) * 2 / 131_072;
+
+            // TODO do properly
+            if self.sample % period == 0 {
                 let l0 = *lfsr & 0x1;
                 *lfsr >>= 1;
                 let l1 = *lfsr & 0x1;
-                let l14 = (l0 ^ l1) << 14;
-                *lfsr &= 0x3fff;
-                *lfsr |= l14;
+                let lx = l0 ^ l1;
+                if self.nr42 & 0x8 == 0 {
+                    *lfsr &= 0x3f;
+                    *lfsr |= lx << 7;
+                } else {
+                    let l14 = (l0 ^ l1) << 14;
+                    *lfsr &= 0x3fff;
+                    *lfsr |= lx << 14;
+                }
             }
 
             let amp = (*lfsr & 0x1) as f64 * 2.0 - 1.0;
@@ -333,33 +323,6 @@ impl<D: Audio> ApuInner<D> {
     }
 }
 
-fn lock<D: Audio>(mutex: &Mutex<ApuInner<D>>) -> MutexGuard<ApuInner<D>> {
-    match mutex.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    }
-}
-
-fn square_wave<D: Audio>(sample: u64, freq: u64, nrx1: u8) -> f64 {
-    let period = D::sample_rate() * (2048 - freq) / 131_072;
-    if period != 0 {
-        let sample = sample % period;
-        let duty = u64::from(nrx1 >> 6);
-        if duty == 0b00 && sample < period * 125 / 1000
-            || duty == 0b01 && sample < period / 4
-            || duty == 0b10 && sample < period / 2
-            || duty == 0b11 && sample < period * 2 / 3
-        {
-            1.0
-        } else {
-            -1.0
-        }
-    } else {
-        // FIXME crashes on tetris, v-Rally (period = 0)
-        0.0
-    }
-}
-
 pub struct Apu<D: Audio> {
     inner: Arc<Mutex<ApuInner<D>>>,
 }
@@ -422,7 +385,10 @@ impl<D: Audio> Apu<D> {
 // - Wave RAM is always readable and writable, and unaffected by power.
 impl<D: Audio> Mapped for Apu<D> {
     fn read(&self, addr: u16) -> u8 {
-        let apu = lock(&self.inner);
+        let apu = match self.inner.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
 
         match addr {
             0xff10 => apu.nr10,
@@ -465,7 +431,10 @@ impl<D: Audio> Mapped for Apu<D> {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        let mut apu = lock(&self.inner);
+        let mut apu = match self.inner.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
 
         if apu.nr52 & 0x80 != 0 {
             match addr {
@@ -478,12 +447,12 @@ impl<D: Audio> Mapped for Apu<D> {
                     apu.nr14 = data & 0xc7;
 
                     if apu.nr14 & 0x80 != 0 {
-                        let timer = if apu.nr14 & 0x40 != 0 {
+                        let len = if apu.nr14 & 0x40 != 0 {
                             Some(64 - u64::from(apu.nr11 & 0x3f))
                         } else {
                             None
                         };
-                        apu.ch0 = Some(ToneChannel { len: timer });
+                        apu.ch0 = Some(ToneChannel { len });
                     }
                 }
 
@@ -495,12 +464,12 @@ impl<D: Audio> Mapped for Apu<D> {
                     apu.nr24 = data & 0xc7;
 
                     if apu.nr24 & 0x80 != 0 {
-                        let timer = if apu.nr14 & 0x40 != 0 {
+                        let len = if apu.nr14 & 0x40 != 0 {
                             Some(64 - u64::from(apu.nr11 & 0x3f))
                         } else {
                             None
                         };
-                        apu.ch1 = Some(ToneChannel { len: timer });
+                        apu.ch1 = Some(ToneChannel { len });
                     }
                 }
 
@@ -513,13 +482,12 @@ impl<D: Audio> Mapped for Apu<D> {
                     apu.nr34 = data;
 
                     if apu.nr34 & 0x80 != 0 {
-                        let timer = if apu.nr34 & 0x40 != 0 {
+                        let len = if apu.nr34 & 0x40 != 0 {
                             Some(256 - u64::from(apu.nr31))
                         } else {
                             None
                         };
-                        let sample = apu.ch2.as_ref().map(|c| c.sample).unwrap_or(0);
-                        apu.ch2 = Some(WaveChannel { len: timer, sample });
+                        apu.ch2 = Some(WaveChannel { len });
                     }
                 }
                 0xff30..=0xff3f => { /* Handled below */ }
@@ -531,22 +499,13 @@ impl<D: Audio> Mapped for Apu<D> {
                 0xff23 => {
                     apu.nr44 = data;
 
-                    // println!("NR41 {:08b}", apu.nr41);
-                    // println!("NR42 {:08b}", apu.nr42);
-                    // println!("NR43 {:08b}", apu.nr43);
-                    // println!("NR44 {:08b}", apu.nr44);
-                    // println!("---");
-
                     if apu.nr44 & 0x80 != 0 {
-                        let timer = if apu.nr44 & 0x40 != 0 {
+                        let len = if apu.nr44 & 0x40 != 0 {
                             Some(64 - u64::from(apu.nr41 & 0x3f))
                         } else {
                             None
                         };
-                        apu.ch3 = Some(NoiseChannel {
-                            len: timer,
-                            lfsr: 0x7fff,
-                        });
+                        apu.ch3 = Some(NoiseChannel { len, lfsr: 0x7fff });
                     }
                 }
 
@@ -606,13 +565,33 @@ impl<D: Audio> Mapped for Apu<D> {
     }
 }
 
+fn square_wave<D: Audio>(sample: u64, freq: u64, nrx1: u8) -> f64 {
+    let period = D::sample_rate() * (2048 - freq) / 131_072;
+    if period != 0 {
+        let sample = sample % period;
+        let duty = u64::from(nrx1 >> 6);
+        if duty == 0b00 && sample < period * 125 / 1000
+            || duty == 0b01 && sample < period / 4
+            || duty == 0b10 && sample < period / 2
+            || duty == 0b11 && sample < period * 2 / 3
+        {
+            1.0
+        } else {
+            -1.0
+        }
+    } else {
+        // FIXME crashes on tetris, v-Rally (period = 0)
+        0.0
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::{apu::Apu, map::Mapped};
 
     #[test]
     fn wave_ram() {
-        let mut apu = Apu::default();
+        let mut apu = Apu::<()>::default();
 
         let wave = &[
             0x01_u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xcd, 0xba, 0x98, 0x76, 0x54,
