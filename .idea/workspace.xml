@@ -44,11 +44,11 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/dmg-lib/tests" />
       <recent name="$PROJECT_DIR$/assets" />
       <recent name="$PROJECT_DIR$/dmg-frontend/native" />
       <recent name="$PROJECT_DIR$/dmg-driver/opengl" />
       <recent name="$PROJECT_DIR$/dmg-sdl2/src/bin" />
-      <recent name="$PROJECT_DIR$/tests/roms" />
     </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/assets" />
@@ -66,7 +66,7 @@
       <command value="cargo --package dmg-wasm build" />
     </option>
   </component>
-  <component name="RunManager" selected="Cargo Command.Run native">
+  <component name="RunManager" selected="Cargo Command.+nightly">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -119,9 +119,9 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Test clock::test::clock" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+    <configuration name="Test apu_mutex" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="test --package dmg-lib --lib clock::test::clock -- --exact" />
+      <option name="command" value="test --package dmg-lib --test apu apu_mutex -- --exact" />
       <option name="allFeatures" value="false" />
       <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
@@ -132,10 +132,10 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Test cpu_instrs" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+    <configuration name="Test clock::test::clock" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="test --package dmg-lib --test cpu_instrs cpu_instrs -- --exact " />
-      <option name="allFeatures" value="true" />
+      <option name="command" value="test --package dmg-lib --lib clock::test::clock -- --exact" />
+      <option name="allFeatures" value="false" />
       <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
@@ -181,16 +181,16 @@
       <item itemvalue="Cargo Command.+nightly" />
       <item itemvalue="Cargo Command.Run native" />
       <item itemvalue="Cargo Command.clippy" />
-      <item itemvalue="Cargo Command.Test cpu_instrs" />
       <item itemvalue="Cargo Command.Test clock::test::clock" />
+      <item itemvalue="Cargo Command.Test apu_mutex" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Cargo Command.Run native" />
         <item itemvalue="Cargo Command.+nightly" />
-        <item itemvalue="Cargo Command.clippy" />
+        <item itemvalue="Cargo Command.Run native" />
+        <item itemvalue="Cargo Command.Test apu_mutex" />
         <item itemvalue="Cargo Command.Test clock::test::clock" />
-        <item itemvalue="Cargo Command.Test cpu_instrs" />
+        <item itemvalue="Cargo Command.clippy" />
       </list>
     </recent_temporary>
   </component>
@@ -214,10 +214,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="793" y="341" width="911" height="390" key="#com.intellij.fileTypes.FileTypeChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1586079321387" />
-    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser" timestamp="1586076046575">
+    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser" timestamp="1586199114826">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1586076046575" />
+    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1586199114826" />
     <state x="818" y="273" width="624" height="544" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1585670688009">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -230,22 +230,22 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="263" key="GridCell.Tab.0.bottom" timestamp="1586195032575">
+    <state width="1920" height="174" key="GridCell.Tab.0.bottom" timestamp="1586203764282">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="263" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586195032575" />
-    <state width="1920" height="263" key="GridCell.Tab.0.center" timestamp="1586195032575">
+    <state width="1920" height="174" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586203764282" />
+    <state width="1920" height="174" key="GridCell.Tab.0.center" timestamp="1586203764282">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="263" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586195032575" />
-    <state width="1920" height="263" key="GridCell.Tab.0.left" timestamp="1586195032575">
+    <state width="1920" height="174" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586203764282" />
+    <state width="1920" height="174" key="GridCell.Tab.0.left" timestamp="1586203764282">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="263" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586195032575" />
-    <state width="1920" height="263" key="GridCell.Tab.0.right" timestamp="1586195032575">
+    <state width="1920" height="174" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586203764282" />
+    <state width="1920" height="174" key="GridCell.Tab.0.right" timestamp="1586203764282">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="263" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586195032575" />
+    <state width="1920" height="174" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586203764282" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -254,10 +254,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585228298247" />
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1586194489152">
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1586203474240">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586194489152" />
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586203474240" />
     <state x="550" y="440" width="540" height="194" key="vcs.readOnlyHandler.ReadOnlyStatusDialog" timestamp="1585506946336">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>

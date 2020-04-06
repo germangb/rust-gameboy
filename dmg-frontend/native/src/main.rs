@@ -23,7 +23,7 @@ use std::{
 const WINDOW_SCALE: u32 = 2;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
-static ROM: &[u8] = include_bytes!("../roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
+static ROM: &[u8] = include_bytes!("../roms/Super Mario Land (World).gb");
 
 fn main() {
     env_logger::init();
@@ -45,7 +45,7 @@ fn main() {
         .with_cartridge(Mbc5::new(ROM))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
-        // .with_mode(Mode::GB)
+        .with_mode(Mode::GB)
         // .skip_boot()
         .build();
 

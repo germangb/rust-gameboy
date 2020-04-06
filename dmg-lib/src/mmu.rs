@@ -194,6 +194,7 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
         self.ppu.step(cycles);
         self.timer.step(cycles);
         self.cartridge.step(cycles);
+        self.apu.lock().step(cycles);
 
         // request generated interrupts
         if let Some(flag) = self.ppu.take_vblank_int() {

@@ -4,7 +4,7 @@ use crate::apu::{
 };
 use std::{
     cell::Cell,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, LockResult, Mutex, MutexGuard},
 };
 
 /// A mutex before the APU samples.
@@ -13,9 +13,8 @@ pub struct SamplesMutex<D: Audio> {
     buf: Arc<Cell<Option<SampleBuffer<D>>>>,
 }
 
-// SamplesMutex is not send by default because of the usage of Cell.
-// Safety is handled handled by the Arc<Mutex<ApuInner<D>>> inside the
-// SamplesMutex.
+// SamplesMutex is not send by default because of the usage of Cell. Safety is
+// handled by self.inner
 unsafe impl<D: Audio> Send for SamplesMutex<D> {}
 
 impl<D: Audio> SamplesMutex<D> {
@@ -34,7 +33,6 @@ impl<D: Audio> SamplesMutex<D> {
     }
 }
 
-#[derive(Clone, Copy)]
 enum SampleBuffer<D: Audio> {
     Two([D::Sample; 2]),
     One([D::Sample; 1]),
@@ -51,13 +49,11 @@ impl<D: Audio> Samples<'_, D> {
     fn load(&mut self) {
         let apu = &mut self.inner;
 
-        apu.sample += 1;
-
         // sample new voices
-        let ch0 = apu.channel0();
-        let ch1 = apu.channel1();
-        let ch2 = apu.channel2();
-        let ch3 = apu.ch3();
+        let ch0 = apu.ch0;
+        let ch1 = apu.ch1;
+        let ch2 = apu.ch2;
+        let ch3 = apu.ch3;
 
         // audio mixing
         let mut so: [f64; 2] = [0.0; 2];

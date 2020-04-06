@@ -44,6 +44,12 @@ pub struct Dmg<C: Cartridge, V: Video, D: Audio> {
     carry: u64,
 }
 
+impl Default for Dmg<(), (), ()> {
+    fn default() -> Self {
+        Builder::default().build()
+    }
+}
+
 impl<C: Cartridge, V: Video, D: Audio> Dmg<C, V, D> {
     pub fn emulate_frame(&mut self) {
         self.carry = self.mmu.emulate_frame(&mut self.cpu, self.carry);
