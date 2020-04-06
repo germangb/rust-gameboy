@@ -20,7 +20,7 @@ GameBoy emulation in Rust
 | Feature | Support | Notes
 | --- | :-----: | ---
 | Cycle accuracy | ❌ | Out of scope (I might change my mind later).
-| Classic GB | ✔️ | Works on most games, except the ones that require cycle accuracy.
+| Classic GB | ✔️ | Works with most games, except the ones that require cycle accuracy.
 | Color (CGB) | ✔️ | Still buggy. Working on it.
 | Sound | | Still buggy. Working on it.
 | Link cable | | In scope but not implemented yet.
