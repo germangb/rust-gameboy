@@ -7,12 +7,12 @@ GameBoy emulation in Rust
 
 ## Modules
 
-- [`dmg-lib`](dmg-lib) core emulation library (cpu, ppu, apu, cartridges, etc..)
-- [`dmg-driver`](dmg-driver) video & audio backends
-- [`dmg-peripheral`](dmg-peripheral) supported peripherals
-- [`dmg-frontend`](dmg-frontend) reference frontends
-    - [`native`](dmg-frontend/native)
-    - [`web`](dmg-frontend/web)
+- [`dmg`](dmg) core emulation library (cpu, ppu, apu, cartridges, etc..)
+- [`dmg/driver`](dmg/driver) video & audio backends
+- [`dmg/peripheral`](dmg/peripheral) supported peripherals
+- [`dmg/frontend`](dmg/frontend) reference frontends
+    - [`native`](dmg/frontend/native)
+    - [`web`](dmg/frontend/web)
 
     
 ## Features
