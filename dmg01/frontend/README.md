@@ -1,7 +1,7 @@
 # `dmg-frontend`
 
-Reference frontends:
+Example frontends.
 
-- `native` native frontend using SDL for video and Rodio for audio playback.
-- `web` web frontend for the camera peripheral.
+- `native` native SDL frontend.
+- `web` webassembly app for the browser.
 
