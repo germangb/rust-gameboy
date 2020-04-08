@@ -275,13 +275,19 @@ impl<V: Video> Ppu<V> {
         // decode color index from tile data
         let lo = self.vram.bank(bank)[offset] >> (col as u8) & 0x1;
         let hi = self.vram.bank(bank)[offset + 1] >> (col as u8) & 0x1;
-        let color_index = lo | (hi << 1);
+        let mut color_index = lo | (hi << 1);
         // return pixel color
         match self.mode {
             Mode::GB => (self.pal.bg_color(color_index as usize), color_index),
             Mode::CGB => {
                 let palette = (flags & 0x7) as usize;
-                (self.color_pal.bg_pal_color(palette, color_index as usize), color_index)
+                let color = self.color_pal.bg_pal_color(palette, color_index as usize);
+                // tile priority over all OAM
+                if flags & 0x80 != 0 && color_index != 0 {
+                    // TODO don't use magic values
+                    color_index = 4;
+                }
+                (color, color_index)
             }
         }
     }
@@ -364,7 +370,10 @@ impl<V: Video> Ppu<V> {
                 let color_index = lo | (hi << 1);
                 // discards transparent pixels (color_index = 0)
                 // handles sprite priority drawing
-                if color_index == 0 || flags & 0x80 != 0 && self.index[lcd_x as usize] != 0 {
+                // handles if bg tile underneath has overall priority
+                if color_index == 0 || // transparent pixel
+                    flags & 0x80 != 0 && self.index[lcd_x as usize] != 0 || // behind colors 1-3
+                    self.index[lcd_x as usize] == 4 { // bg tile overrides OAM priority
                     continue;
                 }
                 // draw pixel color

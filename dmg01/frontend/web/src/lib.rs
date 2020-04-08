@@ -9,7 +9,8 @@ use wasm_bindgen::prelude::*;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-static ROM: &[u8] = include_bytes!("../../../tests/gb-test-roms/cpu_instrs/cpu_instrs.gb");
+static ROM: &[u8] =
+    include_bytes!("../../native/roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]

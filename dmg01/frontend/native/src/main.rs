@@ -17,9 +17,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-const WINDOW_SCALE: u32 = 2;
+const WINDOW_SCALE: u32 = 4;
 
-static ROM: &[u8] = include_bytes!("../roms/Worms (U) [!].gb");
+static ROM: &[u8] = include_bytes!("../roms/Star Wars Episode I - Racer (USA, Europe).gbc");
 
 fn main() {
     env_logger::init();
@@ -38,10 +38,9 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        //.with_cartridge(Mbc5::new(ROM))
-        .with_cartridge(())
+        .with_cartridge(Mbc5::new(ROM))
         //.with_audio::<Stereo44100<i16>>()
-        .with_mode(Mode::GB)
+        .with_mode(Mode::CGB)
         .build();
 
     // set-up custom 4 color palette
