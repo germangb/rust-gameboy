@@ -1,7 +1,5 @@
 use crate::{clock::Clock, int::Flag, map::Mapped, CLOCK};
 
-const DIV: u64 = 16_384;
-
 pub struct Timer {
     div: u8,
     div_clock: Clock,

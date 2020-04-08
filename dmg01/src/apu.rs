@@ -12,7 +12,6 @@ pub struct ApuInner<D: Audio> {
     _phantom: PhantomData<D>,
 
     sample: u64,
-    sample_clock: Clock,
 
     pub(crate) ch0: Option<f64>,
     pub(crate) ch1: Option<f64>,
@@ -64,17 +63,7 @@ pub struct ApuInner<D: Audio> {
 
 // FIXME don't inline so much (channels 1 & 2 share some behaviour)
 impl<D: Audio> ApuInner<D> {
-    pub fn step(&mut self, cycles: u64) {
-        match self.sample_clock.step(cycles) {
-            0 => {}
-            n => {
-                self.sample += n;
-                self.render();
-            }
-        }
-    }
-
-    fn render(&mut self) {}
+    pub fn step(&mut self, cycles: u64) {}
 
     // clear APU registers except NR52's high bit
     fn power_off(&mut self) {
@@ -114,9 +103,7 @@ impl<D: Audio> Default for Apu<D> {
     fn default() -> Self {
         let inner = ApuInner {
             _phantom: PhantomData,
-
             sample: 0,
-            sample_clock: Clock::new(CLOCK, D::sample_rate()),
 
             ch0: None,
             ch1: None,
@@ -212,6 +199,7 @@ impl<D: Audio> Mapped for Apu<D> {
 
             // TODO
             0xff26 => apu.nr52 & 0x80,
+            0xff27..=0xff2f => panic!(), // unused
             _ => panic!(),
         }
     }
@@ -271,6 +259,7 @@ impl<D: Audio> Mapped for Apu<D> {
                 0xff25 => apu.nr51 = data,
 
                 0xff26 => { /* Handled below */ }
+                0xff27..=0xff2f => { /* Unused */ }
                 _ => panic!(),
             }
         }

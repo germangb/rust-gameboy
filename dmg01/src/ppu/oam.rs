@@ -2,7 +2,7 @@ use crate::map::Mapped;
 
 const SIZE: usize = 40;
 
-/// OAM entry table.
+/// OAM table entry.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct Entry {
     pub ypos: u8,
@@ -41,16 +41,22 @@ impl Oam {
     pub(crate) fn search(&mut self, ly: u8, height: u8) {
         let mut visible = self.visible.take().unwrap();
         visible.clear();
-        for (i, entry) in self.iter().enumerate() {
-            let ly = ly as i16;
-            let ypos = entry.ypos as i16;
-            if !(ly < ypos - 16 || height == 16 && ly >= ypos || height == 8 && ly >= ypos - 8) {
-                visible.push(*entry);
-                if visible.len() == 10 {
-                    break;
-                }
+        let ly = ly as i16;
+        let h = height as i16;
+        for entry in 0..40 {
+            let Entry { ypos, .. } = self.get(entry);
+            // skip entry if it doesn't overlap with the current line
+            // add to the array of visible sprites otherwise
+            let y = *ypos as i16 - 16;
+            if ly < y || ly >= y + h {
+                continue;
+            }
+            visible.push(self.get(entry).clone());
+            if visible.len() == 10 {
+                break;
             }
         }
+        //visible.sort_by_key(|e| e.xpos);
         visible.reverse();
         self.visible = Some(visible);
     }

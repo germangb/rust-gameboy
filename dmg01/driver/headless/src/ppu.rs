@@ -26,7 +26,7 @@ impl HeadlessVideo {
 }
 
 impl Video for HeadlessVideo {
-    fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
+    fn draw_line(&mut self, line: usize, pixels: &[Color; 160]) {
         mem::replace(&mut self.back[line], *pixels);
         if line == 143 {
             self.swap();

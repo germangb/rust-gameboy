@@ -12,7 +12,7 @@ pub struct WasmVideoOutput {
 
 #[wasm_bindgen]
 impl WasmVideoOutput {
-    pub fn with_context(ctx: CanvasRenderingContext2d) -> Self {
+    pub fn new(ctx: CanvasRenderingContext2d) -> Self {
         Self {
             ctx,
             buf: [0; BUFFER_SIZE],
@@ -21,7 +21,7 @@ impl WasmVideoOutput {
 }
 
 impl Video for WasmVideoOutput {
-    fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
+    fn draw_line(&mut self, line: usize, pixels: &[Color; 160]) {
         let offset = 160 * 4 * line;
         for (i, [r, g, b]) in pixels.iter().enumerate() {
             let [r, g, b, a] = [*r, *g, *b, 0xff];

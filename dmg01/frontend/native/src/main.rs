@@ -4,10 +4,7 @@ use dmg_lib::{
     apu::device::{Audio, Stereo44100},
     cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Joypad, Key},
-    ppu::{
-        palette::{Palette, *},
-        Video,
-    },
+    ppu::{palette::*, Video},
     Builder, Dmg, Mode,
 };
 use sdl2::{
@@ -20,11 +17,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-const WINDOW_SCALE: u32 = 4;
-const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
+const WINDOW_SCALE: u32 = 2;
 
-// FIXME I think I broke the timer module (Mario 2 and 4)
-static ROM: &[u8] = include_bytes!("../roms/Tennis (JUE) [!].gb");
+static ROM: &[u8] = include_bytes!("../roms/Worms (U) [!].gb");
 
 fn main() {
     env_logger::init();
@@ -43,20 +38,25 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
+        //.with_cartridge(Mbc5::new(ROM))
         .with_cartridge(())
-        .with_cartridge(Mbc3::new(ROM))
-        .with_audio::<Stereo44100<i16>>()
-        .with_palette(PALETTE)
+        //.with_audio::<Stereo44100<i16>>()
         .with_mode(Mode::GB)
-        .skip_boot()
         .build();
 
+    // set-up custom 4 color palette
+    emulator
+        .mmu_mut()
+        .ppu_mut()
+        .pal_mut()
+        .set_color_pal(MUDDYSAND);
+
     // set up audio
-    let device = rodio::default_output_device().expect("Error creating rodio device");
-    let sink = rodio::Sink::new(&device);
-    let source = DmgSource::new(emulator.mmu().apu());
-    sink.append(source);
-    sink.play();
+    // let device = rodio::default_output_device().expect("Error creating rodio
+    // device"); let sink = rodio::Sink::new(&device);
+    // let source = DmgSource::new(emulator.mmu().apu());
+    // sink.append(source);
+    // sink.play();
 
     let mut pump = sdl.event_pump().unwrap();
 

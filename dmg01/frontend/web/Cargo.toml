@@ -11,9 +11,9 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 dmg-lib = { path = "../../", features = ["boot"] }
-dmg-peripheral-camera = { path = "../../peripheral/camera" }
-dmg-driver-wasm = { path = "../../driver/wasm", features = ["video", "poket-camera"] }
+dmg-driver-wasm = { path = "../../driver/wasm", features = ["video"] }
 
+console_error_panic_hook = "0.1.6"
 wasm-bindgen = "0.2.59"
 web-sys = { version = "0.3.37", features = ["KeyboardEvent"] }
 console_log = "0.1.2"

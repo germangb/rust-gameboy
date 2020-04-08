@@ -4,7 +4,7 @@ use crate::apu::{
 };
 use std::{
     cell::Cell,
-    sync::{Arc, LockResult, Mutex, MutexGuard},
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 /// A mutex before the APU samples.

@@ -1,33 +1,18 @@
-import { Dmg, WasmVideoOutput, WasmCameraSensor } from "dmg-frontend-web"
-import Stats from "stats.js"
+import { Dmg, WasmVideoOutput, init_wasm } from "dmg-frontend-web"
 
-const stats = new Stats()
-document.body.appendChild( stats.dom )
+Error.stackTraceLimit = 100;
+init_wasm()
 
 const display = document.getElementById("display")
-const camera = document.getElementById("video")
-const canvas = document.getElementById("canvas")
+const video = WasmVideoOutput.new(display.getContext("2d"));
+const dmg = Dmg.new(video)
 
-navigator.mediaDevices.getUserMedia({ video: { with: 128, height: 112 }, audio: false })
-    .then(stream => {
-        camera.srcObject = stream;
-        camera.play()
+document.addEventListener("keydown", (event) => dmg.handle_key_down(event))
+document.addEventListener("keyup", (event) => dmg.handle_key_up(event))
 
-        const video = WasmVideoOutput.with_context(display.getContext("2d"));
-        const sensor = WasmCameraSensor.with_video_and_context(camera, canvas.getContext("2d"))
-        const dmg = Dmg.with_video_and_sensor(video, sensor)
+const update = () => {
+    dmg.emulate_frame()
+    window.requestAnimationFrame(update)
+}
 
-        document.addEventListener("keydown", (event) => dmg.handle_key_down(event))
-        document.addEventListener("keyup", (event) => dmg.handle_key_up(event))
-
-        const update = () => {
-            stats.begin()
-            dmg.emulate_frame()
-            stats.end()
-            window.requestAnimationFrame(update)
-        }
-
-        window.requestAnimationFrame(update)
-    })
-    .catch(err => console.error("Webcam access required."))
-
+window.requestAnimationFrame(update)

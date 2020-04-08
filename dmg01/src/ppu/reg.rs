@@ -1,4 +1,7 @@
-use crate::map::Mapped;
+use crate::{
+    map::Mapped,
+    ppu::palette::{Color, GRAYSCALE},
+};
 
 const COLOR_PAL_SIZE: usize = 0x40;
 
@@ -38,6 +41,17 @@ pub struct Window {
     pub wx: u8,
 }
 
+impl Window {
+    /// Returns the top-left corner of the window within the LCD display.
+    /// Equivalent to `[wy, wx-7]`.
+    ///
+    /// The bounds of the window are defined by (wy, wx-7) being the top-left
+    /// corner, and (143, 159) the bottom-right.
+    pub fn lcd_bounds(&self) -> [isize; 2] {
+        [self.wy as isize, self.wx as isize - 7]
+    }
+}
+
 impl Default for Window {
     fn default() -> Self {
         Self { wy: 0, wx: 0 }
@@ -62,12 +76,13 @@ impl Mapped for Window {
     }
 }
 
-/// GB mode palette.
+/// GB mode palette registers.
 #[derive(Debug, Clone, Copy)]
 pub struct Pal {
     pub bgp: u8,
     pub obp0: u8,
     pub obp1: u8,
+    color_pal: [Color; 4],
 }
 
 impl Default for Pal {
@@ -76,7 +91,50 @@ impl Default for Pal {
             bgp: 0,
             obp0: 0,
             obp1: 0,
+            color_pal: GRAYSCALE,
         }
+    }
+}
+
+impl Pal {
+    /// Set a custom set of 4 colors.
+    /// If none is specified, 4 shades of gray are used.
+    pub fn set_color_pal(&mut self, pal: [Color; 4]) {
+        self.color_pal = pal;
+    }
+
+    /// Returns the cursom 4-color palette.
+    /// If none is specified via [`Pal::set_color_pal`], it's four shades of
+    /// gray.
+    ///
+    /// [`Pal::set_color_pal`]: #
+    pub fn color_pal(&mut self) -> &[Color; 4] {
+        &self.color_pal
+    }
+
+    /// Returns the color index given its index.
+    /// The returned index may thenbe used to index a 4-color palette.
+    pub fn bg_color(&self, index: usize) -> Color {
+        let pal = self.bgp as usize;
+        self.color_pal[pal >> (2 * index) & 0x3]
+    }
+
+    /// Return the color index from the given sprite index.
+    ///
+    /// # Panics
+    /// Panics if `obp` is neither 0 nor 1.
+    pub fn obp_color(&self, obp: usize, index: usize) -> Color {
+        let pal = match obp {
+            0 => self.obp0,
+            1 => self.obp1,
+            _ => panic!(),
+        } as usize;
+        self.color_pal[pal >> (2 * index) & 0x3]
+    }
+
+    /// Returns the color of the LCD when it's turned off (color index 0).
+    pub fn clear_color(&self) -> Color {
+        self.bg_color(0)
     }
 }
 
@@ -125,6 +183,72 @@ impl Default for ColorPal {
             bgp: [0xff; COLOR_PAL_SIZE],
             obp: [0xff; COLOR_PAL_SIZE],
         }
+    }
+}
+
+impl ColorPal {
+    /// Return a BG color palette.
+    ///
+    /// # Panics
+    /// Panics if `palette` >= 8.
+    pub fn bg_pal(&self, palette: usize) -> [Color; 4] {
+        [
+            self.bg_pal_color(palette, 0),
+            self.bg_pal_color(palette, 1),
+            self.bg_pal_color(palette, 2),
+            self.bg_pal_color(palette, 3),
+        ]
+    }
+
+    /// Return an OB color palette.
+    ///
+    /// # Panics
+    /// Panics if `palette` >= 8.
+    pub fn ob_pal(&self, palette: usize) -> [Color; 4] {
+        [
+            self.ob_pal_color(palette, 0),
+            self.ob_pal_color(palette, 1),
+            self.ob_pal_color(palette, 2),
+            self.ob_pal_color(palette, 3),
+        ]
+    }
+
+    /// Return one of the 4 colors of the given palette.
+    /// There are a total of 8 color palettes with 4 colors each.
+    ///
+    /// # Panic
+    /// Panics if `palette >= 8` or `color >= 4`
+    pub fn bg_pal_color(&self, palette: usize, color: usize) -> Color {
+        Self::pal_color(&self.bgp, palette, color)
+    }
+
+    /// Return a color from a color palette from the OB palettes.
+    /// There are a total of 8 palettes with 4 colors each.
+    ///
+    /// # Panic
+    /// Panics if `palette >= 8` or `color >= 4`
+    pub fn ob_pal_color(&self, palette: usize, color: usize) -> Color {
+        Self::pal_color(&self.obp, palette, color)
+    }
+
+    pub fn pal_color(pal: &[u8; COLOR_PAL_SIZE], palette: usize, color: usize) -> Color {
+        assert!(palette < COLOR_PAL_SIZE / 8);
+        assert!(color < 4);
+        let pal_offset = 8 * palette;
+        let pal = &pal[pal_offset..pal_offset + 8];
+        let color_offset = color * 2;
+        let color: u16 =
+            u16::from(pal[color_offset as usize]) | u16::from(pal[color_offset as usize + 1]) << 8;
+        [
+            (0xff * (color & 0x1f) / 0x1f) as u8,
+            (0xff * ((color >> 5) & 0x1f) / 0x1f) as u8,
+            (0xff * ((color >> 10) & 0x1f) / 0x1f) as u8,
+        ]
+    }
+
+    /// Returns the color of the LCD when it's turned off (white).
+    pub fn clear_color(&self) -> Color {
+        [0xff, 0xff, 0xff]
     }
 }
 
@@ -187,6 +311,15 @@ pub(crate) const STAT_HBLANK: u8 = 0x8;
 pub(crate) const STAT_SEARCH: u8 = 0x20;
 pub(crate) const STAT_LYC_LY: u8 = 0x40;
 
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+pub enum StatMode {
+    HBlank = 0x00,
+    VBlank = 0x01,
+    Search = 0x02,
+    Pixels = 0x03,
+}
+
 /// LCDC and STAT registers.
 pub struct LcdcStat {
     // Bit 7 - LCD Display Enable             (0=Off, 1=On)
@@ -214,10 +347,18 @@ impl Default for LcdcStat {
 }
 
 impl LcdcStat {
-    pub fn stat_set_mode(&mut self, mode: u8) {
-        assert!(mode <= 3);
+    pub(crate) fn stat_set_mode(&mut self, mode: StatMode) {
         self.stat &= !0x3;
-        self.stat |= mode & 0x3;
+        self.stat |= mode as u8;
+    }
+
+    /// Returns 8 or 16 depending on the current OBJ size mode (bit 2).
+    pub fn lcdc_obj_size(&self) -> u8 {
+        if self.lcdc & 0x4 == 0 {
+            8
+        } else {
+            16
+        }
     }
 
     /// Location of the BG tile map.
@@ -228,7 +369,7 @@ impl LcdcStat {
         }
     }
 
-    /// Location of the BG & Windo tile data.
+    /// Location of the BG & Window tile data.
     pub fn bg_win_tile_data(&self) -> u16 {
         match self.lcdc & 0x10 {
             0 => 0x8800,

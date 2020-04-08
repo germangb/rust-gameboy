@@ -37,7 +37,7 @@ impl SdlVideo {
 }
 
 impl Video for SdlVideo {
-    fn render_line(&mut self, line: usize, pixels: &[Color; 160]) {
+    fn draw_line(&mut self, line: usize, pixels: &[Color; 160]) {
         std::mem::replace(&mut self.buffer[line], *pixels);
         if line == 143 {
             let texture_creator = self.canvas.texture_creator();

@@ -66,7 +66,7 @@
       <command value="cargo --package dmg-wasm build" />
     </option>
   </component>
-  <component name="RunManager" selected="Cargo Command.Run native">
+  <component name="RunManager" selected="Bash.wasm-pack build">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -77,10 +77,9 @@
       <option name="SCRIPT_NAME" value="build.sh" />
       <option name="PARAMETERS" value="" />
       <envs>
-        <env name="RUST_LOG" value="info" />
-        <env name="DMG_BOOT_GB_ROM" value="$PWD/../../dmg-boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PWD/../../dmg-boot/roms/boot.gbc" />
-        <env name="DMG_CAMERA_ROM" value="$PWD/../../dmg-peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
+        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gb" />
+        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg01/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
       </envs>
       <method v="2" />
     </configuration>
@@ -104,6 +103,23 @@
     <configuration name="Run native" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
       <option name="command" value="run --package dmg-frontend-native" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="FULL" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs>
+        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gb" />
+        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gbc" />
+        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg01/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
+      </envs>
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Run wasm" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="build --package dmg-frontend-web" />
       <option name="allFeatures" value="false" />
       <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
@@ -177,6 +193,7 @@
     <list>
       <item itemvalue="Bash.wasm-pack build" />
       <item itemvalue="Cargo Command.Run native (release)" />
+      <item itemvalue="Cargo Command.Run wasm" />
       <item itemvalue="Cargo Command.+nightly" />
       <item itemvalue="Cargo Command.Run native" />
       <item itemvalue="Cargo Command.clippy" />
@@ -201,10 +218,10 @@
     <option name="showServicesTree" value="false" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1586292868080">
+    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1586372061302">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586292868080" />
+    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1586372061301" />
     <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583947528331">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -229,22 +246,22 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="170" key="GridCell.Tab.0.bottom" timestamp="1586342776177">
+    <state width="1920" height="315" key="GridCell.Tab.0.bottom" timestamp="1586373329822">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="170" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586342776177" />
-    <state width="1920" height="170" key="GridCell.Tab.0.center" timestamp="1586342776176">
+    <state width="1920" height="315" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586373329822" />
+    <state width="1920" height="315" key="GridCell.Tab.0.center" timestamp="1586373329821">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="170" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586342776176" />
-    <state width="1920" height="170" key="GridCell.Tab.0.left" timestamp="1586342776176">
+    <state width="1920" height="315" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586373329821" />
+    <state width="1920" height="315" key="GridCell.Tab.0.left" timestamp="1586373329821">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="170" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586342776176" />
-    <state width="1920" height="170" key="GridCell.Tab.0.right" timestamp="1586342776176">
+    <state width="1920" height="315" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586373329821" />
+    <state width="1920" height="315" key="GridCell.Tab.0.right" timestamp="1586373329822">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="170" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586342776176" />
+    <state width="1920" height="315" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586373329822" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -253,10 +270,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1585228298247" />
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1586341422052">
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1586373080901">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586341422052" />
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586373080901" />
     <state x="550" y="440" width="540" height="194" key="vcs.readOnlyHandler.ReadOnlyStatusDialog" timestamp="1585506946336">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>

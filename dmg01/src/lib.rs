@@ -1,16 +1,10 @@
 #![cfg_attr(
     not(debug_assertions),
-    deny(dead_code, unused_imports, unused_variables)
+    warn(dead_code, unused_imports, unused_variables)
 )]
 #![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
-
 use crate::{
-    apu::device::Audio,
-    cartridge::Cartridge,
-    cpu::Cpu,
-    map::Mapped,
-    mmu::Mmu,
-    ppu::{palette::Palette, Video},
+    apu::device::Audio, cartridge::Cartridge, cpu::Cpu, map::Mapped, mmu::Mmu, ppu::Video,
 };
 use std::marker::PhantomData;
 
@@ -79,7 +73,6 @@ impl<C: Cartridge, V: Video, D: Audio> Dmg<C, V, D> {
 pub struct Builder<C: Cartridge, V: Video, D: Audio> {
     _phantom: PhantomData<D>,
     mode: Option<Mode>,
-    palette: Option<Palette>,
     skip_boot: bool,
     cartridge: C,
     video: V,
@@ -90,7 +83,6 @@ impl Default for Builder<(), (), ()> {
         Self {
             _phantom: PhantomData,
             mode: None,
-            palette: None,
             skip_boot: false,
             cartridge: (),
             video: (),
@@ -104,7 +96,6 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             _phantom: PhantomData,
             mode: self.mode,
             skip_boot: self.skip_boot,
-            palette: self.palette,
             cartridge: self.cartridge,
             video: self.video,
         }
@@ -115,7 +106,6 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             _phantom: PhantomData,
             mode: self.mode,
             skip_boot: self.skip_boot,
-            palette: self.palette,
             cartridge,
             video: self.video,
         }
@@ -126,19 +116,9 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             _phantom: PhantomData,
             mode: self.mode,
             skip_boot: self.skip_boot,
-            palette: self.palette,
             cartridge: self.cartridge,
             video,
         }
-    }
-
-    /// Set the default color palette on GB mode.
-    ///
-    /// The palette can be modified afterwards from the PPU at any time. This is
-    /// just a way to initialize it to something other than GRAYSCALE values.
-    pub fn with_palette(mut self, palette: Palette) -> Self {
-        self.palette = Some(palette);
-        self
     }
 
     /// Disable boot rom. If the crate is not built using the *boot* feature
@@ -218,9 +198,6 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             mmu.write(0xFF4B, 0x00); // WX
             mmu.write(0xFFFF, 0x00); // IE
             mmu.write(0xFF50, 0x01); // BOOT
-        }
-        if let Some(pal) = self.palette {
-            dmg.mmu_mut().ppu_mut().set_gb_palette(pal);
         }
         dmg
     }

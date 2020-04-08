@@ -1,46 +1,37 @@
-#![deny(dead_code)]
-#![deny(unused_imports)]
-#![deny(unused_must_use)]
-#![deny(unused_variables)]
-#![deny(unused_mut)]
-#![deny(unused_imports)]
-#![deny(clippy::style)]
-#![deny(clippy::correctness)]
-#![deny(clippy::complexity)]
-#![deny(clippy::perf)]
-
-pub use dmg_driver_wasm::{poket_camera::WasmCameraSensor, ppu::WasmVideoOutput};
+pub use dmg_driver_wasm::ppu::WasmVideoOutput;
 use dmg_lib::{
+    cartridge::Mbc1,
     joypad::{Btn, Dir, Key},
-    ppu::palette::{Palette, NINTENDO_GAMEBOY_BLACK_ZERO},
+    ppu::palette::DMG,
     Builder, Mode,
 };
-use dmg_peripheral_camera::PoketCamera;
+use wasm_bindgen::prelude::*;
+use dmg_lib::cartridge::Mbc5;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-const MODE: Mode = Mode::GB;
-const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
+static ROM: &[u8] = include_bytes!("../../native/roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
 
 /// WebAssembly-enabled emulator.
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<PoketCamera<WasmCameraSensor>, WasmVideoOutput, ()>);
+#[wasm_bindgen]
+pub struct Dmg(dmg_lib::Dmg<Mbc5, WasmVideoOutput, ()>);
 
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub fn init_log() {
+#[wasm_bindgen]
+pub fn init_wasm() {
     console_log::init_with_level(log::Level::Debug).expect("Error initializing log");
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 }
 
-#[wasm_bindgen::prelude::wasm_bindgen]
+#[wasm_bindgen]
 impl Dmg {
-    pub fn with_video_and_sensor(video: WasmVideoOutput, sensor: WasmCameraSensor) -> Self {
-        let dmg = Builder::default()
-            .with_mode(MODE)
-            .with_palette(PALETTE)
+    pub fn new(video: WasmVideoOutput) -> Self {
+        let cart = Mbc5::new(ROM);
+        let mut dmg = Builder::default()
+            .with_mode(Mode::CGB)
             .with_video(video)
-            .with_cartridge(PoketCamera::new(sensor))
+            .with_cartridge(cart)
             .build();
+        dmg.mmu_mut().ppu_mut().pal_mut().set_color_pal(DMG);
         Self(dmg)
     }
 
