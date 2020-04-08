@@ -2,12 +2,12 @@ use crate::map::Mapped;
 
 const SIZE: usize = 0x2000;
 
-pub struct VideoRam {
+pub struct VRam {
     vram: [[u8; SIZE]; 2],
     vbk: u8,
 }
 
-impl Default for VideoRam {
+impl Default for VRam {
     fn default() -> Self {
         Self {
             vram: [[0; SIZE]; 2],
@@ -16,7 +16,7 @@ impl Default for VideoRam {
     }
 }
 
-impl VideoRam {
+impl VRam {
     /// Return the contents of the VBK (VRAM bank select) register.
     pub fn vbk(&self) -> u8 {
         self.vbk
@@ -41,7 +41,7 @@ impl VideoRam {
     }
 }
 
-impl Mapped for VideoRam {
+impl Mapped for VRam {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0x8000..=0x9fff => {

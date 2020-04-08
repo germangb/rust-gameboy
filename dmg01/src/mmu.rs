@@ -7,7 +7,7 @@ use crate::{
     map::Mapped,
     ppu::{Ppu, Video},
     timer::Timer,
-    wram::WorkRam,
+    wram::WRam,
     Mode, CLOCK,
 };
 
@@ -19,8 +19,6 @@ use crate::{
 // - 0xff corrupts pokemon crystal
 const HDMA5_DATA: u8 = 0xff;
 const HDMA_DATA: u8 = 0xff; // HDMA1..4
-const UNUSED_DATA: u8 = 0x00;
-const BOOT_REG_DATA: u8 = 0x00; // ff50
 const HRAM_SIZE: usize = 0x7f;
 
 /// HRam memory
@@ -33,13 +31,23 @@ enum Speed {
     X2 = 0x80,
 }
 
-#[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct VRamDma {
     hdma1: u8,
     hdma2: u8,
     hdma3: u8,
     hdma4: u8,
+}
+
+impl Default for VRamDma {
+    fn default() -> Self {
+        Self {
+            hdma1: 0,
+            hdma2: 0,
+            hdma3: 0,
+            hdma4: 0,
+        }
+    }
 }
 
 // 0000-3FFF   16KB ROM Bank 00     (in cartridge, fixed at bank 00)
@@ -62,7 +70,7 @@ pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
     ppu: Ppu<V>,
     apu: Apu<D>,
     timer: Timer,
-    wram: WorkRam,
+    wram: WRam,
     joy: Joypad,
     hram: HRam,
     vram_dma: VRamDma,
@@ -72,33 +80,19 @@ pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
 
 impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
     pub fn new(mode: Mode, cartridge: C, video_out: V) -> Self {
-        let vram_dma = VRamDma {
-            hdma1: 0,
-            hdma2: 0,
-            hdma3: 0,
-            hdma4: 0,
-        };
-        let ppu = Ppu::with_mode_and_video(mode, video_out);
-        let timer = Timer::default();
-        let wram = WorkRam::default();
-        let int = Interrupts::default();
-        let joy = Joypad::default();
-        let apu = Apu::default();
-        let speed = Speed::X1;
-        let hram = [0; HRAM_SIZE];
         Self {
             mode,
-            boot: false,
             cartridge,
-            ppu,
-            timer,
-            wram,
-            joy,
-            apu,
-            hram,
-            vram_dma,
-            int,
-            speed,
+            boot: false,
+            ppu: Ppu::new(mode, video_out),
+            timer: Timer::default(),
+            wram: WRam::default(),
+            joy: Joypad::default(),
+            apu: Apu::default(),
+            hram: [0; HRAM_SIZE],
+            vram_dma: VRamDma::default(),
+            int: Interrupts::default(),
+            speed: Speed::X1,
         }
     }
 
@@ -126,11 +120,11 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
         &mut self.ppu
     }
 
-    pub fn wram(&self) -> &WorkRam {
+    pub fn wram(&self) -> &WRam {
         &self.wram
     }
 
-    pub fn wram_mut(&mut self) -> &mut WorkRam {
+    pub fn wram_mut(&mut self) -> &mut WRam {
         &mut self.wram
     }
 
@@ -223,17 +217,8 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
     fn oam_dma(&mut self, d: u8) {
         let src = u16::from(d) << 8;
         let dst = 0xfe00;
-        let len = 0x9f;
 
-        #[cfg(feature = "logging")]
-        log::info!(
-            "OAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#02x}",
-            src,
-            dst,
-            len
-        );
-
-        for addr in 0..=len {
+        for addr in 0..=0x9f {
             let src = src | (addr as u16);
             let dst = dst | (addr as u16);
             self.write(dst, self.read(src));
@@ -292,10 +277,10 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
             0xc000..=0xdfff => self.wram.read(addr),
             0xe000..=0xfdff => self.wram.read(addr),
             0xfe00..=0xfe9f => self.ppu.read(addr),
-            0xfea0..=0xfeff => UNUSED_DATA,
+            0xfea0..=0xfeff => 0,
             0xff00..=0xff7f => match addr {
                 0xff00 => self.joy.read(addr),
-                0xff01 | 0xff02 => UNUSED_DATA,
+                0xff01 | 0xff02 => 0,
                 0xff04..=0xff07 => self.timer.read(addr),
                 0xff0f => self.int.read(addr),
                 0xff10..=0xff14
@@ -305,18 +290,18 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
                 | 0xff20..=0xff26
                 | 0xff27..=0xff2f => self.apu.read(addr),
                 0xff40..=0xff45 | 0xff47..=0xff4b | 0xff4f | 0xff68..=0xff6b => self.ppu.read(addr),
-                0xff46 => UNUSED_DATA, // OAM DMA
-                0xff50 => BOOT_REG_DATA,
+                0xff46 => 0, // OAM DMA
+                0xff50 => 0,
                 0xff51..=0xff54 => HDMA_DATA,
                 0xff55 => HDMA5_DATA,
                 0xff4d => self.speed as u8,
                 0xff70 => self.wram.read(addr),
-                _ => panic!(),
+                _ => {
+                    //println!("ERROR {:04x}", addr);
+                    0
+                }
             },
-            0xff80..=0xfffe => match addr {
-                0xff80..=0xfffe => self.hram[addr as usize - 0xff80],
-                _ => panic!(),
-            },
+            0xff80..=0xfffe => self.hram[addr as usize - 0xff80],
             0xffff => self.int.read(addr),
         }
     }
@@ -379,10 +364,7 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
                 0xff70 => self.wram.write(addr, data),
                 _ => {}
             },
-            0xff80..=0xfffe => match addr {
-                0xff80..=0xfffe => self.hram[addr as usize - 0xff80] = data,
-                _ => panic!(),
-            },
+            0xff80..=0xfffe => self.hram[addr as usize - 0xff80] = data,
             0xffff => self.int.write(addr, data),
         }
     }

@@ -35,7 +35,7 @@ impl Timer {
         }
     }
 
-    pub fn take_timer_int(&mut self) -> Option<Flag> {
+    pub(crate) fn take_timer_int(&mut self) -> Option<Flag> {
         self.tima_int.take()
     }
 

@@ -20,11 +20,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-const WINDOW_SCALE: u32 = 2;
+const WINDOW_SCALE: u32 = 4;
 const PALETTE: Palette = NINTENDO_GAMEBOY_BLACK_ZERO;
 
 // FIXME I think I broke the timer module (Mario 2 and 4)
-static ROM: &[u8] = include_bytes!("../roms/Super Mario Land 4 (J) [!].gb");
+static ROM: &[u8] = include_bytes!("../roms/Tennis (JUE) [!].gb");
 
 fn main() {
     env_logger::init();
@@ -43,11 +43,12 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc1::new(ROM))
+        .with_cartridge(())
+        .with_cartridge(Mbc3::new(ROM))
         .with_audio::<Stereo44100<i16>>()
         .with_palette(PALETTE)
         .with_mode(Mode::GB)
-        // .skip_boot()
+        .skip_boot()
         .build();
 
     // set up audio

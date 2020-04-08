@@ -220,7 +220,7 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             mmu.write(0xFF50, 0x01); // BOOT
         }
         if let Some(pal) = self.palette {
-            dmg.mmu_mut().ppu_mut().set_palette(pal);
+            dmg.mmu_mut().ppu_mut().set_gb_palette(pal);
         }
         dmg
     }

@@ -210,12 +210,8 @@ impl<D: Audio> Mapped for Apu<D> {
             0xff24 => apu.nr50,
             0xff25 => apu.nr51,
 
-            #[rustfmt::skip]
-            0xff26 => {
-                let mut data = apu.nr52 & 0x80;
-                // TODO
-                data
-            }
+            // TODO
+            0xff26 => apu.nr52 & 0x80,
             _ => panic!(),
         }
     }
