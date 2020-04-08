@@ -1,16 +1,15 @@
 pub use dmg_driver_wasm::ppu::WasmVideoOutput;
 use dmg_lib::{
-    cartridge::Mbc1,
+    cartridge::{Mbc1, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::palette::DMG,
     Builder, Mode,
 };
 use wasm_bindgen::prelude::*;
-use dmg_lib::cartridge::Mbc5;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-static ROM: &[u8] = include_bytes!("../../native/roms/Legend of Zelda, The - Link's Awakening DX (U) (V1.2) [C][!].gbc");
+static ROM: &[u8] = include_bytes!("../../../tests/gb-test-roms/cpu_instrs/cpu_instrs.gb");
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]
