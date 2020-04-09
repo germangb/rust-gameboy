@@ -27,8 +27,7 @@ pub struct Mbc3 {
 }
 
 impl Mbc3 {
-    pub fn new<B: Into<Box<[u8]>>>(rom: B) -> Self {
-        let rom = rom.into();
+    pub fn new(rom: Box<[u8]>) -> Self {
         let ram_banks = ram_banks(rom[0x149]);
         Self {
             rom,
@@ -45,18 +44,16 @@ impl Mbc3 {
 
 impl Mapped for Mbc3 {
     fn read(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000..=0x3fff => self.rom[addr as usize],
-            0x4000..=0x7fff => self.rom[0x4000 * self.rom_bank.max(1) + addr as usize - 0x4000],
-            0xa000..=0xbfff => {
+        match addr as usize {
+            addr @ 0x0000..=0x3fff => self.rom[addr],
+            addr @ 0x4000..=0x7fff => self.rom[0x4000 * self.rom_bank.max(1) + addr - 0x4000],
+            addr @ 0xa000..=0xbfff => {
                 if self.ram_timer_enabled {
                     match self.mode {
-                        Mode::Ram => self.ram[self.ram_bank][addr as usize - 0xa000],
+                        Mode::Ram => self.ram[self.ram_bank][addr - 0xa000],
                         Mode::Rtc => self.rtc[self.rtc_select],
                     }
                 } else {
-                    #[cfg(feature = "logging")]
-                    log::warn!("READ while RAM and TIMER disabled ({:04x})", addr);
                     0
                 }
             }
@@ -65,15 +62,8 @@ impl Mapped for Mbc3 {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        match addr {
-            0x0000..=0x1fff => {
-                let enabled = data & 0xf == 0xa;
-                if enabled != self.ram_timer_enabled {
-                    #[cfg(feature = "logging")]
-                    log::info!("RAM and TIMER enable = {:x} = {}", data, enabled);
-                }
-                self.ram_timer_enabled = enabled;
-            }
+        match addr as usize {
+            0x0000..=0x1fff => self.ram_timer_enabled = data & 0xf == 0xa,
             0x2000..=0x3fff => self.rom_bank = data as usize,
             // As for the MBC1s RAM Banking Mode, writing a value in range for 00h-03h maps the
             // corresponding external RAM Bank (if any) into memory at A000-BFFF.
@@ -102,19 +92,12 @@ impl Mapped for Mbc3 {
             0x6000..=0x7fff => {}
             // Depending on the current Bank Number/RTC Register selection (see below), this memory
             // space is used to access an 8KByte external RAM Bank, or a single RTC Register.
-            0xa000..=0xbfff => {
+            addr @ 0xa000..=0xbfff => {
                 if self.ram_timer_enabled {
                     match self.mode {
-                        Mode::Ram => self.ram[self.ram_bank][addr as usize - 0xa000] = data,
+                        Mode::Ram => self.ram[self.ram_bank][addr - 0xa000] = data,
                         Mode::Rtc => self.rtc[self.rtc_select] = data,
                     }
-                } else {
-                    #[cfg(feature = "logging")]
-                    log::warn!(
-                        "WRITE while RAM and TIMER disabled ({:04x}) <- {:02x}",
-                        addr,
-                        data
-                    );
                 }
             }
             _ => panic!(),

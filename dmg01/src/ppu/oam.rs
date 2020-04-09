@@ -62,7 +62,7 @@ impl Oam {
     }
 
     pub(crate) fn visible(&self) -> impl Iterator<Item = &Entry> {
-        self.visible.iter().flat_map(|s| s)
+        self.visible.iter().flatten()
     }
 
     /// Returns an iterator over the 40 OAM entries.

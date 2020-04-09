@@ -2,7 +2,8 @@ use dmg_driver_rodio::apu::DmgSource;
 use dmg_driver_sdl2::ppu::SdlVideo;
 use dmg_lib::{
     apu::device::{Audio, Stereo44100},
-    cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
+    cartridge,
+    cartridge::{Controller, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Joypad, Key},
     ppu::{palette::*, Video},
     Builder, Dmg, Mode,
@@ -17,18 +18,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-const WINDOW_SCALE: u32 = 4;
+const SCALE: u32 = 4;
 
-static ROM: &[u8] = include_bytes!("../roms/Star Wars Episode I - Racer (USA, Europe).gbc");
+static ROM: &[u8] = include_bytes!("../roms/Tetris (World) (Rev A).gb");
 
 fn main() {
-    env_logger::init();
-
     let sdl = sdl2::init().unwrap();
     let canvas = sdl
         .video()
         .unwrap()
-        .window("DMG", 160 * WINDOW_SCALE, 144 * WINDOW_SCALE)
+        .window("DMG", 160 * SCALE, 144 * SCALE)
         .position_centered()
         .build()
         .expect("Error creating SDL window")
@@ -38,9 +37,9 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_video(SdlVideo::new(canvas))
-        .with_cartridge(Mbc5::new(ROM))
-        //.with_audio::<Stereo44100<i16>>()
-        .with_mode(Mode::CGB)
+        .with_cartridge(Mbc5::new(ROM.into()))
+        .with_cartridge(cartridge::from_bytes(ROM).unwrap())
+        .with_mode(Mode::GB)
         .build();
 
     // set-up custom 4 color palette
@@ -49,13 +48,6 @@ fn main() {
         .ppu_mut()
         .pal_mut()
         .set_color_pal(MUDDYSAND);
-
-    // set up audio
-    // let device = rodio::default_output_device().expect("Error creating rodio
-    // device"); let sink = rodio::Sink::new(&device);
-    // let source = DmgSource::new(emulator.mmu().apu());
-    // sink.append(source);
-    // sink.play();
 
     let mut pump = sdl.event_pump().unwrap();
 
@@ -89,7 +81,7 @@ fn main() {
 
 fn handle_input(
     pump: &mut EventPump,
-    dmg: &mut Dmg<impl Cartridge, impl Video, impl Audio>,
+    dmg: &mut Dmg<impl Controller, impl Video, impl Audio>,
 ) -> bool {
     let joypad = dmg.mmu_mut().joypad_mut();
     for event in pump.poll_iter() {

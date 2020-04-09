@@ -1,6 +1,6 @@
 use crate::{
     apu::{device::Audio, Apu},
-    cartridge::Cartridge,
+    cartridge::Controller,
     cpu::Cpu,
     int::Interrupts,
     joypad::Joypad,
@@ -62,7 +62,7 @@ impl Default for VRamDma {
 // FF00-FF7F   I/O Ports
 // FF80-FFFE   High RAM (HRAM)
 // FFFF        Interrupt Enable Register
-pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
+pub struct Mmu<C: Controller, V: Video, D: Audio> {
     #[cfg_attr(not(feature = "boot"), allow(dead_code))]
     mode: Mode,
     boot: bool,
@@ -78,7 +78,7 @@ pub struct Mmu<C: Cartridge, V: Video, D: Audio> {
     speed: Speed,
 }
 
-impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
+impl<C: Controller, V: Video, D: Audio> Mmu<C, V, D> {
     pub fn new(mode: Mode, cartridge: C, video_out: V) -> Self {
         Self {
             mode,
@@ -187,7 +187,6 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
         }
         self.ppu.step(cycles);
         self.timer.step(cycles);
-        self.cartridge.step(cycles);
         self.apu.lock().step(cycles);
 
         // request generated interrupts
@@ -239,14 +238,6 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
         let dst = 0x8000 | (u16::from(hdma3 & 0x1f) << 8) | u16::from(hdma4 & 0xf0);
         let len = (u16::from(hdma5 & 0x7f) + 1) * 16;
 
-        #[cfg(feature = "logging")]
-        log::info!(
-            "VRAM DMA transfer. SRC = {:#04x}, DST = {:#04x}, LEN = {:#04x}",
-            src,
-            dst,
-            len
-        );
-
         let src = src..src + len;
         let dst = dst..dst + len;
         for (src, dst) in src.zip(dst) {
@@ -256,7 +247,7 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
     }
 }
 
-impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
+impl<C: Controller, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
     fn read(&self, addr: u16) -> u8 {
         #[cfg(feature = "boot")]
         use dmg_boot::{cgb, gb};
@@ -339,9 +330,6 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
                 }
                 0xff46 => self.oam_dma(data),
                 0xff50 => {
-                    #[cfg(feature = "logging")]
-                    log::info!("BOOT register = {:#02x}", data);
-
                     if !self.boot {
                         self.boot = data & 0x1 != 0;
                     }
@@ -355,9 +343,6 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
                 // KEY1
                 0xff4d => {
                     if data & 0x1 != 0 {
-                        #[cfg(feature = "logging")]
-                        log::info!("Double speed mode enabled");
-
                         self.speed = Speed::X2;
                     }
                 }

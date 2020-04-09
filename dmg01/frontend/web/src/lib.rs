@@ -1,6 +1,7 @@
 pub use dmg_driver_wasm::ppu::WasmVideoOutput;
 use dmg_lib::{
-    cartridge::{Mbc1, Mbc5},
+    cartridge,
+    cartridge::{Controller, Mbc1, Mbc5},
     joypad::{Btn, Dir, Key},
     ppu::palette::DMG,
     Builder, Mode,
@@ -9,27 +10,26 @@ use wasm_bindgen::prelude::*;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 static ROM: &[u8] =
-    include_bytes!("../../native/roms/Super Mario Bros. Deluxe (U) (V1.1) [C][!].gbc");
+    include_bytes!("../../native/roms/Dr. Mario (World).gb");
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<Mbc5, WasmVideoOutput, ()>);
+pub struct Dmg(dmg_lib::Dmg<Box<dyn Controller>, WasmVideoOutput, ()>);
 
 #[wasm_bindgen]
 pub fn init_wasm() {
-    console_log::init_with_level(log::Level::Debug).expect("Error initializing log");
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 }
 
 #[wasm_bindgen]
 impl Dmg {
     pub fn new(video: WasmVideoOutput) -> Self {
-        let cart = Mbc5::new(ROM);
         let mut dmg = Builder::default()
-            .with_mode(Mode::CGB)
+            .with_mode(Mode::GB)
             .with_video(video)
-            .with_cartridge(cart)
+            .with_cartridge(cartridge::from_bytes(ROM).unwrap())
             .build();
         dmg.mmu_mut().ppu_mut().pal_mut().set_color_pal(DMG);
         Self(dmg)

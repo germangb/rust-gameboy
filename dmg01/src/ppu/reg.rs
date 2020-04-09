@@ -47,7 +47,7 @@ impl Window {
     ///
     /// The bounds of the window are defined by (wy, wx-7) being the top-left
     /// corner, and (143, 159) the bottom-right.
-    pub fn lcd_bounds(&self) -> [isize; 2] {
+    pub fn lcd_bounds(self) -> [isize; 2] {
         [self.wy as isize, self.wx as isize - 7]
     }
 }

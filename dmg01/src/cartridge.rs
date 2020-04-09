@@ -1,3 +1,7 @@
+//! Cartridge types.
+//!
+//! Only the most common cartridge types are implemented. Less common cartridges
+//! (such as the camera) are implemented in external crates.
 use crate::map::Mapped;
 
 mod mbc1;
@@ -10,76 +14,43 @@ pub use mbc3::Mbc3;
 pub use mbc5::Mbc5;
 pub use rom::Rom;
 
-// 0149 - RAM Size
-// Specifies the size of the external RAM in the cartridge (if any).
-// 00h - None
-// 01h - 2 KBytes
-// 02h - 8 Kbytes
-// 03h - 32 KBytes (4 banks of 8KBytes each)
-#[allow(unused_variables)]
-fn ram_banks(banks: u8) -> usize {
-    // match banks {
-    //     0x00 => 0,
-    //     0x01 | 0x02 => 1,
-    //     0x03 => 4,
-    //     0x04 => 16,
-    //     _ => panic!(),
-    // }
-    16
-}
+/// Bank controller trait.
+pub trait Controller: Mapped {}
 
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[allow(non_camel_case_types)]
-pub enum CGBSupport {
-    /// Supports both GB & CGB.
-    CGB_AND_GB = 0x80,
-    /// Supports CGB only.
-    CGB_ONLY = 0xc0,
-}
+impl Controller for () {}
+impl Controller for Rom {}
+impl Controller for Mbc1 {}
+impl Controller for Mbc3 {}
+impl Controller for Mbc5 {}
+impl Controller for Box<dyn Controller> {}
 
-pub trait Cartridge: Mapped {
-    #[allow(unused_variables)]
-    fn step(&mut self, cycles: u64) {}
-
-    /// CGB support flag.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use dmg_lib::cartridge::{Mbc3, Cartridge};
-    ///
-    /// # let bytes = &[];
-    /// let rom = Mbc3::new(bytes);
-    ///
-    /// if rom.cgb_support().is_some() {
-    ///     println!("CGB mode supported");
-    /// } else {
-    ///     println!("CGB not supported");
-    /// }
-    /// ```
-    fn cgb_support(&self) -> Option<CGBSupport> {
-        match self.read(0x143) {
-            0x80 => Some(CGBSupport::CGB_AND_GB),
-            0xc0 => Some(CGBSupport::CGB_ONLY),
-            _ => None,
-        }
-    }
-}
-
-impl Mapped for () {
+impl Mapped for Box<dyn Controller> {
     fn read(&self, addr: u16) -> u8 {
-        match addr {
-            0x143 => 0xc0,
-            _ => 0xff,
-        }
+        self.as_ref().read(addr)
     }
 
-    fn write(&mut self, _: u16, _: u8) {}
+    fn write(&mut self, addr: u16, data: u8) {
+        self.as_mut().write(addr, data)
+    }
 }
 
-impl Cartridge for () {}
-impl Cartridge for Rom {}
-impl Cartridge for Mbc1 {}
-impl Cartridge for Mbc3 {}
-impl Cartridge for Mbc5 {}
+pub fn from_bytes<B: Into<Box<[u8]>>>(bytes: B) -> Result<Box<dyn Controller>, ()> {
+    let bytes = bytes.into();
+    match *bytes.get(0x147).ok_or(())? {
+        0x00 => Ok(Box::new(Rom::new(bytes))),
+        0x01..=0x03 => Ok(Box::new(Mbc1::new(bytes))),
+        0x0f..=0x13 => Ok(Box::new(Mbc3::new(bytes))),
+        0x19..=0x1e => Ok(Box::new(Mbc5::new(bytes))),
+        _ => Err(()),
+    }
+}
+
+fn ram_banks(banks: u8) -> usize {
+    match banks {
+        0x00 => 0,
+        0x01 | 0x02 => 1,
+        0x03 => 4,
+        0x04 => 16,
+        _ => panic!(),
+    }
+}

@@ -17,8 +17,7 @@ pub struct Mbc1 {
 }
 
 impl Mbc1 {
-    pub fn new<B: Into<Box<[u8]>>>(rom: B) -> Self {
-        let rom = rom.into();
+    pub fn new(rom: Box<[u8]>) -> Self {
         let ram_banks = ram_banks(rom[0x149]);
         Self {
             rom,
@@ -33,18 +32,18 @@ impl Mbc1 {
 
 impl Mapped for Mbc1 {
     fn read(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000..=0x3fff => *self.rom.get(addr as usize).unwrap_or(&0xff),
-            0x4000..=0x7fff => {
+        match addr as usize {
+            addr @ 0x0000..=0x3fff => *self.rom.get(addr).unwrap_or(&0xff),
+            addr @ 0x4000..=0x7fff => {
                 let rom_bank = self.rom_bank.max(1);
                 *self
                     .rom
-                    .get(0x4000 * rom_bank + addr as usize - 0x4000)
+                    .get(0x4000 * rom_bank + addr - 0x4000)
                     .unwrap_or(&0)
             }
-            0xa000..=0xbfff => {
+            addr @ 0xa000..=0xbfff => {
                 if self.ram_enable {
-                    self.ram[self.ram_bank][addr as usize - 0xa000]
+                    self.ram[self.ram_bank][addr - 0xa000]
                 } else {
                     0
                 }
@@ -86,7 +85,7 @@ impl Mapped for Mbc1 {
                 }
             }
             0xa000..=0xbfff => self.ram[self.ram_bank][addr as usize - 0xa000] = data,
-            addr => panic!("{:x}", addr),
+            _ => panic!(),
         }
     }
 }

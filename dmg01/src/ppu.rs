@@ -74,6 +74,10 @@ impl<V: Video> Ppu<V> {
         }
     }
 
+    pub fn vram_mut(&mut self) -> &mut VRam {
+        &mut self.vram
+    }
+
     /// Return the color palette register
     pub fn color_pal(&self) -> &ColorPal {
         &self.color_pal
@@ -233,11 +237,11 @@ impl<V: Video> Ppu<V> {
         }
         let win = self.lcdc_stat.lcdc & 0x20 != 0;
         if win {
-            self.draw_win(ly, offset, dots)
+            self.draw_win(ly, offset, dots);
         }
         let ob = self.lcdc_stat.lcdc & 0x2 != 0;
         if ob {
-            self.draw_ob(ly, offset, dots)
+            self.draw_ob(ly, offset, dots);
         }
         self.video.draw_line(ly as usize, &self.buffer);
     }
@@ -345,7 +349,6 @@ impl<V: Video> Ppu<V> {
             // FIXME this check should be superfluous as it's already performed in Oam::search,
             //  but removing it panics
             if ly < y || ly >= y + h {
-                //panic!();
                 continue;
             }
             // In 16-pixel mode, the top sprite low bit is always 0 and in the bottom sprite it's 1
@@ -373,7 +376,8 @@ impl<V: Video> Ppu<V> {
                 // handles if bg tile underneath has overall priority
                 if color_index == 0 || // transparent pixel
                     flags & 0x80 != 0 && self.index[lcd_x as usize] != 0 || // behind colors 1-3
-                    self.index[lcd_x as usize] == 4 { // bg tile overrides OAM priority
+                    self.index[lcd_x as usize] == 4 // bg tile OAM priority bits
+                {
                     continue;
                 }
                 // draw pixel color

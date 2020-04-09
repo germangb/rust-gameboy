@@ -4,7 +4,7 @@
 )]
 #![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
 use crate::{
-    apu::device::Audio, cartridge::Cartridge, cpu::Cpu, map::Mapped, mmu::Mmu, ppu::Video,
+    apu::device::Audio, cartridge::Controller, cpu::Cpu, map::Mapped, mmu::Mmu, ppu::Video,
 };
 use std::marker::PhantomData;
 
@@ -32,7 +32,7 @@ pub enum Mode {
     CGB,
 }
 
-pub struct Dmg<C: Cartridge, V: Video, D: Audio> {
+pub struct Dmg<C: Controller, V: Video, D: Audio> {
     cpu: Cpu,
     mmu: Box<Mmu<C, V, D>>,
     carry: u64,
@@ -44,7 +44,7 @@ impl Default for Dmg<(), (), ()> {
     }
 }
 
-impl<C: Cartridge, V: Video, D: Audio> Dmg<C, V, D> {
+impl<C: Controller, V: Video, D: Audio> Dmg<C, V, D> {
     pub fn emulate_frame(&mut self) {
         self.carry = self.mmu.emulate_frame(&mut self.cpu, self.carry);
     }
@@ -70,7 +70,7 @@ impl<C: Cartridge, V: Video, D: Audio> Dmg<C, V, D> {
     }
 }
 
-pub struct Builder<C: Cartridge, V: Video, D: Audio> {
+pub struct Builder<C: Controller, V: Video, D: Audio> {
     _phantom: PhantomData<D>,
     mode: Option<Mode>,
     skip_boot: bool,
@@ -90,7 +90,7 @@ impl Default for Builder<(), (), ()> {
     }
 }
 
-impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
+impl<C: Controller, V: Video, D: Audio> Builder<C, V, D> {
     pub fn with_audio<D2: Audio>(self) -> Builder<C, V, D2> {
         Builder {
             _phantom: PhantomData,
@@ -101,7 +101,7 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
         }
     }
 
-    pub fn with_cartridge<C2: Cartridge>(self, cartridge: C2) -> Builder<C2, V, D> {
+    pub fn with_cartridge<C2: Controller>(self, cartridge: C2) -> Builder<C2, V, D> {
         Builder {
             _phantom: PhantomData,
             mode: self.mode,

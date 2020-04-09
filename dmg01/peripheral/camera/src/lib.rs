@@ -1,4 +1,4 @@
-use dmg_lib::{cartridge::Cartridge, map::Mapped};
+use dmg_lib::{cartridge::Controller, map::Mapped};
 
 pub static ROM: &[u8] = include_bytes!(env!("DMG_CAMERA_ROM"));
 
@@ -239,4 +239,4 @@ impl<S: Sensor> Mapped for PoketCamera<S> {
     }
 }
 
-impl<S: Sensor> Cartridge for PoketCamera<S> {}
+impl<S: Sensor> Controller for PoketCamera<S> {}
