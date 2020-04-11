@@ -13,3 +13,5 @@ www/node_modules
 
 # vim
 *.swp
+
+imgui.ini

@@ -1,0 +1,16 @@
+[package]
+name = "dmg-frontend-native-gl"
+version = "0.1.0"
+authors = ["german gomez <germangb42@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dmg-lib = { path = "../../", features = ["boot"] }
+dmg-backend-gl = { path = "../../backend/gl" }
+gl = "0.14.0"
+sdl2 = "0.33.0"
+imgui = "0.3.0"
+imgui-sdl2 = "0.9.0"
+imgui-opengl-renderer = "0.7.0"

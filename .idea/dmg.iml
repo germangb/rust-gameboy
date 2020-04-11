@@ -81,7 +81,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg-driver/headless/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg/driver/rodio/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/rodio/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/rodio/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/rodio/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/rodio/benches" isTestSource="true" />
@@ -89,7 +89,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg/driver/headless/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/headless/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/headless/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/headless/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/headless/benches" isTestSource="true" />
@@ -97,7 +97,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/boot/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/boot/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/boot/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg/driver/wasm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/wasm/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/wasm/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/wasm/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/wasm/benches" isTestSource="true" />
@@ -105,7 +105,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/peripheral/camera/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/peripheral/camera/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/peripheral/camera/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg/driver/gl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/gl/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/gl/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/gl/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/gl/benches" isTestSource="true" />
@@ -113,7 +113,7 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/tools/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/tools/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/tools/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg/driver/sdl2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/sdl2/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/sdl2/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/sdl2/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/driver/sdl2/benches" isTestSource="true" />
@@ -125,50 +125,57 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/web/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/web/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/web/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/web/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/web/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/web/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/web/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/headless/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/headless/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/headless/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/headless/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/boot/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/boot/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/boot/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/boot/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/wasm/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/wasm/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/wasm/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/wasm/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/peripheral/camera/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/peripheral/camera/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/peripheral/camera/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/peripheral/camera/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/tools/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/tools/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/tools/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/tools/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/native/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/native/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/native/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/frontend/native/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/sdl2/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/sdl2/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/sdl2/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/sdl2/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/rodio/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/rodio/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/rodio/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/rodio/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/gl/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/gl/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/gl/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg01/driver/gl/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/gl/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/gl/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/gl/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/headless/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/headless/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/headless/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/wasm/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/wasm/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/wasm/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/rodio/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/rodio/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/rodio/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/sdl2/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/sdl2/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/backend/sdl2/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/dmg-sdl2/target" />
@@ -185,6 +192,11 @@
       <excludeFolder url="file://$MODULE_DIR$/dmg-sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-tools/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-wasm/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/backend/gl/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/backend/headless/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/backend/rodio/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/backend/sdl2/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/backend/wasm/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/driver/gl/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/driver/headless/target" />
@@ -192,6 +204,7 @@
       <excludeFolder url="file://$MODULE_DIR$/dmg/driver/sdl2/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/driver/wasm/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/frontend/native/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/frontend/web/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/peripheral/camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg/target" />
