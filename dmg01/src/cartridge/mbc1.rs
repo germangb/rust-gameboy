@@ -28,22 +28,27 @@ impl Mbc1 {
             mode: Mode::Rom,
         }
     }
+
+    fn rom_addr(&self, addr: usize) -> usize {
+        0x4000 * self.rom_bank.max(1) + addr - 0x4000
+    }
 }
 
 impl Mapped for Mbc1 {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
-            addr @ 0x0000..=0x3fff => *self.rom.get(addr).unwrap_or(&0xff),
+            addr @ 0x0000..=0x3fff => self.rom.get(addr).copied().unwrap_or(0xff),
             addr @ 0x4000..=0x7fff => {
-                let rom_bank = self.rom_bank.max(1);
-                *self
-                    .rom
-                    .get(0x4000 * rom_bank + addr - 0x4000)
-                    .unwrap_or(&0)
+                let addr = self.rom_addr(addr);
+                self.rom.get(addr).copied().unwrap_or(0)
             }
             addr @ 0xa000..=0xbfff => {
                 if self.ram_enable {
-                    self.ram[self.ram_bank][addr - 0xa000]
+                    if let Some(bank) = self.ram.get(self.ram_bank) {
+                        bank[addr as usize - 0xa000]
+                    } else {
+                        0
+                    }
                 } else {
                     0
                 }
@@ -53,7 +58,7 @@ impl Mapped for Mbc1 {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        match addr {
+        match addr as usize {
             // Before external RAM can be read or written, it must be enabled by writing to this
             // address space. It is recommended to disable external RAM after accessing it, in order
             // to protect its contents from damage during power down of the gameboy. Usually the
@@ -84,7 +89,11 @@ impl Mapped for Mbc1 {
                     _ => panic!(),
                 }
             }
-            0xa000..=0xbfff => self.ram[self.ram_bank][addr as usize - 0xa000] = data,
+            addr @ 0xa000..=0xbfff => {
+                if let Some(bank) = self.ram.get_mut(self.ram_bank) {
+                    bank[addr as usize - 0xa000] = data
+                }
+            }
             _ => panic!(),
         }
     }

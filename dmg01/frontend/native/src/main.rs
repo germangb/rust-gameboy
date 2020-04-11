@@ -20,7 +20,7 @@ use std::{
 
 const SCALE: u32 = 4;
 
-static ROM: &[u8] = include_bytes!("../roms/Tetris (World) (Rev A).gb");
+static ROM: &[u8] = include_bytes!("../roms/Dr. Mario (World).gb");
 
 fn main() {
     let sdl = sdl2::init().unwrap();
@@ -43,11 +43,7 @@ fn main() {
         .build();
 
     // set-up custom 4 color palette
-    emulator
-        .mmu_mut()
-        .ppu_mut()
-        .pal_mut()
-        .set_color_pal(MUDDYSAND);
+    emulator.mmu_mut().ppu_mut().pal_mut().set_color_pal(DMG);
 
     let mut pump = sdl.event_pump().unwrap();
 

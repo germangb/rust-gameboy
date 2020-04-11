@@ -4,7 +4,10 @@ use crate::{
     ppu::{
         oam::{Entry, Oam},
         palette::Color,
-        reg::{LcdcStat, StatMode, STAT_HBLANK, STAT_LYC_LY, STAT_SEARCH, STAT_VBLANK},
+        reg::{
+            LcdcStat, StatMode, TileDataAddr, TileMapAddr, STAT_HBLANK_FLAG, STAT_LYC_LY_FLAG,
+            STAT_SEARCH_FLAG, STAT_VBLANK_FLAG,
+        },
     },
     vram::VRam,
     Mode,
@@ -122,7 +125,7 @@ impl<V: Video> Ppu<V> {
                 self.draw_line(line, 0, LCD_WIDTH);
                 self.dots %= PIXELS;
                 self.stat_mode = StatMode::HBlank;
-                if self.lcdc_stat.stat & STAT_HBLANK != 0 {
+                if self.lcdc_stat.stat & STAT_HBLANK_FLAG != 0 {
                     self.request_lcdc();
                 }
             }
@@ -132,7 +135,7 @@ impl<V: Video> Ppu<V> {
                 self.dots %= HBLANK;
                 self.stat_mode = StatMode::VBlank;
                 self.request_vblank();
-                if self.lcdc_stat.stat & STAT_VBLANK != 0 {
+                if self.lcdc_stat.stat & STAT_VBLANK_FLAG != 0 {
                     self.request_lcdc();
                 }
                 line = 144;
@@ -140,20 +143,20 @@ impl<V: Video> Ppu<V> {
             (StatMode::HBlank, StatMode::Search) => {
                 self.dots %= HBLANK;
                 self.stat_mode = StatMode::Search;
-                if self.lcdc_stat.stat & STAT_SEARCH != 0 {
+                if self.lcdc_stat.stat & STAT_SEARCH_FLAG != 0 {
                     self.request_lcdc();
                 }
                 line += 1;
 
                 // search 10 visible sprites in new line
-                let h = self.lcdc_stat.lcdc_obj_size();
+                let h = self.lcdc_stat.lcdc_ob_size();
                 self.oam.search(line, h);
             }
 
             (StatMode::VBlank, StatMode::Search) => {
                 self.dots %= VBLANK;
                 self.stat_mode = StatMode::Search;
-                if self.lcdc_stat.stat & STAT_SEARCH != 0 {
+                if self.lcdc_stat.stat & STAT_SEARCH_FLAG != 0 {
                     self.request_lcdc();
                 }
                 line = 0;
@@ -174,7 +177,7 @@ impl<V: Video> Ppu<V> {
 
         // LY=LYC
         if line == self.line.lyc {
-            if line != self.line.ly && self.lcdc_stat.stat & STAT_LYC_LY != 0 {
+            if line != self.line.ly && self.lcdc_stat.stat & STAT_LYC_LY_FLAG != 0 {
                 self.request_lcdc();
             }
             self.lcdc_stat.stat |= 0b0000_0100;
@@ -227,20 +230,20 @@ impl<V: Video> Ppu<V> {
         // if ly == self.line.lyc && self.lcdc_stat.stat & STAT_LYC_LY != 0 {
         //     self.request_lcdc();
         // }
-
-        let bg = match self.mode {
-            Mode::GB => self.lcdc_stat.lcdc & 0x1 != 0,
+        let lcdc_0 = self.lcdc_stat.lcdc & 0x1 != 0;
+        let display_bg = match self.mode {
+            Mode::GB => lcdc_0,
             Mode::CGB => true,
         };
-        if bg {
+        if display_bg {
             self.draw_bg(ly, offset, dots);
         }
-        let win = self.lcdc_stat.lcdc & 0x20 != 0;
-        if win {
+        let display_win = self.lcdc_stat.lcdc & 0x20 != 0;
+        if display_win {
             self.draw_win(ly, offset, dots);
         }
-        let ob = self.lcdc_stat.lcdc & 0x2 != 0;
-        if ob {
+        let display_ob = self.lcdc_stat.lcdc & 0x2 != 0;
+        if display_ob {
             self.draw_ob(ly, offset, dots);
         }
         self.video.draw_line(ly as usize, &self.buffer);
@@ -249,10 +252,10 @@ impl<V: Video> Ppu<V> {
     // fetch pixel color from a given coordinate
     // coordinate is relative to the tilemap origin
     #[rustfmt::skip]
-    fn point_color(&mut self, y: usize, x: usize, tile_map: u16, tile_data: u16) -> (Color, u8) {
+    fn point_color(&mut self, y: usize, x: usize, map: TileMapAddr, data: TileDataAddr) -> (Color, u8) {
         // look up tile index
         let tile_map_idx = 32 * (y / 8) + (x / 8);
-        let tile_map_offset = tile_map as usize - 0x8000;
+        let tile_map_offset = map as usize - 0x8000;
         let tile = self.vram.bank(0)[tile_map_offset + tile_map_idx];
         let flags = self.vram.bank(1)[tile_map_offset + tile_map_idx];
         // look up tile pixel
@@ -263,14 +266,13 @@ impl<V: Video> Ppu<V> {
             if flags & 0x20 != 0 { col = 7 - col }
             if flags & 0x40 != 0 { row = 7 - row }
         }
-        let offset = match tile_data {
-            0x8000 => 16 * (tile as usize) + row * 2,
-            0x8800 => {
+        let offset = match data {
+            TileDataAddr::X8000 => 16 * (tile as usize) + row * 2,
+            TileDataAddr::X8800 => {
                 let tile: i8 = unsafe { mem::transmute(tile) };
                 let tile = (tile as isize + 128) as usize;
                 0x800 + 16 * tile + row * 2
             }
-            _ => panic!(),
         };
         let bank = match self.mode {
             Mode::GB => 0,
@@ -288,7 +290,7 @@ impl<V: Video> Ppu<V> {
                 let color = self.color_pal.bg_pal_color(palette, color_index as usize);
                 // tile priority over all OAM
                 if flags & 0x80 != 0 && color_index != 0 {
-                    // TODO don't use magic values
+                    // TODO avoid using magic values
                     color_index = 4;
                 }
                 (color, color_index)
@@ -337,30 +339,30 @@ impl<V: Video> Ppu<V> {
         assert_eq!(0, offset);
         assert_eq!(LCD_WIDTH, dots);
         let ly = ly as i16;
-        let h = self.lcdc_stat.lcdc_obj_size() as i16;
-        for Entry { ypos,
-                    xpos,
-                    mut tile,
-                    flags } in self.oam.visible().copied() {
+        let h = self.lcdc_stat.lcdc_ob_size() as i16;
+        // TODO fix OAM search
+        // for Entry { ypos,
+        //             xpos,
+        //             mut tile,
+        //             flags } in self.oam.visible().copied() {
+        for entry in 0..40 {
+            let Entry { ypos, xpos, mut tile, flags } = *self.oam.get(39 - entry);
             // position in lcd display (signed)
             let x = xpos as i16 - 8;
             let y = ypos as i16 - 16;
             // skip entry if it doesn't overlap with the current line
-            // FIXME this check should be superfluous as it's already performed in Oam::search,
-            //  but removing it panics
             if ly < y || ly >= y + h {
                 continue;
             }
             // In 16-pixel mode, the top sprite low bit is always 0 and in the bottom sprite it's 1
+            // Many games rely on this AND operation.
             if h == 16 { tile &= 0xfe }
             for lcd_x in x.max(0)..(x + 8).min(LCD_WIDTH as _) {
                 // pixel position within the tile
                 let mut row = (ly - y) as usize;
                 let mut col = 7 - (lcd_x - x) as usize;
                 // flip/mirror sprite
-                if flags & 0x40 != 0 {
-                    row = (h as usize - 1) - row;
-                }
+                if flags & 0x40 != 0 { row = (h as usize - 1) - row }
                 if flags & 0x20 != 0 { col = 7 - col }
                 // pretty much the same as in Self::point_color
                 let offset = 16 * (tile as usize) + row * 2;
@@ -376,7 +378,7 @@ impl<V: Video> Ppu<V> {
                 // handles if bg tile underneath has overall priority
                 if color_index == 0 || // transparent pixel
                     flags & 0x80 != 0 && self.index[lcd_x as usize] != 0 || // behind colors 1-3
-                    self.index[lcd_x as usize] == 4 // bg tile OAM priority bits
+                    self.index[lcd_x as usize] == 4 // bg tile OAM priority bits (CGB only)
                 {
                     continue;
                 }
@@ -400,17 +402,39 @@ impl<V: Video> Mapped for Ppu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
             0x8000..=0x9fff => self.vram.read(addr),
-            0xfe00..=0xfe9f => self.oam.read(addr),
+            0xfe00..=0xfe9f => {
+                if matches!(self.stat_mode, StatMode::HBlank | StatMode::VBlank) {
+                    self.oam.read(addr)
+                } else {
+                    0
+                }
+            }
             0xff40 | 0xff41 => self.lcdc_stat.read(addr),
-            //0xff40 => self.lcdc,
-            //0xff41 => self.stat,
             0xff42 | 0xff43 => self.scroll.read(addr),
             0xff44 => self.line.ly,
             0xff45 => self.line.lyc,
             0xff4a | 0xff4b => self.win.read(addr),
             0xff47..=0xff49 => self.pal.read(addr),
-            0xff4f => self.vram.read(addr),
-            0xff68..=0xff6b => self.color_pal.read(addr),
+            0xff4f => {
+                if matches!(
+                    self.stat_mode,
+                    StatMode::Search | StatMode::HBlank | StatMode::VBlank
+                ) {
+                    self.vram.read(addr)
+                } else {
+                    0
+                }
+            }
+            0xff68..=0xff6b => {
+                if matches!(
+                    self.stat_mode,
+                    StatMode::Search | StatMode::HBlank | StatMode::VBlank
+                ) {
+                    self.color_pal.read(addr)
+                } else {
+                    0
+                }
+            }
             _ => panic!(),
         }
     }
@@ -418,7 +442,11 @@ impl<V: Video> Mapped for Ppu<V> {
     fn write(&mut self, addr: u16, data: u8) {
         match addr {
             0x8000..=0x9fff => self.vram.write(addr, data),
-            0xfe00..=0xfe9f => self.oam.write(addr, data),
+            0xfe00..=0xfe9f => {
+                if matches!(self.stat_mode, StatMode::HBlank | StatMode::VBlank) {
+                    self.oam.write(addr, data)
+                }
+            }
             0xff40 | 0xff41 => {
                 let lcdc = self.lcdc_stat.lcdc;
                 self.lcdc_stat.write(addr, data);
@@ -449,8 +477,22 @@ impl<V: Video> Mapped for Ppu<V> {
             0xff45 => self.line.lyc = data,
             0xff4a | 0xff4b => self.win.write(addr, data),
             0xff47..=0xff49 => self.pal.write(addr, data),
-            0xff4f => self.vram.write(addr, data),
-            0xff68..=0xff6b => self.color_pal.write(addr, data),
+            0xff4f => {
+                if matches!(
+                    self.stat_mode,
+                    StatMode::Search | StatMode::HBlank | StatMode::VBlank
+                ) {
+                    self.vram.write(addr, data)
+                }
+            }
+            0xff68..=0xff6b => {
+                if matches!(
+                    self.stat_mode,
+                    StatMode::Search | StatMode::HBlank | StatMode::VBlank
+                ) {
+                    self.color_pal.write(addr, data)
+                }
+            }
             _ => panic!(),
         }
     }

@@ -24,45 +24,23 @@ impl Default for Entry {
 
 pub struct Oam {
     entries: [Entry; SIZE],
-    // TODO don't use an option
-    visible: Option<Vec<Entry>>,
 }
 
 impl Default for Oam {
     fn default() -> Self {
         Self {
             entries: [Default::default(); SIZE],
-            visible: Some(Vec::with_capacity(10)),
         }
     }
 }
 
 impl Oam {
     pub(crate) fn search(&mut self, ly: u8, height: u8) {
-        let mut visible = self.visible.take().unwrap();
-        visible.clear();
-        let ly = ly as i16;
-        let h = height as i16;
-        for entry in 0..40 {
-            let Entry { ypos, .. } = self.get(entry);
-            // skip entry if it doesn't overlap with the current line
-            // add to the array of visible sprites otherwise
-            let y = *ypos as i16 - 16;
-            if ly < y || ly >= y + h {
-                continue;
-            }
-            visible.push(self.get(entry).clone());
-            if visible.len() == 10 {
-                break;
-            }
-        }
-        //visible.sort_by_key(|e| e.xpos);
-        visible.reverse();
-        self.visible = Some(visible);
+        // TODO
     }
 
     pub(crate) fn visible(&self) -> impl Iterator<Item = &Entry> {
-        self.visible.iter().flatten()
+        self.entries.iter()
     }
 
     /// Returns an iterator over the 40 OAM entries.

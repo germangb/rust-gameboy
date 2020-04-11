@@ -20,19 +20,23 @@ impl Mbc5 {
             ram_enabled: true,
         }
     }
+
+    fn rom_addr(&self, addr: usize) -> usize {
+        0x4000 * self.rom_bank + addr - 0x4000
+    }
 }
 
 impl Mapped for Mbc5 {
     fn read(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000..=0x3fff => self.rom[addr as usize],
-            0x4000..=0x7fff => *self
-                .rom
-                .get(0x4000 * self.rom_bank + addr as usize - 0x4000)
-                .unwrap_or(&0),
-            0xa000..=0xbfff => {
+        match addr as usize {
+            addr @ 0x0000..=0x3fff => self.rom[addr],
+            addr @ 0x4000..=0x7fff => {
+                let addr = self.rom_addr(addr);
+                self.rom.get(addr).copied().unwrap_or(0)
+            }
+            addr @ 0xa000..=0xbfff => {
                 if self.ram_enabled {
-                    self.ram[self.ram_bank][addr as usize - 0xa000]
+                    self.ram[self.ram_bank][addr - 0xa000]
                 } else {
                     0
                 }
@@ -42,7 +46,7 @@ impl Mapped for Mbc5 {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        match addr {
+        match addr as usize {
             // Mostly the same as for MBC1, a value of 0Ah will enable reading and writing to
             // external RAM. A value of 00h will disable it.
             0x0000..=0x1fff => self.ram_enabled = data & 0xf == 0xa,
@@ -60,9 +64,9 @@ impl Mapped for Mbc5 {
             // will select an appropriate RAM bank at A000-BFFF if the cart contains RAM. Ram sizes
             // are 64kbit,256kbit, & 1mbit.
             0x4000..=0x5fff => self.ram_bank = (data & 0xf) as usize,
-            0xa000..=0xbfff => {
+            addr @ 0xa000..=0xbfff => {
                 if self.ram_enabled {
-                    self.ram[self.ram_bank][addr as usize - 0xa000] = data;
+                    self.ram[self.ram_bank][addr - 0xa000] = data;
                 }
             }
             _ => panic!(),

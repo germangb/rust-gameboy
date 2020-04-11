@@ -34,8 +34,8 @@ impl Mapped for Box<dyn Controller> {
     }
 }
 
-pub fn from_bytes<B: Into<Box<[u8]>>>(bytes: B) -> Result<Box<dyn Controller>, ()> {
-    let bytes = bytes.into();
+pub fn from_bytes(bytes: &[u8]) -> Result<Box<dyn Controller>, ()> {
+    let bytes = bytes.to_vec().into_boxed_slice();
     match *bytes.get(0x147).ok_or(())? {
         0x00 => Ok(Box::new(Rom::new(bytes))),
         0x01..=0x03 => Ok(Box::new(Mbc1::new(bytes))),

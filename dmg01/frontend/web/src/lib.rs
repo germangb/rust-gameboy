@@ -11,8 +11,7 @@ use wasm_bindgen::prelude::*;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-static ROM: &[u8] =
-    include_bytes!("../../native/roms/Dr. Mario (World).gb");
+static ROM: &[u8] = include_bytes!("../../native/roms/Dr. Mario (World).gb");
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]

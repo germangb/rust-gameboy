@@ -1,6 +1,5 @@
 use crate::map::Mapped;
 
-/// Non-switchable ROM & ram banks
 pub struct Rom {
     rom: Box<[u8]>,
     ram: Box<[u8; 0x2000]>,

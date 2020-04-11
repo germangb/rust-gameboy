@@ -40,13 +40,20 @@ impl Mbc3 {
             mode: Mode::Ram,
         }
     }
+
+    fn rom_addr(&self, addr: usize) -> usize {
+        0x4000 * self.rom_bank.max(1) + addr - 0x4000
+    }
 }
 
 impl Mapped for Mbc3 {
     fn read(&self, addr: u16) -> u8 {
         match addr as usize {
             addr @ 0x0000..=0x3fff => self.rom[addr],
-            addr @ 0x4000..=0x7fff => self.rom[0x4000 * self.rom_bank.max(1) + addr - 0x4000],
+            addr @ 0x4000..=0x7fff => {
+                let addr = self.rom_addr(addr);
+                self.rom.get(addr).copied().unwrap_or(0)
+            }
             addr @ 0xa000..=0xbfff => {
                 if self.ram_timer_enabled {
                     match self.mode {

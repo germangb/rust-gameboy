@@ -306,10 +306,10 @@ impl Default for Line {
     }
 }
 
-pub(crate) const STAT_VBLANK: u8 = 0x10;
-pub(crate) const STAT_HBLANK: u8 = 0x8;
-pub(crate) const STAT_SEARCH: u8 = 0x20;
-pub(crate) const STAT_LYC_LY: u8 = 0x40;
+pub(crate) const STAT_VBLANK_FLAG: u8 = 0x10;
+pub(crate) const STAT_HBLANK_FLAG: u8 = 0x08;
+pub(crate) const STAT_SEARCH_FLAG: u8 = 0x20;
+pub(crate) const STAT_LYC_LY_FLAG: u8 = 0x40;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -318,6 +318,18 @@ pub enum StatMode {
     VBlank = 0x01,
     Search = 0x02,
     Pixels = 0x03,
+}
+
+#[repr(u16)]
+pub enum TileMapAddr {
+    X9c00 = 0x9c00,
+    X9800 = 0x9800,
+}
+
+#[repr(u16)]
+pub enum TileDataAddr {
+    X8000 = 0x8000,
+    X8800 = 0x8800,
 }
 
 /// LCDC and STAT registers.
@@ -353,7 +365,7 @@ impl LcdcStat {
     }
 
     /// Returns 8 or 16 depending on the current OBJ size mode (bit 2).
-    pub fn lcdc_obj_size(&self) -> u8 {
+    pub fn lcdc_ob_size(&self) -> u8 {
         if self.lcdc & 0x4 == 0 {
             8
         } else {
@@ -362,26 +374,29 @@ impl LcdcStat {
     }
 
     /// Location of the BG tile map.
-    pub fn bg_tile_map(&self) -> u16 {
-        match self.lcdc & 0x8 {
-            0 => 0x9800,
-            _ => 0x9c00,
+    pub fn bg_tile_map(&self) -> TileMapAddr {
+        if self.lcdc & 0x8 != 0 {
+            TileMapAddr::X9c00
+        } else {
+            TileMapAddr::X9800
         }
     }
 
     /// Location of the BG & Window tile data.
-    pub fn bg_win_tile_data(&self) -> u16 {
-        match self.lcdc & 0x10 {
-            0 => 0x8800,
-            _ => 0x8000,
+    pub fn bg_win_tile_data(&self) -> TileDataAddr {
+        if self.lcdc & 0x10 != 0 {
+            TileDataAddr::X8000
+        } else {
+            TileDataAddr::X8800
         }
     }
 
     /// Location of the Window tile map.
-    pub fn win_tile_map(&self) -> u16 {
-        match self.lcdc & 0x40 {
-            0 => 0x9800,
-            _ => 0x9c00,
+    pub fn win_tile_map(&self) -> TileMapAddr {
+        if self.lcdc & 0x40 != 0 {
+            TileMapAddr::X9c00
+        } else {
+            TileMapAddr::X9800
         }
     }
 }
