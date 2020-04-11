@@ -119,6 +119,26 @@ impl Pal {
         self.color_pal[pal >> (2 * index) & 0x3]
     }
 
+    /// Returns the BG palette.
+    pub fn bg_pal(&self) -> [Color; 4] {
+        [
+            self.bg_color(0),
+            self.bg_color(1),
+            self.bg_color(2),
+            self.bg_color(3),
+        ]
+    }
+
+    /// Returns the OB palette.
+    pub fn ob_pal(&self, obp: usize) -> [Color; 4] {
+        [
+            self.obp_color(obp, 0),
+            self.obp_color(obp, 1),
+            self.obp_color(obp, 2),
+            self.obp_color(obp, 3),
+        ]
+    }
+
     /// Return the color index from the given sprite index.
     ///
     /// # Panics
@@ -321,12 +341,14 @@ pub enum StatMode {
 }
 
 #[repr(u16)]
+#[derive(Debug, Clone, Copy)]
 pub enum TileMapAddr {
     X9c00 = 0x9c00,
     X9800 = 0x9800,
 }
 
 #[repr(u16)]
+#[derive(Debug, Clone, Copy)]
 pub enum TileDataAddr {
     X8000 = 0x8000,
     X8800 = 0x8800,

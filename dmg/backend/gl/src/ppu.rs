@@ -1,9 +1,12 @@
+use crate::ppu::shader::ShaderVar;
 use dmg_lib::ppu::{palette::Color, Video};
 use gl::types::*;
-use std::{mem, ptr, slice};
+use shader::Shader;
+use std::{collections::BTreeMap, mem, ptr, slice};
+
+pub mod shader;
 
 const PIXEL: u32 = 3;
-
 const VERT: &[u8] = br#"#version 330
 in vec2 a_position;
 out vec2 v_uv;
@@ -12,66 +15,61 @@ void main() {
     v_uv = a_position;
 }"#;
 
-const FRAG: &[u8] = br#"#version 330
-in vec2 v_uv;
-out vec4 frag_color;
-uniform sampler2D u_texture;
-void main() {
-    vec3 res = vec3(vec2(1.5), 0.0) / vec3(160.0 * 3, 144.0 * 3, 1.0);
-    vec3 color = vec3(
-        texture(u_texture, v_uv).r,
-        texture(u_texture, v_uv + res.zy).g,
-        texture(u_texture, v_uv - res.zy).b
-    );
-    float s = mod(gl_FragCoord.y, 3.0) / 3.0;
-    color *= mix(0.5, 1.0, s);
-    frag_color = vec4(color, 1.0);
-}"#;
-
-struct Shader {
+struct ShaderResources {
+    display_texture: GLuint,
     vertex_buffer: GLuint,
     index_buffer: GLuint,
     vertex_array: GLuint,
     framebuffer: GLuint,
-    texture: GLuint,
+    framebuffer_texture: GLuint,
     program: GLuint,
     uniform_texture: GLint,
+    uniforms: BTreeMap<&'static str, GLint>,
 }
 
-pub struct GLVideo {
-    texture: GLuint,
-    shader: Option<Shader>,
+pub struct GLVideo<S: Shader> {
+    shader: S,
+    resources: ShaderResources,
 }
 
-impl Video for GLVideo {
+impl<S: Shader> Video for GLVideo<S> {
     fn draw_video(&mut self, pixels: &[[[u8; 3]; 160]; 144]) {
         unsafe {
             let slice = slice::from_raw_parts(pixels.as_ptr() as *const u8, 160 * 144 * 3);
-            gl::BindTexture(gl::TEXTURE_2D, self.texture);
+            gl::BindTexture(gl::TEXTURE_2D, self.resources.display_texture);
             #[rustfmt::skip]
-                gl::TexSubImage2D(
+            gl::TexSubImage2D(
                 gl::TEXTURE_2D, 0, 0, 0, 160, 144, gl::RGB, gl::UNSIGNED_BYTE, slice.as_ptr() as _);
             gl::BindTexture(gl::TEXTURE_2D, 0);
         };
-        if let Some(shader) = &self.shader {
-            unsafe {
-                Self::update_shader(self.texture, shader);
-            }
+        unsafe {
+            Self::update_shader(&self.shader, &mut self.resources);
         }
     }
 }
 
-impl GLVideo {
-    pub fn new() -> Self {
+impl<S: Shader> GLVideo<S> {
+    pub fn new(shader: S) -> Self {
+        let shader_res = unsafe { Self::init_shader(&shader) };
         Self {
-            texture: unsafe { Self::create_texture(160, 144) },
-            shader: Some(unsafe { Self::init_shader() }),
+            shader,
+            resources: shader_res,
         }
     }
 
-    unsafe fn init_shader() -> Shader {
+    pub fn shader(&self) -> &S {
+        &self.shader
+    }
+
+    pub fn shader_mut(&mut self) -> &mut S {
+        &mut self.shader
+    }
+
+    unsafe fn init_shader(shader: &S) -> ShaderResources {
+        let display_texture = unsafe { Self::create_texture(160, 144) };
+        // ---
         let vert = Self::create_shader(gl::VERTEX_SHADER, VERT);
-        let frag = Self::create_shader(gl::FRAGMENT_SHADER, FRAG);
+        let frag = Self::create_shader(gl::FRAGMENT_SHADER, S::program());
         let program = gl::CreateProgram();
         gl::AttachShader(program, vert);
         gl::AttachShader(program, frag);
@@ -79,14 +77,15 @@ impl GLVideo {
         gl::DeleteShader(vert);
         gl::DeleteShader(frag);
         let uniform_texture = gl::GetUniformLocation(program, "u_texture\0".as_ptr() as _);
-        //assert_ne!(-1, uniform_texture);
+
+        assert_ne!(-1, uniform_texture);
         // ---
-        let texture = Self::create_texture(160 * PIXEL, 144 * PIXEL);
+        let framebuffer_texture = Self::create_texture(160 * PIXEL, 144 * PIXEL);
         let mut framebuffer = 0;
         gl::GenFramebuffers(1, &mut framebuffer);
         gl::BindFramebuffer(gl::FRAMEBUFFER, framebuffer);
         #[rustfmt::skip]
-        gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, texture, 0);
+        gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0, gl::TEXTURE_2D, framebuffer_texture, 0);
         assert_eq!(
             gl::FRAMEBUFFER_COMPLETE,
             gl::CheckFramebufferStatus(gl::FRAMEBUFFER)
@@ -117,14 +116,16 @@ impl GLVideo {
         gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0);
 
         assert_eq!(gl::NO_ERROR, gl::GetError());
-        Shader {
+        ShaderResources {
+            display_texture,
             vertex_buffer,
             index_buffer,
             vertex_array,
             framebuffer,
-            texture,
+            framebuffer_texture,
             program,
             uniform_texture,
+            uniforms: BTreeMap::new(),
         }
     }
 
@@ -159,11 +160,40 @@ impl GLVideo {
         texture
     }
 
-    #[rustfmt::skip]
-    unsafe fn update_shader(texture: GLuint, Shader { program, framebuffer, vertex_array, .. }: &Shader) {
+    unsafe fn update_shader(
+        shader: &S,
+        ShaderResources {
+            display_texture,
+            program,
+            framebuffer,
+            framebuffer_texture,
+            vertex_array,
+            uniform_texture,
+            uniforms,
+            ..
+        }: &mut ShaderResources,
+    ) {
         gl::UseProgram(*program);
+        gl::Uniform1i(*uniform_texture, 0);
+        for name in S::vars() {
+            let uniform = if let Some(uniform) = uniforms.get(name).copied() {
+                uniform
+            } else {
+                // shader vars must be nul-terminated
+                assert_eq!(Some('\0'), name.chars().last());
+                let uniform = unsafe { gl::GetUniformLocation(*program, name.as_ptr() as _) };
+                uniforms.insert(name, uniform);
+                uniform
+            };
+            if let Some(var) = shader.update(name) {
+                match var {
+                    ShaderVar::Int(n) => unsafe { gl::Uniform1i(uniform, n) },
+                }
+            }
+        }
+
         gl::ActiveTexture(gl::TEXTURE0);
-        gl::BindTexture(gl::TEXTURE_2D, texture);
+        gl::BindTexture(gl::TEXTURE_2D, *display_texture);
         gl::BindFramebuffer(gl::FRAMEBUFFER, *framebuffer);
         let width = 160 * PIXEL;
         let height = 144 * PIXEL;
@@ -179,27 +209,15 @@ impl GLVideo {
     }
 
     pub fn texture(&self) -> GLuint {
-        if let Some(Shader { texture, .. }) = &self.shader {
-            *texture
-        } else {
-            self.texture
-        }
+        self.resources.framebuffer_texture
     }
 }
 
-impl Drop for GLVideo {
+impl Drop for ShaderResources {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &self.texture);
-            assert_eq!(gl::NO_ERROR, gl::GetError());
-        }
-    }
-}
-
-impl Drop for Shader {
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteTextures(1, &self.texture);
+            gl::DeleteTextures(1, &self.display_texture);
+            gl::DeleteTextures(1, &self.framebuffer_texture);
             gl::DeleteFramebuffers(1, &self.framebuffer);
             gl::DeleteVertexArrays(1, &self.vertex_array);
             gl::DeleteProgram(self.program);

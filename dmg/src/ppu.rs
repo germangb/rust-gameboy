@@ -248,6 +248,26 @@ impl<V: Video> Ppu<V> {
         }
     }
 
+    /// Decodes tile data in RGB format.
+    pub fn tile_data(&self, data: TileDataAddr, bank: usize, out: &mut Vec<Color>) {
+        for y in 0..(16 * 8) {
+            for x in 0..(16 * 8) {
+                let tile = 16 * (y / 8) + (x / 8);
+                let col = 7 - (x & 7);
+                let row = y & 7;
+                let offset = match data {
+                    TileDataAddr::X8000 => 16 * (tile as usize) + row * 2,
+                    TileDataAddr::X8800 => 0x800 + 16 * (tile as usize) + row * 2,
+                };
+                // decode color index from tile data
+                let lo = self.vram.bank(bank)[offset] >> (col as u8) & 0x1;
+                let hi = self.vram.bank(bank)[offset + 1] >> (col as u8) & 0x1;
+                let color_index = lo | (hi << 1);
+                out.push(palette::GRAYSCALE[color_index as usize]);
+            }
+        }
+    }
+
     // fetch pixel color from a given coordinate
     // coordinate is relative to the tilemap origin
     #[rustfmt::skip]

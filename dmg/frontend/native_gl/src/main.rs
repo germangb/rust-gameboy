@@ -1,12 +1,16 @@
-use dmg_backend_gl::ppu::GLVideo;
+use dmg_backend_gl::ppu::{shader::lcd::Lcd, GLVideo};
 use dmg_lib::{
     apu::device::Audio,
     cartridge::Cartridge,
     joypad::{Btn, Dir, Key},
-    ppu::{palette::DMG, Video},
+    ppu::{
+        palette::{DMG, GRAYSCALE},
+        reg::TileDataAddr,
+        Video,
+    },
     Builder, Dmg, Mode,
 };
-use imgui::Context;
+use imgui::{Context, StyleVar};
 use imgui_opengl_renderer::Renderer;
 use imgui_sdl2::ImguiSdl2;
 use sdl2::{
@@ -15,11 +19,12 @@ use sdl2::{
     EventPump,
 };
 use std::{
-    thread,
+    ptr, thread,
     time::{Duration, Instant},
 };
 
-static ROM: &[u8] = include_bytes!("../../native/roms/Tetris-USA.gb");
+static ROM: &[u8] = include_bytes!("../../native/roms/Donkey Kong Country (UE) (M5) [C][!].gbc");
+const MODE: Mode = Mode::CGB;
 
 fn main() {
     let sdl = sdl2::init().expect("Error initializing SDL");
@@ -28,6 +33,7 @@ fn main() {
         .window("DMG - GL", 800, 600)
         .opengl()
         .position_centered()
+        //.fullscreen()
         .build()
         .expect("Error creating window");
 
@@ -40,14 +46,34 @@ fn main() {
 
     gl::load_with(|s| video.gl_get_proc_address(s) as _);
 
+    // tile data
+    let mut tile_data = [0; 4];
+    let mut tile_data_data = Vec::new();
+    let mut tile_data_update = true;
+    unsafe {
+        gl::GenTextures(4, tile_data.as_mut_ptr());
+        for tile_data in tile_data.iter().copied() {
+            gl::BindTexture(gl::TEXTURE_2D, tile_data);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as _);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as _);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
+            #[rustfmt::skip]
+                gl::TexImage2D(
+                gl::TEXTURE_2D, 0, gl::RGB8 as _, 128, 128, 0, gl::RGB, gl::UNSIGNED_BYTE, ptr::null());
+            gl::BindTexture(gl::TEXTURE_2D, 0);
+        }
+        assert_eq!(gl::NO_ERROR, gl::GetError());
+    }
+
     let mut imgui = Context::create();
     let imgui_gl = Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
     let mut imgui_sdl = ImguiSdl2::new(&mut imgui, &window);
 
     let mut emulator = Builder::default()
-        .with_mode(Mode::CGB)
+        .with_mode(MODE)
         .with_cartridge(dmg_lib::cartridge::from_bytes(ROM).expect("Error creating cartridge"))
-        .with_video(GLVideo::new())
+        .with_video(GLVideo::new(Lcd::default()))
         .build();
     emulator.mmu_mut().ppu_mut().pal_mut().set_color_pal(DMG);
 
@@ -83,6 +109,98 @@ fn main() {
                 .border_col([1.0; 4])
                 .build(&ui);
             });
+        imgui::Window::new(imgui::im_str!("Shader"))
+            .always_auto_resize(true)
+            .resizable(false)
+            .build(&ui, || {
+                let shader = emulator.mmu_mut().ppu_mut().video_mut().shader_mut();
+                ui.checkbox(imgui::im_str!("RGB"), &mut shader.rgb);
+                ui.checkbox(imgui::im_str!("Scanlines"), &mut shader.scanlines);
+                ui.checkbox(imgui::im_str!("Grayscale"), &mut shader.grayscale);
+            });
+        #[rustfmt::skip]
+        imgui::Window::new(imgui::im_str!("Tiles"))
+            .always_auto_resize(true)
+            .build(&ui, || {
+                ui.checkbox(imgui::im_str!("Update"), &mut tile_data_update);
+                let mut t = 0;
+                let banks = match MODE {
+                    Mode::GB => 1,
+                    Mode::CGB => 2,
+                };
+                for bank in 0..banks {
+                    for (i, (addr, bank)) in [(TileDataAddr::X8000, bank), (TileDataAddr::X8800, bank)].iter().copied().enumerate() {
+                        if tile_data_update {
+                            tile_data_data.clear();
+                            emulator.mmu().ppu().tile_data(addr, bank, &mut tile_data_data);
+                            assert_eq!(128 * 128, tile_data_data.len());
+                            unsafe {
+                                gl::BindTexture(gl::TEXTURE_2D, tile_data[t]);
+                                #[rustfmt::skip]
+                                    gl::TexSubImage2D(
+                                    gl::TEXTURE_2D, 0, 0, 0, 128, 128, gl::RGB, gl::UNSIGNED_BYTE, tile_data_data.as_ptr() as _);
+                                gl::BindTexture(gl::TEXTURE_2D, 0);
+                            }
+                        }
+                        let [x, y] = ui.cursor_pos();
+                        imgui::Image::new(imgui::TextureId::from(tile_data[t] as usize), [128.0, 128.0]).border_col([1.0; 4]).build(&ui);
+                        if i == 0 {
+                            ui.set_cursor_pos([x + 128.0 + 8.0, y]);
+                        }
+                        t += 1;
+                    }
+                }
+            });
+        #[rustfmt::skip]
+        let (bgp, obp) = match MODE {
+            Mode::GB => {
+                let pal = emulator.mmu().ppu().pal();
+                (vec![pal.bg_pal()],
+                 vec![pal.ob_pal(0), pal.ob_pal(1)])
+            }
+            Mode::CGB => {
+                let pal = emulator.mmu().ppu().color_pal();
+                (vec![pal.bg_pal(0), pal.bg_pal(1), pal.bg_pal(2), pal.bg_pal(3), pal.bg_pal(4), pal.bg_pal(5), pal.bg_pal(6), pal.bg_pal(7)],
+                 vec![pal.ob_pal(0), pal.ob_pal(1), pal.ob_pal(2), pal.ob_pal(3), pal.ob_pal(4), pal.ob_pal(5), pal.ob_pal(6), pal.ob_pal(7)])
+            }
+        };
+        #[rustfmt::skip]
+        imgui::Window::new(imgui::im_str!("Color Palette"))
+            .always_auto_resize(true)
+            .resizable(false)
+            .build(&ui, || {
+                ui.text("Background");
+                for (i, [pal0, pal1, pal2, pal3]) in bgp.iter().enumerate() {
+                    let pal0 = [pal0[0] as f32 / 255.0, pal0[1] as f32 / 255.0, pal0[2] as f32 / 255.0, 1.0];
+                    let pal1 = [pal1[0] as f32 / 255.0, pal1[1] as f32 / 255.0, pal1[2] as f32 / 255.0, 1.0];
+                    let pal2 = [pal2[0] as f32 / 255.0, pal2[1] as f32 / 255.0, pal2[2] as f32 / 255.0, 1.0];
+                    let pal3 = [pal3[0] as f32 / 255.0, pal3[1] as f32 / 255.0, pal3[2] as f32 / 255.0, 1.0];
+                    let [x, y] = ui.cursor_pos();
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 0), pal0).build(&ui);
+                    ui.set_cursor_pos([x + 24.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 1), pal1).build(&ui);
+                    ui.set_cursor_pos([x + 24.0 * 2.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 2), pal2).build(&ui);
+                    ui.set_cursor_pos([x + 24.0 * 3.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 3), pal3).build(&ui);
+                }
+                ui.text("Object");
+                for (i, [pal0, pal1, pal2, pal3]) in obp.iter().enumerate() {
+                    let pal0 = [pal0[0] as f32 / 255.0, pal0[1] as f32 / 255.0, pal0[2] as f32 / 255.0, 1.0];
+                    let pal1 = [pal1[0] as f32 / 255.0, pal1[1] as f32 / 255.0, pal1[2] as f32 / 255.0, 1.0];
+                    let pal2 = [pal2[0] as f32 / 255.0, pal2[1] as f32 / 255.0, pal2[2] as f32 / 255.0, 1.0];
+                    let pal3 = [pal3[0] as f32 / 255.0, pal3[1] as f32 / 255.0, pal3[2] as f32 / 255.0, 1.0];
+                    let [x, y] = ui.cursor_pos();
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 0), pal0).build(&ui);
+                    ui.set_cursor_pos([x + 24.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 1), pal1).build(&ui);
+                    ui.set_cursor_pos([x + 24.0 * 2.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 2), pal2).build(&ui);
+                    ui.set_cursor_pos([x + 24.0 * 3.0, y]);
+                    imgui::ColorButton::new(&imgui::im_str!("pal#{}#{}", i, 3), pal3).build(&ui);
+                }
+            });
+
         imgui_sdl.prepare_render(&ui, &window);
         imgui_gl.render(ui);
 
@@ -106,26 +224,32 @@ fn handle_input(
 ) -> bool {
     let joypad = dmg.mmu_mut().joypad_mut();
     for event in event_pump.poll_iter() {
-        match event {
-            Event::Window {
-                win_event: WindowEvent::Close,
-                ..
-            } => return true,
-            Event::KeyDown {
-                scancode: Some(s), ..
-            } => {
-                if let Some(key) = map_scancode(s) {
-                    joypad.press(key)
+        if !imgui_sdl.ignore_event(&event) {
+            match event {
+                Event::Window {
+                    win_event: WindowEvent::Close,
+                    ..
                 }
-            }
-            Event::KeyUp {
-                scancode: Some(s), ..
-            } => {
-                if let Some(key) = map_scancode(s) {
-                    joypad.release(key)
+                | Event::KeyDown {
+                    scancode: Some(Scancode::Escape),
+                    ..
+                } => return true,
+                Event::KeyDown {
+                    scancode: Some(s), ..
+                } => {
+                    if let Some(key) = map_scancode(s) {
+                        joypad.press(key)
+                    }
                 }
+                Event::KeyUp {
+                    scancode: Some(s), ..
+                } => {
+                    if let Some(key) = map_scancode(s) {
+                        joypad.release(key)
+                    }
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
     false
