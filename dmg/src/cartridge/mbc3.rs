@@ -57,7 +57,11 @@ impl Mapped for Mbc3 {
             addr @ 0xa000..=0xbfff => {
                 if self.ram_timer_enabled {
                     match self.mode {
-                        Mode::Ram => self.ram[self.ram_bank][addr - 0xa000],
+                        Mode::Ram => self
+                            .ram
+                            .get(self.ram_bank)
+                            .map(|bank| bank[addr - 0xa000])
+                            .unwrap_or(0),
                         Mode::Rtc => self.rtc[self.rtc_select],
                     }
                 } else {
@@ -102,7 +106,11 @@ impl Mapped for Mbc3 {
             addr @ 0xa000..=0xbfff => {
                 if self.ram_timer_enabled {
                     match self.mode {
-                        Mode::Ram => self.ram[self.ram_bank][addr - 0xa000] = data,
+                        Mode::Ram => {
+                            if let Some(bank) = self.ram.get_mut(self.ram_bank) {
+                                bank[addr - 0xa000] = data
+                            }
+                        }
                         Mode::Rtc => self.rtc[self.rtc_select] = data,
                     }
                 }

@@ -36,7 +36,11 @@ impl Mapped for Mbc5 {
             }
             addr @ 0xa000..=0xbfff => {
                 if self.ram_enabled {
-                    self.ram[self.ram_bank][addr - 0xa000]
+                    if let Some(bank) = self.ram.get(self.ram_bank) {
+                        bank[addr - 0xa000]
+                    } else {
+                        0
+                    }
                 } else {
                     0
                 }
@@ -64,12 +68,15 @@ impl Mapped for Mbc5 {
             // will select an appropriate RAM bank at A000-BFFF if the cart contains RAM. Ram sizes
             // are 64kbit,256kbit, & 1mbit.
             0x4000..=0x5fff => self.ram_bank = (data & 0xf) as usize,
+            0x6000..=0x7fff => { /* read-only */ }
             addr @ 0xa000..=0xbfff => {
                 if self.ram_enabled {
-                    self.ram[self.ram_bank][addr - 0xa000] = data;
+                    if let Some(bank) = self.ram.get_mut(self.ram_bank) {
+                        bank[addr - 0xa000] = data;
+                    }
                 }
             }
-            _ => panic!(),
+            _ => panic!("{:x}", addr),
         }
     }
 }

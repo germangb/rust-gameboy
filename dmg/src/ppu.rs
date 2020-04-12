@@ -22,10 +22,10 @@ pub mod reg;
 pub const LCD_WIDTH: usize = 160;
 pub const LCD_HEIGHT: usize = 144;
 
-const SEARCH: u64 = 80; //  80 dots (19 us)
-const PIXELS: u64 = 230; // 168 to 291 cycles (40 to 60 us) depending on sprite count
-const HBLANK: u64 = 147; // 85 to 208 dots (20 to 49 us) depending on previous mode 3 duration
-const VBLANK: u64 = 4560; // 4560 dots (1087 us, 10 scanlines)
+pub(crate) const SEARCH: u64 = 80; //  80 dots (19 us)
+pub(crate) const PIXELS: u64 = 230; // 168 to 291 cycles (40 to 60 us) depending on sprite count
+pub(crate) const HBLANK: u64 = 147; // 85 to 208 dots (20 to 49 us) depending on previous mode 3 duration
+pub(crate) const VBLANK: u64 = 4560; // 4560 dots (1087 us, 10 scanlines)
 
 /// Display scanline renderer.
 pub trait Video {
@@ -77,6 +77,14 @@ impl<V: Video> Ppu<V> {
         }
     }
 
+    pub fn lcdc_stat(&self) -> &LcdcStat {
+        &self.lcdc_stat
+    }
+
+    pub fn win(&self) -> &Window {
+        &self.win
+    }
+
     pub fn vram_mut(&mut self) -> &mut VRam {
         &mut self.vram
     }
@@ -102,6 +110,35 @@ impl<V: Video> Ppu<V> {
 
     pub fn video_mut(&mut self) -> &mut V {
         &mut self.video
+    }
+
+    /// Decodes tile data (RGB8 pixel format).
+    pub fn tile_data(&self, data: TileDataAddr, bank: usize, out: &mut Vec<Color>) {
+        for y in 0..(16 * 8) {
+            for x in 0..(16 * 8) {
+                let tile = 16 * (y / 8) + (x / 8);
+                let col = 7 - (x & 7);
+                let row = y & 7;
+                let offset = match data {
+                    TileDataAddr::X8000 => 16 * (tile as usize) + row * 2,
+                    TileDataAddr::X8800 => 0x800 + 16 * (tile as usize) + row * 2,
+                };
+                // decode color index from tile data
+                let lo = self.vram.bank(bank)[offset] >> (col as u8) & 0x1;
+                let hi = self.vram.bank(bank)[offset + 1] >> (col as u8) & 0x1;
+                let color_index = lo | (hi << 1);
+                out.push(palette::GRAYSCALE[color_index as usize]);
+            }
+        }
+    }
+
+    /// Decode tile map pixel data (RGB8 pixel format).
+    pub fn tile_map(&self, map: TileMapAddr, data: TileDataAddr, out: &mut Vec<Color>) {
+        for y in 0..(8 * 32) {
+            for x in 0..(8 * 32) {
+                out.push(self.point_color(y, x, map, data).0);
+            }
+        }
     }
 
     pub fn step(&mut self, cycles: u64) {
@@ -165,12 +202,14 @@ impl<V: Video> Ppu<V> {
             (StatMode::VBlank, StatMode::VBlank) => {
                 const DOTS_LINE: u64 = 456;
 
-                line = 144 + (self.dots / DOTS_LINE) as u8;
+                if line != 0 {
+                    line = 144 + (self.dots / DOTS_LINE) as u8;
+                }
 
                 // TODO maybe set LY=0 at some point in VBlank
-                // if line == 153 && self.dots % DOTS_LINE > DOTS_LINE / 2 {
-                //     line = 0;
-                // }
+                if line == 153 && self.dots % DOTS_LINE > DOTS_LINE / 2 {
+                    line = 0;
+                }
             }
 
             _ => panic!(),
@@ -248,30 +287,10 @@ impl<V: Video> Ppu<V> {
         }
     }
 
-    /// Decodes tile data in RGB format.
-    pub fn tile_data(&self, data: TileDataAddr, bank: usize, out: &mut Vec<Color>) {
-        for y in 0..(16 * 8) {
-            for x in 0..(16 * 8) {
-                let tile = 16 * (y / 8) + (x / 8);
-                let col = 7 - (x & 7);
-                let row = y & 7;
-                let offset = match data {
-                    TileDataAddr::X8000 => 16 * (tile as usize) + row * 2,
-                    TileDataAddr::X8800 => 0x800 + 16 * (tile as usize) + row * 2,
-                };
-                // decode color index from tile data
-                let lo = self.vram.bank(bank)[offset] >> (col as u8) & 0x1;
-                let hi = self.vram.bank(bank)[offset + 1] >> (col as u8) & 0x1;
-                let color_index = lo | (hi << 1);
-                out.push(palette::GRAYSCALE[color_index as usize]);
-            }
-        }
-    }
-
     // fetch pixel color from a given coordinate
     // coordinate is relative to the tilemap origin
     #[rustfmt::skip]
-    fn point_color(&mut self, y: usize, x: usize, map: TileMapAddr, data: TileDataAddr) -> (Color, u8) {
+    fn point_color(&self, y: usize, x: usize, map: TileMapAddr, data: TileDataAddr) -> (Color, u8) {
         // look up tile index
         let map = map as u16;
         let tile_map_idx = 32 * (y / 8) + (x / 8);
@@ -405,8 +424,8 @@ impl<V: Video> Ppu<V> {
                 // draw pixel color
                 self.buffer[ly as usize][lcd_x as usize] = match self.mode {
                     Mode::GB => {
-                        let pal = flags >> 4 & 0x1;
-                        self.pal.obp_color(pal as usize, color_index as usize)
+                        let pal = (flags >> 4 & 0x1) as usize;
+                        self.pal.obp_color(pal, color_index as usize)
                     }
                     Mode::CGB => {
                         let palette = (flags & 0x7) as usize;
@@ -495,7 +514,12 @@ impl<V: Video> Mapped for Ppu<V> {
                 self.lcdc_stat.stat_set_mode(self.stat_mode);
             }
             0xff45 => self.line.lyc = data,
-            0xff4a | 0xff4b => self.win.write(addr, data),
+            0xff4a | 0xff4b => {
+                if addr == 0xff4a && data != 0 {
+                    //eprintln!("WY = {}, LY = {}", data, self.line.ly);
+                }
+                self.win.write(addr, data)
+            }
             0xff47..=0xff49 => self.pal.write(addr, data),
             0xff4f => {
                 // if matches!(

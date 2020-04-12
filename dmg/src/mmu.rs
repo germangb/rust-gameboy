@@ -5,7 +5,7 @@ use crate::{
     int::Interrupts,
     joypad::Joypad,
     map::Mapped,
-    ppu::{Ppu, Video},
+    ppu::{Ppu, Video, HBLANK, PIXELS, SEARCH, VBLANK},
     timer::Timer,
     wram::WRam,
     Mode, CLOCK,
@@ -153,25 +153,19 @@ impl<C: Cartridge, V: Video, D: Audio> Mmu<C, V, D> {
     }
 
     pub(crate) fn emulate_frame(&mut self, cpu: &mut Cpu, carry: u64) -> u64 {
-        const FRAME_CYCLES: u64 = CLOCK / 60;
+        const FRAME_CYCLES: u64 = 144 * (SEARCH + PIXELS + HBLANK) + VBLANK;
 
         let mut cycles = carry;
         let mut cpu_rem = 0;
         while cycles < FRAME_CYCLES {
-            let cpu_cycles = cpu.step(self);
+            let mut cpu_cycles = cpu.step(self);
 
-            match self.speed {
-                Speed::X1 => {
-                    self.step(cpu_rem + cpu_cycles);
-                    cycles += cpu_cycles;
-                }
-                Speed::X2 => {
-                    let cpu_cycles = cpu_cycles + cpu_rem;
-                    self.step(cpu_cycles / 2);
-                    cpu_rem = cpu_cycles % 2;
-                    cycles += cpu_cycles / 2;
-                }
+            if self.speed == Speed::X2 {
+                cpu_cycles /= 2;
             }
+
+            self.step(cpu_rem + cpu_cycles);
+            cycles += cpu_cycles;
         }
 
         // return carry. This value should be passed as carry argument on the next call

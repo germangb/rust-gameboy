@@ -44,11 +44,10 @@ impl Mapped for Mbc1 {
             }
             addr @ 0xa000..=0xbfff => {
                 if self.ram_enable {
-                    if let Some(bank) = self.ram.get(self.ram_bank) {
-                        bank[addr as usize - 0xa000]
-                    } else {
-                        0
-                    }
+                    self.ram
+                        .get(self.ram_bank)
+                        .map(|bank| bank[addr - 0xa000])
+                        .unwrap_or(0)
                 } else {
                     0
                 }

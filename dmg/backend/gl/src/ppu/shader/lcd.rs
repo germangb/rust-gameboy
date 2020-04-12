@@ -21,9 +21,9 @@ vec3 color(vec2 uv) {
     vec3 texel = vec3(1.0, 1.0, 0.0) / vec3(DISPLAY, 1.0) / PIXEL;
     vec3 color = vec3(0.0);
     if (u_rgb == 1)
-        color = vec3(display(v_uv).r,
-                     dot(display(uv + 2.0 * texel.xz), Y),
-                     display(uv - 2.0 * texel.xz).b);
+        color = vec3(display(uv + PIXEL * texel.xz).r,
+                     dot(display(uv), Y),
+                     display(uv - PIXEL * texel.xz).b);
     else
         color = display(v_uv);
     if (u_scanlines == 1) {
