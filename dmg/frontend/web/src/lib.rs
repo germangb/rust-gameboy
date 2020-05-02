@@ -15,7 +15,7 @@ static ROM: &[u8] = include_bytes!("../../native/roms/Dr. Mario (World).gb");
 
 /// WebAssembly-enabled emulator.
 #[wasm_bindgen]
-pub struct Dmg(dmg_lib::Dmg<Box<dyn Cartridge>, WasmVideo, ()>);
+pub struct Dmg(dmg_lib::GameBoy<Box<dyn Cartridge>, WasmVideo, ()>);
 
 #[wasm_bindgen]
 pub fn init_wasm() {

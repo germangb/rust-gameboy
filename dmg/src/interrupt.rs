@@ -1,4 +1,4 @@
-use crate::map::Mapped;
+use crate::mapped::Mapped;
 
 #[repr(u8)]
 pub enum Flag {
@@ -60,8 +60,8 @@ impl Mapped for Interrupts {
 #[cfg(test)]
 mod tests {
     use crate::{
-        int::{Flag::*, Interrupts},
-        map::Mapped,
+        interrupt::{Flag::*, Interrupts},
+        mapped::Mapped,
     };
 
     #[test]

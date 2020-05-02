@@ -1,4 +1,4 @@
-use crate::map::Mapped;
+use crate::mapped::Mapped;
 
 const SIZE: usize = 40;
 

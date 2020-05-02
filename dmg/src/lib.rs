@@ -4,25 +4,27 @@
 )]
 #![deny(clippy::style, clippy::correctness, clippy::complexity, clippy::perf)]
 use crate::{
-    apu::device::Audio, cartridge::Cartridge, cpu::Cpu, map::Mapped, mmu::Mmu, ppu::Video,
+    apu::device::Audio, cartridge::Cartridge, cpu::Cpu, mapped::Mapped, mmu::Mmu, ppu::Video,
 };
 use std::marker::PhantomData;
 
+/// Audio Processing Unit
 pub mod apu;
 pub mod cartridge;
-// clock utility
 pub(crate) mod clock;
 pub mod cpu;
-pub mod int;
+pub mod cpu_reg; // TODO move this module to the cpu module (as a submodule).
+pub mod interrupt;
 pub mod joypad;
-pub mod map;
+pub mod mapped;
+/// Memory uanagement Unit.
 pub mod mmu;
+/// Pixel Processing Unit.
 pub mod ppu;
-pub mod reg;
 pub mod serial;
 pub mod timer;
-pub mod vram;
-pub mod wram;
+pub mod video_ram;
+pub mod work_ram;
 
 const CLOCK: u64 = 4_194_304;
 
@@ -32,19 +34,20 @@ pub enum Mode {
     CGB,
 }
 
-pub struct Dmg<C: Cartridge, V: Video, D: Audio> {
+// TODO consider not abusing generics.
+pub struct GameBoy<C: Cartridge, V: Video, D: Audio> {
     cpu: Cpu,
     mmu: Mmu<C, V, D>,
     carry: u64,
 }
 
-impl Default for Dmg<(), (), ()> {
+impl Default for GameBoy<(), (), ()> {
     fn default() -> Self {
         Builder::default().build()
     }
 }
 
-impl<C: Cartridge, V: Video, D: Audio> Dmg<C, V, D> {
+impl<C: Cartridge, V: Video, D: Audio> GameBoy<C, V, D> {
     pub fn emulate_frame(&mut self) {
         self.carry = self.mmu.emulate_frame(&mut self.cpu, self.carry);
     }
@@ -137,21 +140,22 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
         self
     }
 
-    pub fn build(self) -> Dmg<C, V, D> {
+    pub fn build(self) -> GameBoy<C, V, D> {
         let cartridge = self.cartridge;
         let mode = self.mode.unwrap_or(Mode::CGB);
         let video = self.video;
-        let mut dmg = Dmg {
+        let mut dmg = GameBoy {
             cpu: Cpu::default(),
             mmu: Mmu::new(mode, cartridge, video),
             carry: 0,
         };
-        if self.skip_boot || cfg!(not(feature = "boot")) {
-            // TODO skip boot with GB roms in CGB mode
 
-            // Initialize CPU
+        // FIXME Bugs:
+        //  - GB game on CGB mode (color palette is not set).
+        if self.skip_boot || cfg!(not(feature = "boot")) {
             let cpu = dmg.cpu_mut();
 
+            // Initialize CPU
             cpu.reg_mut().set_af(0x01b0);
             cpu.reg_mut().set_bc(0x0013);
             cpu.reg_mut().set_de(0x00d8);
@@ -159,13 +163,15 @@ impl<C: Cartridge, V: Video, D: Audio> Builder<C, V, D> {
             cpu.reg_mut().sp = 0xfffe;
             cpu.reg_mut().pc = 0x0100;
 
+            // Games that work on both GB and CGB check the A register to detect CGB
+            // hardware and enhance games (mostly add color and better tiles).
             if let Mode::CGB = mode {
                 cpu.reg_mut().a = 0x11;
             }
 
-            // Initialize memory map
             let mmu = dmg.mmu_mut();
 
+            // Initialize memory map
             mmu.write(0xFF05, 0x00); // TIMA
             mmu.write(0xFF06, 0x00); // TMA
             mmu.write(0xFF07, 0x00); // TAC

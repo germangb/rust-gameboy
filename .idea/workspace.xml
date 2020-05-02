@@ -33,12 +33,11 @@
   <component name="ProjectId" id="1YzWS3M2VOsOvUg1uuS5APwsAYh" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showExcludedFiles" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/assets" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
     <property name="settings.editor.selected.configurable" value="preferences.pluginManager" />
   </component>
@@ -67,7 +66,7 @@
       <command value="cargo doc" />
     </option>
   </component>
-  <component name="RunManager" selected="Cargo Command.Run native (opengl)">
+  <component name="RunManager" selected="Cargo Command.+nightly">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -218,9 +217,6 @@
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
     <option name="version" value="2" />
   </component>
-  <component name="ServiceViewManager">
-    <option name="showServicesTree" value="false" />
-  </component>
   <component name="WindowStateProjectService">
     <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1586645946658">
       <screen x="0" y="27" width="1920" height="1020" />
@@ -250,22 +246,22 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="251" key="GridCell.Tab.0.bottom" timestamp="1586711025067">
+    <state width="1920" height="251" key="GridCell.Tab.0.bottom" timestamp="1588450047458">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1586711025067" />
-    <state width="1920" height="251" key="GridCell.Tab.0.center" timestamp="1586711025067">
+    <state width="1920" height="251" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1588450047458" />
+    <state width="1920" height="251" key="GridCell.Tab.0.center" timestamp="1588450047458">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1586711025067" />
-    <state width="1920" height="251" key="GridCell.Tab.0.left" timestamp="1586711025066">
+    <state width="1920" height="251" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1588450047458" />
+    <state width="1920" height="251" key="GridCell.Tab.0.left" timestamp="1588450047458">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1586711025066" />
-    <state width="1920" height="251" key="GridCell.Tab.0.right" timestamp="1586711025067">
+    <state width="1920" height="251" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1588450047458" />
+    <state width="1920" height="251" key="GridCell.Tab.0.right" timestamp="1588450047458">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1586711025067" />
+    <state width="1920" height="251" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1588450047458" />
     <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -278,10 +274,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586463452870" />
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1586697323220">
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1588449513868">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586697323220" />
+    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1588449513868" />
     <state x="550" y="440" width="540" height="194" key="vcs.readOnlyHandler.ReadOnlyStatusDialog" timestamp="1585506946336">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>

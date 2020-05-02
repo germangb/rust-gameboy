@@ -1,4 +1,4 @@
-use crate::{cartridge::ram_banks, map::Mapped};
+use crate::{cartridge::ram_banks, mapped::Mapped};
 
 /// MBC5 controller.
 pub struct Mbc5 {

@@ -1,6 +1,6 @@
 use crate::{
-    int::Flag,
-    map::Mapped,
+    interrupt::Flag,
+    mapped::Mapped,
     ppu::{
         oam::{Entry, Oam},
         palette::Color,
@@ -9,7 +9,7 @@ use crate::{
             STAT_SEARCH_FLAG, STAT_VBLANK_FLAG,
         },
     },
-    vram::VRam,
+    video_ram::VRam,
     Mode,
 };
 use reg::{ColorPal, Line, Pal, Scroll, Window};
@@ -39,9 +39,12 @@ impl Video for () {
 pub struct Ppu<V: Video> {
     video: V,
     mode: Mode,
+    // Same as cycles, but documentation often refers to it as "dots" instead of cycles.
     dots: u64,
     buffer: Box<[[Color; LCD_WIDTH]; LCD_HEIGHT]>,
-    index: Box<[[u8; LCD_WIDTH]; LCD_HEIGHT]>,
+    // Color index within color palette.
+    // Used to tell when a sprite is behind a BG tile.
+    color_index: Box<[[u8; LCD_WIDTH]; LCD_HEIGHT]>,
     stat_mode: StatMode,
     vram: VRam,
     oam: Oam,
@@ -62,7 +65,7 @@ impl<V: Video> Ppu<V> {
             video: output,
             mode,
             buffer: Box::new([[[0xff, 0xff, 0xff]; LCD_WIDTH]; LCD_HEIGHT]),
-            index: Box::new([[0; LCD_WIDTH]; LCD_HEIGHT]),
+            color_index: Box::new([[0; LCD_WIDTH]; LCD_HEIGHT]),
             vram: VRam::default(),
             oam: Oam::default(),
             stat_mode: StatMode::HBlank,
@@ -150,7 +153,16 @@ impl<V: Video> Ppu<V> {
 
         let mut line = self.line.ly;
 
-        match (self.stat_mode, self.next_stat_mode()) {
+        let next_state = match self.stat_mode {
+            StatMode::Search if self.dots >= SEARCH => StatMode::Pixels,
+            StatMode::Pixels if self.dots >= PIXELS => StatMode::HBlank,
+            StatMode::HBlank if self.dots >= HBLANK => StatMode::Search,
+            StatMode::VBlank if self.dots >= VBLANK => StatMode::Search,
+            _ => self.stat_mode,
+        };
+
+        // handle state transitions.
+        match (self.stat_mode, next_state) {
             (StatMode::Search, StatMode::Search) => {}
             (StatMode::Search, StatMode::Pixels) => {
                 self.dots %= SEARCH;
@@ -200,14 +212,15 @@ impl<V: Video> Ppu<V> {
                 line = 0;
             }
             (StatMode::VBlank, StatMode::VBlank) => {
-                const DOTS_LINE: u64 = 456;
+                const DOTS_PER_LINE: u64 = 456;
 
                 if line != 0 {
-                    line = 144 + (self.dots / DOTS_LINE) as u8;
+                    line = 144 + (self.dots / DOTS_PER_LINE) as u8;
                 }
 
-                // TODO maybe set LY=0 at some point in VBlank
-                if line == 153 && self.dots % DOTS_LINE > DOTS_LINE / 2 {
+                // some documents claim that the LY counter is reset in the middle of the last
+                // VBLANK line.
+                if line == 153 && self.dots % DOTS_PER_LINE > DOTS_PER_LINE / 2 {
                     line = 0;
                 }
             }
@@ -229,16 +242,6 @@ impl<V: Video> Ppu<V> {
         self.lcdc_stat.stat_set_mode(self.stat_mode);
     }
 
-    fn next_stat_mode(&self) -> StatMode {
-        match self.stat_mode {
-            StatMode::Search if self.dots >= SEARCH => StatMode::Pixels,
-            StatMode::Pixels if self.dots >= PIXELS => StatMode::HBlank,
-            StatMode::HBlank if self.dots >= HBLANK => StatMode::Search,
-            StatMode::VBlank if self.dots >= VBLANK => StatMode::Search,
-            _ => self.stat_mode,
-        }
-    }
-
     fn request_vblank(&mut self) {
         self.vblank_int = Some(Flag::VBlank);
     }
@@ -247,10 +250,12 @@ impl<V: Video> Ppu<V> {
         self.lcdc_int = Some(Flag::LCDCStat);
     }
 
+    // Must be called by the MMU after an update
     pub(crate) fn take_vblank_int(&mut self) -> Option<Flag> {
         self.vblank_int.take()
     }
 
+    // Must be called by the MMU after an update
     pub(crate) fn take_lcdc_int(&mut self) -> Option<Flag> {
         self.lcdc_int.take()
     }
@@ -261,19 +266,20 @@ impl<V: Video> Ppu<V> {
             Mode::CGB => self.color_pal.clear_color(),
         };
         mem::replace(self.buffer.as_mut(), [[color; LCD_WIDTH]; LCD_HEIGHT]);
-        mem::replace(self.index.as_mut(), [[0; LCD_WIDTH]; LCD_HEIGHT]);
+        mem::replace(self.color_index.as_mut(), [[0; LCD_WIDTH]; LCD_HEIGHT]);
         self.video.draw_video(&self.buffer);
     }
 
     fn draw_line(&mut self, ly: u8, offset: usize, dots: usize) {
-        // if ly == self.line.lyc && self.lcdc_stat.stat & STAT_LYC_LY != 0 {
-        //     self.request_lcdc();
-        // }
         let lcdc_0 = self.lcdc_stat.lcdc & 0x1 != 0;
+
+        // Behavior of the LCD registers is different on each game boy model.
+        // In CGB mode (game boy color), the BG is always visible.
         let display_bg = match self.mode {
             Mode::GB => lcdc_0,
             Mode::CGB => true,
         };
+
         if display_bg {
             self.draw_bg(ly, offset, dots);
         }
@@ -327,11 +333,14 @@ impl<V: Video> Ppu<V> {
             Mode::CGB => {
                 let palette = (flags & 0x7) as usize;
                 let color = self.color_pal.bg_pal_color(palette, color_index as usize);
+
                 // tile priority over all OAM
+                // in CGB mode, this tile voerrides any priorities.
+                // TODO don't use magic value (4)
                 if flags & 0x80 != 0 && color_index != 0 {
-                    // TODO avoid using magic values
                     color_index = 4;
                 }
+
                 (color, color_index)
             }
         }
@@ -339,6 +348,7 @@ impl<V: Video> Ppu<V> {
 
     fn draw_bg(&mut self, ly: u8, offset: usize, dots: usize) {
         let Scroll { scx, scy } = self.scroll;
+
         for lcd_x in offset..(offset + dots) {
             let y = ly.wrapping_add(scy) as usize;
             let x = (lcd_x as u8).wrapping_add(scx) as usize;
@@ -346,22 +356,26 @@ impl<V: Video> Ppu<V> {
             let data = self.lcdc_stat.bg_win_tile_data();
             let (color, index) = self.point_color(y, x, map, data);
             self.buffer[ly as usize][lcd_x] = color;
-            self.index[ly as usize][lcd_x] = index;
+            self.color_index[ly as usize][lcd_x] = index;
         }
     }
 
     fn draw_win(&mut self, ly: u8, offset: usize, dots: usize) {
         assert_eq!(0, offset);
         assert_eq!(LCD_WIDTH, dots);
+
         let Window { wy, wx } = self.win;
+
         if ly < wy {
             return;
         }
+
         // The window becomes visible (if enabled) when positions are set in
         // range WX=0..166, WY=0..143. A position of WX=7, WY=0 locates the
         // window at upper left, it is then completely covering normal
         // background.
         let wx = (wx as i16 - 7).max(0);
+
         for lcd_x in wx..LCD_WIDTH as i16 {
             let y = (ly as i16 - wy as i16) as usize;
             let x = (lcd_x - wx) as usize;
@@ -369,7 +383,7 @@ impl<V: Video> Ppu<V> {
             let data = self.lcdc_stat.bg_win_tile_data();
             let (color, index) = self.point_color(y, x, map, data);
             self.buffer[ly as usize][lcd_x as usize] = color;
-            self.index[ly as usize][lcd_x as usize] = index;
+            self.color_index[ly as usize][lcd_x as usize] = index;
         }
     }
 
@@ -377,25 +391,37 @@ impl<V: Video> Ppu<V> {
     fn draw_ob(&mut self, ly: u8, offset: usize, dots: usize) {
         assert_eq!(0, offset);
         assert_eq!(LCD_WIDTH, dots);
+
         let ly = ly as i16;
         let h = self.lcdc_stat.lcdc_ob_size() as i16;
+
         // TODO fix OAM search
-        // for Entry { ypos,
-        //             xpos,
-        //             mut tile,
-        //             flags } in self.oam.visible().copied() {
+        //  I should be checking all 40 sprites since only 10 are visible per line.
+        //  The timming of the PPU is somewhat broken so it crashes often.
         for entry in 0..40 {
             let Entry { ypos, xpos, mut tile, flags } = *self.oam.get(39 - entry);
-            // position in lcd display (signed)
+
+            // position of the top-left corner of the sprite within the lcd display.
+            // This value is signed because when xpos=0 the sprite is offscreen (same for ypos).
             let x = xpos as i16 - 8;
             let y = ypos as i16 - 16;
+
             // skip entry if it doesn't overlap with the current line
+            // TODO Again, this line shouldn't be necessary if the above TODO comment was resolved.
+            //  This check should be performed by the OAM search (see method `oam::search`)
             if ly < y || ly >= y + h {
                 continue;
             }
             // In 16-pixel mode, the top sprite low bit is always 0 and in the bottom sprite it's 1
-            // Many games rely on this AND operation.
-            if h == 16 { tile &= 0xfe }
+            // Initially I thought this should be handled by game code but later I found that some games
+            // rely on the PPU performing this AND explicitly.
+            //
+            // The games that I found rely on this:
+            //  - Shantae (sprites break otherwise)
+            if h == 16 {
+                tile &= 0xfe;
+            }
+
             for lcd_x in x.max(0)..(x + 8).min(LCD_WIDTH as _) {
                 // pixel position within the tile
                 let mut row = (ly - y) as usize;
@@ -412,15 +438,20 @@ impl<V: Video> Ppu<V> {
                 let lo = self.vram.bank(bank)[offset] >> (col as u8) & 0x1;
                 let hi = self.vram.bank(bank)[offset + 1] >> (col as u8) & 0x1;
                 let color_index = lo | (hi << 1);
+
                 // discards transparent pixels (color_index = 0)
-                // handles sprite priority drawing
-                // handles if bg tile underneath has overall priority
+                // works out tile priority and decide if the sprite pixel is discarded (begind BG)
+                // there are a few cases:
+                //  - color index 0 is transparent (always discarded)
+                //  - If one of the LCDC bits is set and the color index underneath is not 0.
+                //  - (CGB only) The BG tile underneath can override any priorities (always discard).
                 if color_index == 0 || // transparent pixel
-                    flags & 0x80 != 0 && self.index[ly as usize][lcd_x as usize] != 0 || // behind colors 1-3
-                    self.index[ly as usize][lcd_x as usize] == 4 // bg tile OAM priority bits (CGB only)
+                    flags & 0x80 != 0 && self.color_index[ly as usize][lcd_x as usize] != 0 || // behind colors 1-3
+                    self.color_index[ly as usize][lcd_x as usize] == 4 // bg tile OAM priority bits (CGB only)
                 {
                     continue;
                 }
+
                 // draw pixel color
                 self.buffer[ly as usize][lcd_x as usize] = match self.mode {
                     Mode::GB => {
@@ -437,6 +468,8 @@ impl<V: Video> Ppu<V> {
     }
 }
 
+// FIXME parts of the PPU are not accessible deppending on the current state,
+//  but these gates are commented out due to timming bugs.
 impl<V: Video> Mapped for Ppu<V> {
     fn read(&self, addr: u16) -> u8 {
         match addr {
@@ -544,7 +577,7 @@ impl<V: Video> Mapped for Ppu<V> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{map::Mapped, mmu::Mmu, Mode};
+    use crate::{mapped::Mapped, mmu::Mmu, Mode};
 
     #[test]
     fn vram() {

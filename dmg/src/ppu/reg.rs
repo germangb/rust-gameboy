@@ -1,5 +1,5 @@
 use crate::{
-    map::Mapped,
+    mapped::Mapped,
     ppu::palette::{Color, GRAYSCALE},
 };
 

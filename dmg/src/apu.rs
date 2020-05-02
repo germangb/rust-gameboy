@@ -1,4 +1,4 @@
-use crate::{apu::samples::SamplesMutex, clock::Clock, map::Mapped, CLOCK};
+use crate::{apu::samples::SamplesMutex, clock::Clock, mapped::Mapped, CLOCK};
 use device::Audio;
 use std::{
     marker::PhantomData,
@@ -296,7 +296,7 @@ impl<D: Audio> Mapped for Apu<D> {
 
 #[cfg(test)]
 mod test {
-    use crate::{apu::Apu, map::Mapped};
+    use crate::{apu::Apu, mapped::Mapped};
 
     #[test]
     fn wave_ram() {

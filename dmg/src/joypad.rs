@@ -1,4 +1,4 @@
-use crate::{int::Flag, map::Mapped};
+use crate::{interrupt::Flag, mapped::Mapped};
 
 const BTN_ROW_FLAG: u8 = 0x10;
 const DIR_ROW_FLAG: u8 = 0x20;
@@ -110,7 +110,7 @@ impl Mapped for Joypad {
 mod tests {
     use crate::{
         joypad::{Btn::*, Dir::*, Joypad, Key, BTN_ROW_FLAG, DIR_ROW_FLAG},
-        map::Mapped,
+        mapped::Mapped,
     };
 
     #[test]

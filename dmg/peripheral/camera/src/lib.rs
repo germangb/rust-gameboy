@@ -1,4 +1,4 @@
-use dmg_lib::{cartridge::Cartridge, map::Mapped};
+use dmg_lib::{cartridge::Cartridge, mapped::Mapped};
 
 pub static ROM: &[u8] = include_bytes!(env!("DMG_CAMERA_ROM"));
 

@@ -6,7 +6,7 @@ use dmg_lib::{
     cartridge::{Cartridge, Mbc1, Mbc3, Mbc5},
     joypad::{Btn, Dir, Joypad, Key},
     ppu::{palette::*, Video},
-    Builder, Dmg, Mode,
+    Builder, GameBoy, Mode,
 };
 use sdl2::{
     event::{Event, WindowEvent},
@@ -79,7 +79,7 @@ fn main() {
 
 fn handle_input(
     pump: &mut EventPump,
-    dmg: &mut Dmg<impl Cartridge, impl Video, impl Audio>,
+    dmg: &mut GameBoy<impl Cartridge, impl Video, impl Audio>,
 ) -> bool {
     let joypad = dmg.mmu_mut().joypad_mut();
     for event in pump.poll_iter() {

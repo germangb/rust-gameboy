@@ -1,4 +1,4 @@
-use crate::{clock::Clock, int::Flag, map::Mapped, CLOCK};
+use crate::{clock::Clock, interrupt::Flag, mapped::Mapped, CLOCK};
 
 pub struct Timer {
     div: u8,

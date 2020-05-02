@@ -1,10 +1,10 @@
 use crate::{
     apu::device::Audio,
     cartridge::Cartridge,
-    map::Mapped,
+    cpu_reg::{Flag::*, Registers},
+    mapped::Mapped,
     mmu::Mmu,
     ppu::Video,
-    reg::{Flag::*, Registers},
 };
 
 static CYCLES: [u64; 256] = [

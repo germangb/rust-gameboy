@@ -86,7 +86,7 @@ impl Registers {
 
 #[cfg(test)]
 mod test {
-    use crate::reg::{
+    use crate::cpu_reg::{
         Flag::{C, H, N, Z},
         Registers,
     };

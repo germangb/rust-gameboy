@@ -1,4 +1,4 @@
-use dmg_lib::{Builder, Dmg};
+use dmg_lib::{Builder, GameBoy};
 
 #[test]
 #[ignore]

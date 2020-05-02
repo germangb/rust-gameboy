@@ -31,7 +31,7 @@ impl Mapped for () {
 
 #[cfg(test)]
 mod tests {
-    use crate::map::Mapped;
+    use crate::mapped::Mapped;
 
     #[test]
     fn words() {

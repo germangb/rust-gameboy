@@ -2,12 +2,12 @@ use crate::{
     apu::{device::Audio, Apu},
     cartridge::Cartridge,
     cpu::Cpu,
-    int::Interrupts,
+    interrupt::Interrupts,
     joypad::Joypad,
-    map::Mapped,
+    mapped::Mapped,
     ppu::{Ppu, Video, HBLANK, PIXELS, SEARCH, VBLANK},
     timer::Timer,
-    wram::WRam,
+    work_ram::WRam,
     Mode, CLOCK,
 };
 
@@ -351,7 +351,7 @@ impl<C: Cartridge, V: Video, D: Audio> Mapped for Mmu<C, V, D> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{map::Mapped, mmu::Mmu, Mode};
+    use crate::{mapped::Mapped, mmu::Mmu, Mode};
 
     #[test]
     fn oam_dma() {

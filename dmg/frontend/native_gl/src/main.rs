@@ -1,6 +1,7 @@
 use dmg_backend_gl::ppu::{shader::lcd::Lcd, GLVideo};
 use dmg_lib::{
     apu::device::Audio,
+    cartridge,
     cartridge::Cartridge,
     joypad::{Btn, Dir, Key},
     ppu::{
@@ -8,7 +9,7 @@ use dmg_lib::{
         reg::{TileDataAddr, TileMapAddr},
         Video,
     },
-    Builder, Dmg, Mode,
+    Builder, GameBoy, Mode,
 };
 use gl::types::*;
 use imgui::{Context, StyleVar};
@@ -25,9 +26,9 @@ use std::{
 };
 
 static ROM: &[u8] =
-    include_bytes!("../../native/roms/Spud's Adventure (U).gb");
+    include_bytes!("../../native/roms/Star Wars Episode I - Racer (USA, Europe).gbc");
 
-const MODE: Mode = Mode::GB;
+const MODE: Mode = Mode::CGB;
 
 struct Ppu {
     display: bool,
@@ -93,7 +94,7 @@ fn main() {
 
     let mut emulator = Builder::default()
         .with_mode(MODE)
-        .with_cartridge(dmg_lib::cartridge::from_bytes(ROM).expect("Error creating cartridge"))
+        .with_cartridge(cartridge::from_bytes(ROM).expect("Error creating cartridge"))
         .with_video(GLVideo::new(Lcd::default()))
         .build();
     emulator.mmu_mut().ppu_mut().pal_mut().set_color_pal(DMG);
@@ -313,7 +314,7 @@ fn main() {
 
 fn handle_input(
     event_pump: &mut EventPump,
-    dmg: &mut Dmg<impl Cartridge, impl Video, impl Audio>,
+    dmg: &mut GameBoy<impl Cartridge, impl Video, impl Audio>,
     imgui_sdl: &mut ImguiSdl2,
 ) -> bool {
     let joypad = dmg.mmu_mut().joypad_mut();

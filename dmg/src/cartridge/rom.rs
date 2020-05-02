@@ -1,4 +1,4 @@
-use crate::map::Mapped;
+use crate::mapped::Mapped;
 
 pub struct Rom {
     rom: Box<[u8]>,

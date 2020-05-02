@@ -2,7 +2,7 @@
 //!
 //! Only the most common cartridge types are implemented. Less common cartridges
 //! (such as the camera) are implemented in external crates.
-use crate::map::Mapped;
+use crate::mapped::Mapped;
 
 mod mbc1;
 mod mbc3;
