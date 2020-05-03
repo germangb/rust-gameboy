@@ -5,16 +5,6 @@ GameBoy emulation in Rust
 ![](assets/zelda.gif)
 ![](assets/mario.gif)
 
-## Modules
-
-- [`dmg01`](modules) core emulation library (cpu, ppu, apu, cartridges, etc..).
-- [`dmg01/driver`](modules/backend) video & audio backends.
-- [`dmg01/peripheral`](modules/peripheral) supported peripherals.
-- [`dmg01/frontend`](modules/frontend) reference frontends.
-    - [`native`](modules/frontend/native)
-    - [`web`](modules/frontend/web)
-
-    
 ## Features
 
 | Feature | Support | Notes
@@ -43,8 +33,6 @@ Then, in your `Cargo.toml` enable the `boot` feature flag:
 [dependencies.dmg-lib]
 features = ["boot"]
 ```
-
-> **NOTE:** There is no built time valiation of the boot roms. Therefore it's not guaranteed that, it they were not correct, the build will still work.
 
 ## Tests
 
