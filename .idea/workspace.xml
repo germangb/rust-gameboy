@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="CargoProjects">
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
     <cargoProject FILE="$PROJECT_DIR$/dmg-frontend/native/dmg-frontend-native/Cargo.toml" />
@@ -23,7 +26,7 @@
     <option name="projectSyncType">
       <map>
         <entry key="$USER_HOME$/Descargas/zopa/solution_german" value="PREVIEW" />
-        <entry key="$USER_HOME$/Projects/zopa" value="PREVIEW" />
+        <entry key="$PROJECT_DIR$/../../zopa" value="PREVIEW" />
       </map>
     </option>
   </component>
@@ -36,6 +39,7 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
@@ -43,18 +47,18 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/modules/dmg-lib" />
       <recent name="$PROJECT_DIR$/dmg-lib/tests" />
       <recent name="$PROJECT_DIR$/assets" />
       <recent name="$PROJECT_DIR$/dmg-frontend/native" />
       <recent name="$PROJECT_DIR$/dmg-driver/opengl" />
-      <recent name="$PROJECT_DIR$/dmg-sdl2/src/bin" />
     </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/modules/dmg-frontend/native/roms" />
+      <recent name="$PROJECT_DIR$/data" />
       <recent name="$PROJECT_DIR$/assets" />
       <recent name="$PROJECT_DIR$/dmg-lib/tests" />
       <recent name="$PROJECT_DIR$/dmg-frontend/web" />
-      <recent name="$PROJECT_DIR$/dmg-frontend/native/roms" />
-      <recent name="$PROJECT_DIR$/dmg-driver/wasm" />
     </key>
   </component>
   <component name="RunAnythingCache">
@@ -66,7 +70,7 @@
       <command value="cargo doc" />
     </option>
   </component>
-  <component name="RunManager" selected="Cargo Command.Run native (opengl)">
+  <component name="RunManager" selected="Cargo.Run dmg-frontend-native-gl">
     <configuration name="wasm-pack build" type="BashConfigurationType" factoryName="Bash">
       <module name="dmg" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -83,79 +87,34 @@
       </envs>
       <method v="2" />
     </configuration>
-    <configuration name="Run native (opengl)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <configuration name="Run check_rom" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run --package dmg-frontend-native-gl" />
+      <option name="command" value="run --package dmg-tools --bin check_rom -- modules/dmg-frontend/native/roms/tetris.gb" />
       <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
-      <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="FULL" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <envs>
-        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/modules/boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/modules/boot/roms/boot.gbc" />
-        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/modules/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
-      </envs>
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Run native (release)" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-      <option name="channel" value="DEFAULT" />
-      <option name="command" value="run --release --package dmg-frontend-native" />
-      <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <envs>
-        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg/boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg/boot/roms/boot.gbc" />
-        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
-      </envs>
+      <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Run native" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+    <configuration name="Run dmg-frontend-native-gl" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="run --package dmg-frontend-native" />
+      <option name="command" value="run --package dmg-frontend-native-gl --bin dmg-frontend-native-gl" />
       <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="FULL" />
+      <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <envs>
-        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg/boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg/boot/roms/boot.gbc" />
-        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
-      </envs>
+      <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
-    <configuration name="Run wasm" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <configuration name="Run dmg-frontend-native" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
       <option name="channel" value="DEFAULT" />
-      <option name="command" value="build --package dmg-frontend-web" />
+      <option name="command" value="run --package dmg-frontend-native --bin dmg-frontend-native" />
       <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
-      <option name="emulateTerminal" value="false" />
-      <option name="backtrace" value="FULL" />
-      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
-      <envs>
-        <env name="DMG_BOOT_GB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gb" />
-        <env name="DMG_BOOT_CGB_ROM" value="$PROJECT_DIR$/dmg01/boot/roms/boot.gbc" />
-        <env name="DMG_CAMERA_ROM" value="$PROJECT_DIR$/dmg01/peripheral/camera/rom/Gameboy Camera (UE) [S][!].gb" />
-      </envs>
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="Test apu_mutex" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
-      <option name="channel" value="DEFAULT" />
-      <option name="command" value="test --package dmg-lib --test apu apu_mutex -- --exact" />
-      <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -168,7 +127,6 @@
       <option name="channel" value="DEFAULT" />
       <option name="command" value="+nightly fmt" />
       <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -181,7 +139,6 @@
       <option name="channel" value="DEFAULT" />
       <option name="command" value="clippy" />
       <option name="allFeatures" value="false" />
-      <option name="nocapture" value="false" />
       <option name="emulateTerminal" value="false" />
       <option name="backtrace" value="SHORT" />
       <option name="workingDirectory" value="file://$PROJECT_DIR$" />
@@ -195,21 +152,18 @@
       </method>
     </configuration>
     <list>
-      <item itemvalue="Bash.wasm-pack build" />
-      <item itemvalue="Cargo Command.Run native (release)" />
-      <item itemvalue="Cargo Command.Run wasm" />
-      <item itemvalue="Cargo Command.Run native (opengl)" />
-      <item itemvalue="Cargo Command.+nightly" />
-      <item itemvalue="Cargo Command.Run native" />
-      <item itemvalue="Cargo Command.clippy" />
-      <item itemvalue="Cargo Command.Test apu_mutex" />
+      <item itemvalue="Cargo.+nightly" />
+      <item itemvalue="Cargo.clippy" />
+      <item itemvalue="Cargo.Run check_rom" />
+      <item itemvalue="Cargo.Run dmg-frontend-native" />
+      <item itemvalue="Cargo.Run dmg-frontend-native-gl" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Cargo Command.+nightly" />
-        <item itemvalue="Cargo Command.Run native" />
-        <item itemvalue="Cargo Command.clippy" />
-        <item itemvalue="Cargo Command.Test apu_mutex" />
+        <item itemvalue="Cargo.Run dmg-frontend-native-gl" />
+        <item itemvalue="Cargo.+nightly" />
+        <item itemvalue="Cargo.Run dmg-frontend-native" />
+        <item itemvalue="Cargo.Run check_rom" />
       </list>
     </recent_temporary>
   </component>
@@ -217,70 +171,43 @@
     <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
     <option name="version" value="2" />
   </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="WindowStateProjectService">
-    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1588452309086">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state x="2322" y="234" width="1084" height="710" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603621139197">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="287" y="243" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1588452309086" />
-    <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583947528331">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state x="2322" y="234" width="1084" height="710" key="#com.intellij.execution.impl.EditConfigurationsDialog/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603621139197" />
+    <state x="2566" y="378" width="586" height="403" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1603620838700">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="100" y="125" width="1720" height="822" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1583947528331" />
-    <state x="793" y="341" width="911" height="390" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1586079321387">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state x="2566" y="378" width="586" height="403" key="#com.intellij.fileTypes.FileTypeChooser/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603620838700" />
+    <state x="2672" y="295" width="374" height="569" key="#com.intellij.ide.util.MemberChooser" timestamp="1603620255841">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="793" y="341" width="911" height="390" key="#com.intellij.fileTypes.FileTypeChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1586079321387" />
-    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser" timestamp="1586634304026">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state x="2672" y="295" width="374" height="569" key="#com.intellij.ide.util.MemberChooser/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603620255841" />
+    <state x="2609" y="325" width="524" height="509" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1603621910537">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="768" y="255" width="374" height="562" key="#com.intellij.ide.util.MemberChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1586634304026" />
-    <state x="818" y="273" width="624" height="544" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1585670688009">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state x="2609" y="325" width="524" height="509" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603621910537" />
+    <state width="1806" height="256" key="GridCell.Tab.0.bottom" timestamp="1603622634804">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="818" y="273" width="624" height="544" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585670688009" />
-    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog" timestamp="1588452308018">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state width="1806" height="256" key="GridCell.Tab.0.bottom/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603622634804" />
+    <state width="1806" height="256" key="GridCell.Tab.0.center" timestamp="1603622634804">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="64" y="462" width="714" height="542" key="EnvironmentVariablesDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1588452308018" />
-    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl" timestamp="1585239223742">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state width="1806" height="256" key="GridCell.Tab.0.center/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603622634804" />
+    <state width="1806" height="256" key="GridCell.Tab.0.left" timestamp="1603622634804">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1585239223742" />
-    <state width="1920" height="251" key="GridCell.Tab.0.bottom" timestamp="1588452334958">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state width="1806" height="256" key="GridCell.Tab.0.left/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603622634804" />
+    <state width="1806" height="256" key="GridCell.Tab.0.right" timestamp="1603622634804">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1588452334958" />
-    <state width="1920" height="251" key="GridCell.Tab.0.center" timestamp="1588452334957">
-      <screen x="0" y="27" width="1920" height="1020" />
+    <state width="1806" height="256" key="GridCell.Tab.0.right/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603622634804" />
+    <state x="2550" y="311" width="672" height="678" key="search.everywhere.popup" timestamp="1603622544724">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1588452334957" />
-    <state width="1920" height="251" key="GridCell.Tab.0.left" timestamp="1588452334957">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1588452334957" />
-    <state width="1920" height="251" key="GridCell.Tab.0.right" timestamp="1588452334957">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state width="1920" height="251" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1588452334957" />
-    <state x="449" y="171" key="SettingsEditor" timestamp="1585239038418">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state x="449" y="171" key="SettingsEditor/0.27.1920.1020@0.27.1920.1020" timestamp="1585239038418" />
-    <state width="498" height="451" key="SwitcherDM" timestamp="1586631913186">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state width="498" height="451" key="SwitcherDM/0.27.1920.1020@0.27.1920.1020" timestamp="1586631913186" />
-    <state x="624" y="245" width="672" height="677" key="run.anything.popup" timestamp="1586463452870">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state x="624" y="245" width="672" height="677" key="run.anything.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1586463452870" />
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup" timestamp="1588449513868">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state x="623" y="249" width="672" height="678" key="search.everywhere.popup/0.27.1920.1020@0.27.1920.1020" timestamp="1588449513868" />
-    <state x="550" y="440" width="540" height="194" key="vcs.readOnlyHandler.ReadOnlyStatusDialog" timestamp="1585506946336">
-      <screen x="0" y="27" width="1920" height="1020" />
-    </state>
-    <state x="550" y="440" width="540" height="194" key="vcs.readOnlyHandler.ReadOnlyStatusDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1585506946336" />
+    <state x="2550" y="311" width="672" height="678" key="search.everywhere.popup/1920.0.1920.1080/0.26.1920.1054@1920.0.1920.1080" timestamp="1603622544724" />
   </component>
 </project>

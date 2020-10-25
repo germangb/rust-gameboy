@@ -1,6 +1,8 @@
 # `dmg`
 
-GameBoy emulation in Rust
+**Game Boy** and **Game Boy Color** emulation in Rust.
+
+Still a bit *buggy*, but works with most games I've tried, albeit with some minor graphical glitched showing up on some of them.
 
 ![](assets/zelda.gif)
 ![](assets/mario.gif)
@@ -15,9 +17,9 @@ GameBoy emulation in Rust
 | Sound | | Still buggy. Working on it.
 | Link cable | | In scope but not implemented yet.
 
-## Boot ROMs
+## Building
 
-In order to include the bootstrap roms, you must own the roms for both GB and CGB (they can be found online easily).
+Building any of the modules requires the following environment variables to be defined:
 
 ```bash
 # these must be defined when you cargo build your crate
@@ -33,6 +35,12 @@ Then, in your `Cargo.toml` enable the `boot` feature flag:
 [dependencies.dmg-lib]
 features = ["boot"]
 ```
+
+## Debugging
+
+GL frontend with some debugging tools
+
+![](assets/debug.png)
 
 ## Tests
 

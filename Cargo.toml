@@ -1,16 +1,15 @@
 [workspace]
 members = [
-    "modules",
-    "modules/boot",
-    "modules/tools",
-    "modules/peripheral/camera",
-    "modules/backend/sdl2",
-    "modules/backend/wasm",
-    "modules/backend/gl",
-    "modules/backend/rodio",
-    "modules/backend/headless",
-    "modules/frontend/native",
-    "modules/frontend/native_gl",
-    "modules/frontend/web",
+    "modules/dmg-lib",
+    "modules/dmg-tools",
+    #"modules/dmg-peripheral/camera",
+    "modules/dmg-backend/sdl2",
+    #"modules/dmg-backend/wasm",
+    #"modules/dmg-backend/gl",
+    #"modules/dmg-backend/rodio",
+    "modules/dmg-backend/headless",
+    "modules/dmg-frontend/native",
+    "modules/dmg-frontend/native_gl",
+    #"modules/dmg-frontend/web",
 ]
 

@@ -176,6 +176,19 @@
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/dmg/frontend/native_gl/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-boot/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-backend/rodio/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-lib/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-lib/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-backend/headless/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-tools/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-backend/gl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-frontend/native_gl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-backend/wasm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-peripheral/camera/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-frontend/native/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-backend/sdl2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/modules/dmg-frontend/web/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-boot/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-camera/target" />
       <excludeFolder url="file://$MODULE_DIR$/dmg-driver/dmg-sdl2/target" />

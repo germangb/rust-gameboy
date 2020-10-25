@@ -1,2 +1,3 @@
 merge_imports = true
 wrap_comments = true
+indent_style = "Visual"
