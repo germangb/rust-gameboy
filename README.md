@@ -27,18 +27,9 @@ export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
 export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
 ```
 
-Then, in your `Cargo.toml` enable the `boot` feature flag:
-
-```toml
-# Cargo.toml
-
-[dependencies.dmg-lib]
-features = ["boot"]
-```
-
 ## Debugging
 
-GL frontend with some debugging tools
+The GL-based frontend has some debugging functionality (only graphics for now though).
 
 ![](assets/debug.png)
 
