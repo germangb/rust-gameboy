@@ -2,10 +2,8 @@ use crate::device::Device;
 
 const SIZE: usize = 0x1000;
 
-// In CGB Mode 32 KBytes internal RAM are available. This memory is divided into
-// 8 banks of 4 KBytes each. Bank 0 is always available in memory at C000-CFFF,
-// Bank 1-7 can be selected into the address space at D000-DFFF.
-// Bit 0-2  Select WRAM Bank (Read/Write)
+/// Work-RAM emulation.
+/// Behavior deppends on the emulation mode (GB or CGB).
 pub struct WRam {
     svbk: u8,
     wram: Box<[[u8; SIZE]; 8]>,
@@ -42,6 +40,11 @@ impl Default for WRam {
                wram: Box::new([[0; SIZE]; 8]) }
     }
 }
+
+// In CGB Mode 32 KBytes internal RAM are available. This memory is divided into
+// 8 banks of 4 KBytes each. Bank 0 is always available in memory at C000-CFFF,
+// Bank 1-7 can be selected into the address space at D000-DFFF.
+// Bit 0-2  Select WRAM Bank (Read/Write)
 
 impl Device for WRam {
     fn read(&self, addr: u16) -> u8 {
