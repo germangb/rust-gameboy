@@ -1,6 +1,4 @@
-/// Utility conversion from a base clock to a target clock.
-///
-/// For example, convert a 4MHz into a 16kHz.
+/// To generate ticks at specific given rate, given a base clock rate.
 pub struct Clock {
     base: u64,
     freq: u64,
