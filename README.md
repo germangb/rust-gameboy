@@ -1,4 +1,4 @@
-# `dmg`
+# `rust-gameboy`
 
 **Game Boy** and **Game Boy Color** emulation in Rust.
 
