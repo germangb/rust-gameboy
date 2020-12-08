@@ -2,6 +2,9 @@ use crate::device::Device;
 
 const SIZE: usize = 0x2000;
 
+/// Video-RAM emulation.
+///
+/// Behavior deppends on the emulation mode (GB or CGB).
 pub struct VRam {
     vram: Box<[[u8; SIZE]; 2]>,
     vbk: u8,

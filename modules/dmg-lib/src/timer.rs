@@ -1,5 +1,6 @@
 use crate::{clock::Clock, device::Device, interrupt::Flag, CLOCK};
 
+/// DMG timer emulation.
 pub struct Timer {
     div: u8,
     div_clock: Clock,

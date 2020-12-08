@@ -2,7 +2,7 @@ pub trait Device {
     /// Read a single byte from memory.
     fn read(&self, addr: u16) -> u8;
 
-    /// Write a single byte from memory.
+    /// Write a single byte to memory.
     fn write(&mut self, addr: u16, data: u8);
 
     /// Read a signed byte from memory.
@@ -10,14 +10,14 @@ pub trait Device {
         unsafe { std::mem::transmute(self.read(addr)) }
     }
 
-    /// Read a word from memory (2 bytes).
+    /// Read a 2 byte word to memory.
     fn read_word(&self, addr: u16) -> u16 {
         let lo = self.read(addr);
         let hi = self.read(addr + 1);
         (u16::from(hi) << 8) | u16::from(lo)
     }
 
-    /// Write a word into memory (2 bytes).
+    /// Write a 2 byte word to memory.
     fn write_word(&mut self, addr: u16, data: u16) {
         let lo = data & 0xff;
         let hi = data >> 8;
@@ -26,6 +26,8 @@ pub trait Device {
     }
 }
 
+// Base implementation to emulate the lack of a device.
+// For example, () represents the lack of a connected cartridge.
 impl Device for () {
     fn read(&self, _: u16) -> u8 {
         0xff
