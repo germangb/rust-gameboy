@@ -288,15 +288,7 @@ impl<C: Cartridge, V: Video, D: Audio> Device for Mmu<C, V, D> {
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        #[cfg(feature = "dmg-data")]
-        use dmg_boot::{cgb, gb};
-
         match addr {
-            #[cfg(feature = "dmg-data")]
-            addr if !self.boot && self.mode == Mode::CGB && cgb::is_boot(addr) => {}
-            #[cfg(feature = "dmg-data")]
-            addr if !self.boot && self.mode == Mode::GB && gb::is_boot(addr) => {}
-
             0x0000..=0x7fff => self.cartridge.write(addr, data),
             0x8000..=0x9fff => self.ppu.write(addr, data),
             0xa000..=0xbfff => self.cartridge.write(addr, data),

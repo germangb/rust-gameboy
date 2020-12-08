@@ -1,10 +1,12 @@
+.idea/
+
 # rust
 /target
 *.lock
 
 # roms
-*.gb
-*.gbc
+#*.gb
+#*.gbc
 
 # wasm project
 pkg/

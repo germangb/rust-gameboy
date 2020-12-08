@@ -17,16 +17,6 @@ Still a bit *buggy*, but works with most games I've tried, albeit with some mino
 | Sound | | Still buggy. Working on it.
 | Link cable | | In scope but not implemented yet.
 
-## Building
-
-Building any of the modules requires the following environment variables to be defined:
-
-```bash
-# these must be defined when you cargo build your crate
-export DMG_BOOT_GB_ROM="<path_to_gb_boot_rom>"
-export DMG_BOOT_CGB_ROM="<path_to_cgb_boot_rom>"
-```
-
 ## Debugging
 
 The GL-based frontend has some debugging functionality (only graphics for now though).
