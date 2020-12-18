@@ -1,3 +1,9 @@
+***ARCHIVED***
+
+*This project has been archived. Future work will continue in https://github.com/germangb/rust-gameboy2*
+
+* * *
+
 # `rust-gameboy`
 
 **Game Boy** and **Game Boy Color** emulation in Rust.
