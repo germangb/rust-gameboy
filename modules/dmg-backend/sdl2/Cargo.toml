@@ -1,0 +1,16 @@
+[package]
+name = "dmg-backend-sdl2"
+version = "0.1.0"
+authors = ["german gomez <germangb42@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dmg-lib = { path = "../../dmg-lib" }
+sdl2 = "0.34.3"
+
+[features]
+default = ["audio", "video"]
+video = []
+audio = []

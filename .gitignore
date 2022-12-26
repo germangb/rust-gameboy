@@ -1,0 +1,19 @@
+.idea/
+
+# rust
+/target
+*.lock
+
+# roms
+#*.gb
+#*.gbc
+
+# wasm project
+pkg/
+www/dist
+www/node_modules
+
+# vim
+*.swp
+
+imgui.ini
